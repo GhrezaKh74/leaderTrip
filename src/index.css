@@ -1,0 +1,120 @@
+@import 'vazirmatn/Vazirmatn-font-face.css';
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-50 text-ink-900 font-sans antialiased;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      @apply bg-ink-950 text-ink-100;
+    }
+  }
+
+  /* اعداد فارسی در همهٔ متن‌ها */
+  body {
+    font-feature-settings: 'ss02';
+  }
+
+  input[type='range'] {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-ink-200 dark:bg-ink-800;
+  }
+  input[type='range']::-webkit-slider-thumb {
+    @apply h-5 w-5 appearance-none rounded-full border-2 border-white bg-brand-500 shadow;
+  }
+  input[type='range']::-moz-range-thumb {
+    @apply h-5 w-5 appearance-none rounded-full border-2 border-white bg-brand-500 shadow;
+  }
+
+  ::-webkit-scrollbar {
+    @apply h-2 w-2;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-ink-300 dark:bg-ink-700;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-ink-200/70 bg-white shadow-card dark:border-ink-800 dark:bg-ink-900;
+  }
+
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition
+      active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply btn border border-ink-200 bg-white text-ink-700 hover:bg-ink-50
+      dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:bg-ink-800;
+  }
+  .btn-sm {
+    @apply rounded-lg px-2.5 py-1.5 text-xs;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-sm outline-none
+      transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15
+      dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-ink-500 dark:text-ink-400;
+  }
+
+  .chip {
+    @apply inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full border border-ink-200
+      bg-white px-3 py-1.5 text-xs font-medium text-ink-600 transition hover:border-brand-400
+      dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300;
+  }
+  .chip-on {
+    @apply border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-900/40 dark:text-brand-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium;
+  }
+}
+
+/* نقشه */
+.leaflet-container {
+  @apply rounded-2xl bg-ink-100 font-sans dark:bg-ink-800;
+  z-index: 0;
+}
+.leaflet-bar a,
+.leaflet-control-attribution {
+  @apply text-ink-700;
+}
+.lt-pin {
+  @apply grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[11px] font-bold text-white shadow-md;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    @apply bg-white text-black;
+  }
+  .card {
+    @apply border border-ink-300 shadow-none;
+    break-inside: avoid;
+  }
+}
