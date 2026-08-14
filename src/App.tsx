@@ -1,122 +1,93 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useCallback, useMemo, useState } from 'react'
+import type { PriceBook, TripInput, TripPlan } from './domain/types'
+import { defaultInput, generatePlan } from './engine/planner'
+import { loadDraft, saveDraft } from './lib/storage'
+import { ThemeToggle, useTheme } from './ui/common/Bits'
+import { Wizard } from './ui/wizard/Wizard'
+import { PlanView } from './ui/plan/PlanView'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [theme, setTheme] = useTheme()
+  const [input, setInput] = useState<TripInput>(() => loadDraft() ?? defaultInput())
+  const [showPlan, setShowPlan] = useState(false)
+
+  const patch = useCallback((p: Partial<TripInput>) => {
+    setInput((prev) => {
+      const next = { ...prev, ...p }
+      saveDraft(next)
+      return next
+    })
+  }, [])
+
+  // ساخت برنامه یک تابع خالص است — خطایش هم بخشی از همین محاسبه است، نه یک اثر جانبی
+  const { plan, error } = useMemo<{ plan: TripPlan | null; error: string | null }>(() => {
+    if (!showPlan) return { plan: null, error: null }
+    try {
+      return { plan: generatePlan(input), error: null }
+    } catch (e) {
+      return { plan: null, error: e instanceof Error ? e.message : 'خطای ناشناخته در ساخت برنامه' }
+    }
+  }, [input, showPlan])
+
+  const onPriceChange = useCallback(
+    (p: Partial<PriceBook>) => patch({ priceOverrides: { ...input.priceOverrides, ...p } }),
+    [patch, input.priceOverrides],
+  )
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="min-h-full">
+      <header className="no-print sticky top-0 z-10 border-b border-ink-200/70 bg-ink-50/85 backdrop-blur dark:border-ink-800 dark:bg-ink-950/85">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <button
+            type="button"
+            className="flex items-center gap-2"
+            onClick={() => setShowPlan(false)}
+          >
+            <span aria-hidden className="text-lg">
+              🧭
+            </span>
+            <span className="text-sm font-bold">لیدرتریپ</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            {showPlan && (
+              <button type="button" className="btn-ghost btn-sm" onClick={() => window.print()}>
+                🖨️ چاپ
+              </button>
+            )}
+            <ThemeToggle theme={theme} onChange={setTheme} />
+          </div>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
+      </header>
+
+      {error && (
+        <div className="mx-auto mt-4 max-w-3xl px-4">
+          <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">
+            {error}
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      )}
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {showPlan && plan ? (
+        <PlanView plan={plan} onEdit={() => setShowPlan(false)} onPriceChange={onPriceChange} />
+      ) : (
+        <>
+          <Intro />
+          <Wizard input={input} onChange={patch} onSubmit={() => setShowPlan(true)} />
+        </>
+      )}
+    </div>
   )
 }
 
-export default App
+function Intro() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 pt-6 text-center">
+      <h1 className="text-xl font-bold sm:text-2xl">دستیار هوشمند لیدر سفر</h1>
+      <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-ink-500 dark:text-ink-400">
+        بگویید کِی، با چه کسانی، با چه خودرویی و با چه بودجه‌ای — برنامهٔ ساعت‌به‌ساعت و تخمین
+        هزینه‌ای می‌گیرید که می‌شود به آن تکیه کرد.
+      </p>
+    </div>
+  )
+}

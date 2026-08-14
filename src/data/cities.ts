@@ -1,0 +1,122 @@
+import type { City } from '../domain/types'
+
+/**
+ * شهرهای مرجع — مبدأ سفر، شهر پایهٔ اقامت و مرجع ضریب گرانی.
+ *
+ * costIndex: ۱٫۰ = میانگین کشور. تهران و جزایر گران‌تر، شهرهای کوچک ارزان‌تر.
+ * amenities: ۳ = هتل و رستوران فراوان · ۲ = محدود · ۱ = حداقلی (شب ماندن ریسک دارد)
+ */
+export const CITIES: City[] = [
+  // ── تهران و مرکز ──────────────────────────────────────────
+  { id: 'tehran', name: 'تهران', province: 'تهران', lat: 35.6892, lng: 51.389, costIndex: 1.3, amenities: 3, climate: 'plain' },
+  { id: 'karaj', name: 'کرج', province: 'البرز', lat: 35.84, lng: 50.9391, costIndex: 1.1, amenities: 3, climate: 'plain' },
+  { id: 'damavand', name: 'دماوند', province: 'تهران', lat: 35.715, lng: 52.065, costIndex: 0.9, amenities: 2, climate: 'mountain' },
+  { id: 'polur', name: 'پلور', province: 'مازندران', lat: 35.83, lng: 52.05, costIndex: 0.85, amenities: 1, climate: 'mountain' },
+  { id: 'firuzkuh', name: 'فیروزکوه', province: 'تهران', lat: 35.7594, lng: 52.7708, costIndex: 0.8, amenities: 1, climate: 'mountain' },
+  { id: 'qazvin', name: 'قزوین', province: 'قزوین', lat: 36.2688, lng: 50.0041, costIndex: 0.9, amenities: 3, climate: 'plain' },
+  { id: 'alamut', name: 'الموت (معلم‌کلایه)', province: 'قزوین', lat: 36.44, lng: 50.59, costIndex: 0.75, amenities: 1, climate: 'mountain' },
+  { id: 'qom', name: 'قم', province: 'قم', lat: 34.6416, lng: 50.8746, costIndex: 0.95, amenities: 3, climate: 'desert' },
+  { id: 'arak', name: 'اراک', province: 'مرکزی', lat: 34.0917, lng: 49.6892, costIndex: 0.85, amenities: 2, climate: 'plain' },
+  { id: 'mahallat', name: 'محلات', province: 'مرکزی', lat: 33.9089, lng: 50.4519, costIndex: 0.75, amenities: 1, climate: 'mountain' },
+  { id: 'semnan', name: 'سمنان', province: 'سمنان', lat: 35.5769, lng: 53.3928, costIndex: 0.8, amenities: 2, climate: 'desert' },
+  { id: 'damghan', name: 'دامغان', province: 'سمنان', lat: 36.1683, lng: 54.348, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'shahrud', name: 'شاهرود', province: 'سمنان', lat: 36.4182, lng: 54.9763, costIndex: 0.75, amenities: 2, climate: 'desert' },
+
+  // ── اصفهان و کویر مرکزی ───────────────────────────────────
+  { id: 'kashan', name: 'کاشان', province: 'اصفهان', lat: 33.985, lng: 51.41, costIndex: 0.95, amenities: 3, climate: 'desert' },
+  { id: 'natanz', name: 'نطنز', province: 'اصفهان', lat: 33.5133, lng: 51.9161, costIndex: 0.75, amenities: 1, climate: 'desert' },
+  { id: 'isfahan', name: 'اصفهان', province: 'اصفهان', lat: 32.6539, lng: 51.666, costIndex: 1.0, amenities: 3, climate: 'plain' },
+  { id: 'naein', name: 'نایین', province: 'اصفهان', lat: 32.8556, lng: 53.09, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'khur', name: 'خور و بیابانک', province: 'اصفهان', lat: 33.7761, lng: 55.0847, costIndex: 0.75, amenities: 1, climate: 'desert' },
+  { id: 'shahrekord', name: 'شهرکرد', province: 'چهارمحال', lat: 32.3256, lng: 50.8644, costIndex: 0.8, amenities: 2, climate: 'mountain' },
+
+  // ── یزد و کرمان ───────────────────────────────────────────
+  { id: 'yazd', name: 'یزد', province: 'یزد', lat: 31.8974, lng: 54.3569, costIndex: 0.9, amenities: 3, climate: 'desert' },
+  { id: 'meybod', name: 'میبد', province: 'یزد', lat: 32.25, lng: 54.0167, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'ardakan', name: 'اردکان', province: 'یزد', lat: 32.31, lng: 54.0175, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'taft', name: 'تفت', province: 'یزد', lat: 31.747, lng: 54.208, costIndex: 0.7, amenities: 1, climate: 'mountain' },
+  { id: 'abarkuh', name: 'ابرکوه', province: 'یزد', lat: 31.13, lng: 53.28, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'tabas', name: 'طبس', province: 'خراسان جنوبی', lat: 33.5959, lng: 56.9244, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'kerman', name: 'کرمان', province: 'کرمان', lat: 30.2839, lng: 57.0834, costIndex: 0.85, amenities: 3, climate: 'desert' },
+  { id: 'shahdad', name: 'شهداد', province: 'کرمان', lat: 30.4167, lng: 57.7, costIndex: 0.7, amenities: 1, climate: 'desert' },
+  { id: 'bam', name: 'بم', province: 'کرمان', lat: 29.106, lng: 58.357, costIndex: 0.75, amenities: 2, climate: 'desert' },
+  { id: 'rafsanjan', name: 'رفسنجان', province: 'کرمان', lat: 30.4067, lng: 55.9939, costIndex: 0.75, amenities: 2, climate: 'desert' },
+  { id: 'sirjan', name: 'سیرجان', province: 'کرمان', lat: 29.452, lng: 55.68, costIndex: 0.75, amenities: 2, climate: 'desert' },
+
+  // ── فارس ──────────────────────────────────────────────────
+  { id: 'shiraz', name: 'شیراز', province: 'فارس', lat: 29.5918, lng: 52.5837, costIndex: 1.0, amenities: 3, climate: 'plain' },
+  { id: 'marvdasht', name: 'مرودشت', province: 'فارس', lat: 29.8742, lng: 52.8025, costIndex: 0.75, amenities: 2, climate: 'plain' },
+  { id: 'kazerun', name: 'کازرون', province: 'فارس', lat: 29.6195, lng: 51.6541, costIndex: 0.75, amenities: 1, climate: 'plain' },
+  { id: 'firuzabad', name: 'فیروزآباد', province: 'فارس', lat: 28.8438, lng: 52.571, costIndex: 0.7, amenities: 1, climate: 'plain' },
+  { id: 'sepidan', name: 'سپیدان', province: 'فارس', lat: 30.25, lng: 51.99, costIndex: 0.75, amenities: 1, climate: 'mountain' },
+  { id: 'yasuj', name: 'یاسوج', province: 'کهگیلویه', lat: 30.6682, lng: 51.588, costIndex: 0.8, amenities: 2, climate: 'mountain' },
+
+  // ── خراسان ────────────────────────────────────────────────
+  { id: 'mashhad', name: 'مشهد', province: 'خراسان رضوی', lat: 36.2605, lng: 59.6168, costIndex: 1.0, amenities: 3, climate: 'steppe' },
+  { id: 'neyshabur', name: 'نیشابور', province: 'خراسان رضوی', lat: 36.2133, lng: 58.7958, costIndex: 0.8, amenities: 2, climate: 'steppe' },
+  { id: 'sabzevar', name: 'سبزوار', province: 'خراسان رضوی', lat: 36.2126, lng: 57.6819, costIndex: 0.75, amenities: 2, climate: 'steppe' },
+  { id: 'birjand', name: 'بیرجند', province: 'خراسان جنوبی', lat: 32.8663, lng: 59.2211, costIndex: 0.75, amenities: 2, climate: 'desert' },
+  { id: 'bojnurd', name: 'بجنورد', province: 'خراسان شمالی', lat: 37.4747, lng: 57.329, costIndex: 0.75, amenities: 2, climate: 'steppe' },
+
+  // ── سواحل خزر ─────────────────────────────────────────────
+  { id: 'rasht', name: 'رشت', province: 'گیلان', lat: 37.2808, lng: 49.5832, costIndex: 1.0, amenities: 3, climate: 'caspian' },
+  { id: 'anzali', name: 'بندر انزلی', province: 'گیلان', lat: 37.472, lng: 49.4622, costIndex: 0.95, amenities: 2, climate: 'caspian' },
+  { id: 'astara', name: 'آستارا', province: 'گیلان', lat: 38.429, lng: 48.873, costIndex: 0.85, amenities: 2, climate: 'caspian' },
+  { id: 'lahijan', name: 'لاهیجان', province: 'گیلان', lat: 37.2073, lng: 50.0038, costIndex: 0.9, amenities: 2, climate: 'caspian' },
+  { id: 'fuman', name: 'فومن', province: 'گیلان', lat: 37.2242, lng: 49.3125, costIndex: 0.8, amenities: 1, climate: 'caspian' },
+  { id: 'ramsar', name: 'رامسر', province: 'مازندران', lat: 36.92, lng: 50.658, costIndex: 1.1, amenities: 3, climate: 'caspian' },
+  { id: 'tonekabon', name: 'تنکابن', province: 'مازندران', lat: 36.8163, lng: 50.8738, costIndex: 1.0, amenities: 2, climate: 'caspian' },
+  { id: 'kelardasht', name: 'کلاردشت', province: 'مازندران', lat: 36.4753, lng: 51.1487, costIndex: 1.05, amenities: 2, climate: 'mountain' },
+  { id: 'chalus', name: 'چالوس', province: 'مازندران', lat: 36.655, lng: 51.42, costIndex: 1.1, amenities: 2, climate: 'caspian' },
+  { id: 'nowshahr', name: 'نوشهر', province: 'مازندران', lat: 36.6489, lng: 51.4967, costIndex: 1.15, amenities: 3, climate: 'caspian' },
+  { id: 'babolsar', name: 'بابلسر', province: 'مازندران', lat: 36.7025, lng: 52.6575, costIndex: 1.05, amenities: 2, climate: 'caspian' },
+  { id: 'sari', name: 'ساری', province: 'مازندران', lat: 36.5633, lng: 53.0601, costIndex: 0.9, amenities: 3, climate: 'caspian' },
+  { id: 'gorgan', name: 'گرگان', province: 'گلستان', lat: 36.8427, lng: 54.4436, costIndex: 0.85, amenities: 3, climate: 'caspian' },
+  { id: 'gonbad', name: 'گنبد کاووس', province: 'گلستان', lat: 37.25, lng: 55.1672, costIndex: 0.75, amenities: 2, climate: 'steppe' },
+  { id: 'torkaman', name: 'بندر ترکمن', province: 'گلستان', lat: 36.9, lng: 54.07, costIndex: 0.7, amenities: 1, climate: 'caspian' },
+
+  // ── آذربایجان و شمال غرب ──────────────────────────────────
+  { id: 'tabriz', name: 'تبریز', province: 'آذربایجان شرقی', lat: 38.08, lng: 46.2919, costIndex: 0.95, amenities: 3, climate: 'mountain' },
+  { id: 'jolfa', name: 'جلفا', province: 'آذربایجان شرقی', lat: 38.9403, lng: 45.6314, costIndex: 0.8, amenities: 2, climate: 'mountain' },
+  { id: 'kaleybar', name: 'کلیبر', province: 'آذربایجان شرقی', lat: 38.8697, lng: 47.0369, costIndex: 0.7, amenities: 1, climate: 'mountain' },
+  { id: 'maragheh', name: 'مراغه', province: 'آذربایجان شرقی', lat: 37.3894, lng: 46.2381, costIndex: 0.75, amenities: 2, climate: 'mountain' },
+  { id: 'urmia', name: 'ارومیه', province: 'آذربایجان غربی', lat: 37.5527, lng: 45.0761, costIndex: 0.85, amenities: 3, climate: 'mountain' },
+  { id: 'khoy', name: 'خوی', province: 'آذربایجان غربی', lat: 38.5503, lng: 44.9521, costIndex: 0.75, amenities: 2, climate: 'mountain' },
+  { id: 'takab', name: 'تکاب', province: 'آذربایجان غربی', lat: 36.4017, lng: 47.1131, costIndex: 0.7, amenities: 1, climate: 'mountain' },
+  { id: 'ardabil', name: 'اردبیل', province: 'اردبیل', lat: 38.2498, lng: 48.2933, costIndex: 0.85, amenities: 3, climate: 'mountain' },
+  { id: 'sarein', name: 'سرعین', province: 'اردبیل', lat: 38.1497, lng: 48.07, costIndex: 0.9, amenities: 2, climate: 'mountain' },
+  { id: 'zanjan', name: 'زنجان', province: 'زنجان', lat: 36.6736, lng: 48.4787, costIndex: 0.8, amenities: 2, climate: 'mountain' },
+
+  // ── غرب و زاگرس ───────────────────────────────────────────
+  { id: 'hamedan', name: 'همدان', province: 'همدان', lat: 34.7992, lng: 48.5146, costIndex: 0.85, amenities: 3, climate: 'mountain' },
+  { id: 'kermanshah', name: 'کرمانشاه', province: 'کرمانشاه', lat: 34.3142, lng: 47.065, costIndex: 0.85, amenities: 3, climate: 'mountain' },
+  { id: 'paveh', name: 'پاوه', province: 'کرمانشاه', lat: 35.0442, lng: 46.3564, costIndex: 0.7, amenities: 1, climate: 'mountain' },
+  { id: 'sanandaj', name: 'سنندج', province: 'کردستان', lat: 35.3219, lng: 46.9862, costIndex: 0.8, amenities: 2, climate: 'mountain' },
+  { id: 'marivan', name: 'مریوان', province: 'کردستان', lat: 35.5219, lng: 46.176, costIndex: 0.75, amenities: 2, climate: 'mountain' },
+  { id: 'khorramabad', name: 'خرم‌آباد', province: 'لرستان', lat: 33.4878, lng: 48.3558, costIndex: 0.8, amenities: 2, climate: 'mountain' },
+  { id: 'ilam', name: 'ایلام', province: 'ایلام', lat: 33.6374, lng: 46.4227, costIndex: 0.75, amenities: 2, climate: 'mountain' },
+
+  // ── خوزستان ───────────────────────────────────────────────
+  { id: 'ahvaz', name: 'اهواز', province: 'خوزستان', lat: 31.3183, lng: 48.6706, costIndex: 0.9, amenities: 3, climate: 'plain' },
+  { id: 'shushtar', name: 'شوشتر', province: 'خوزستان', lat: 32.0455, lng: 48.8567, costIndex: 0.75, amenities: 2, climate: 'plain' },
+  { id: 'shush', name: 'شوش', province: 'خوزستان', lat: 32.1942, lng: 48.2436, costIndex: 0.7, amenities: 1, climate: 'plain' },
+  { id: 'dezful', name: 'دزفول', province: 'خوزستان', lat: 32.3811, lng: 48.4058, costIndex: 0.8, amenities: 2, climate: 'plain' },
+  { id: 'abadan', name: 'آبادان', province: 'خوزستان', lat: 30.3392, lng: 48.3043, costIndex: 0.85, amenities: 2, climate: 'plain' },
+
+  // ── جنوب و خلیج فارس ──────────────────────────────────────
+  { id: 'bushehr', name: 'بوشهر', province: 'بوشهر', lat: 28.9234, lng: 50.8203, costIndex: 0.95, amenities: 2, climate: 'gulf' },
+  { id: 'bandarabbas', name: 'بندرعباس', province: 'هرمزگان', lat: 27.1832, lng: 56.2666, costIndex: 1.0, amenities: 3, climate: 'gulf' },
+  { id: 'qeshm', name: 'قشم', province: 'هرمزگان', lat: 26.9581, lng: 56.2716, costIndex: 1.05, amenities: 3, climate: 'gulf' },
+  { id: 'hormuz', name: 'جزیرهٔ هرمز', province: 'هرمزگان', lat: 27.06, lng: 56.46, costIndex: 1.0, amenities: 1, climate: 'gulf' },
+  { id: 'kish', name: 'کیش', province: 'هرمزگان', lat: 26.5578, lng: 53.98, costIndex: 1.4, amenities: 3, climate: 'gulf' },
+  { id: 'chabahar', name: 'چابهار', province: 'سیستان و بلوچستان', lat: 25.2919, lng: 60.643, costIndex: 0.95, amenities: 2, climate: 'gulf' },
+  { id: 'zahedan', name: 'زاهدان', province: 'سیستان و بلوچستان', lat: 29.4963, lng: 60.8629, costIndex: 0.8, amenities: 2, climate: 'desert' },
+]
+
+export const CITY_BY_ID = new Map(CITIES.map((c) => [c.id, c]))
+
+export function getCity(id: string): City {
+  const c = CITY_BY_ID.get(id)
+  if (!c) throw new Error(`شهر ناشناخته: ${id}`)
+  return c
+}

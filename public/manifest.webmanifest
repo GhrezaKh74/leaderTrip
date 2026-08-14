@@ -1,0 +1,11 @@
+{
+  "name": "لیدرتریپ — دستیار هوشمند سفر",
+  "short_name": "لیدرتریپ",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#047655",
+  "icons": [{ "src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
