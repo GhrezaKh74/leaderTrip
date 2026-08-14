@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PriceBook, TripInput, TripPlan, WeatherMap } from './domain/types'
-import { defaultInput, generatePlan } from './engine/planner'
+import { defaultInput, generatePlan, routingPoints } from './engine/planner'
 import { fetchWeather, type WeatherRequest } from './services/weather'
+import { fetchRouteMatrix, type RouteMatrix } from './services/routing'
+import { fetchElevation, type ElevationMap } from './services/elevation'
 import { getCity } from './data/cities'
 import { loadDraft, saveDraft } from './lib/storage'
+import { listJournals } from './lib/journal'
+import { learnPreferences } from './engine/preferences'
 import { readTripFromUrl } from './lib/share'
 import { ThemeToggle, useTheme } from './ui/common/Bits'
 import { Wizard } from './ui/wizard/Wizard'
@@ -32,6 +36,10 @@ export default function App() {
   }, [])
   const [weather, setWeather] = useState<WeatherMap | undefined>(undefined)
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>('idle')
+  const [matrix, setMatrix] = useState<RouteMatrix | undefined>(undefined)
+  const [elevation, setElevation] = useState<ElevationMap | undefined>(undefined)
+  // سلیقهٔ آموخته‌شده از سفرهای گذشته — یک‌بار در شروع خوانده می‌شود
+  const preferences = useMemo(() => learnPreferences(listJournals()), [])
 
   const patch = useCallback((p: Partial<TripInput>) => {
     setInput((prev) => {
@@ -52,11 +60,14 @@ export default function App() {
   const { plan, error } = useMemo<{ plan: TripPlan | null; error: string | null }>(() => {
     if (!showPlan) return { plan: null, error: null }
     try {
-      return { plan: generatePlan(input, weather), error: null }
+      return {
+        plan: generatePlan(input, weather, { matrix, elevation, preferences }),
+        error: null,
+      }
     } catch (e) {
       return { plan: null, error: e instanceof Error ? e.message : 'خطای ناشناخته در ساخت برنامه' }
     }
-  }, [input, showPlan, weather])
+  }, [input, showPlan, weather, matrix, elevation, preferences])
 
   /** کلید شهرها و تاریخ‌های برنامه — تا فقط وقتی واقعاً عوض شدند دوباره بپرسیم */
   const weatherTargets = useMemo(() => {
@@ -103,6 +114,37 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKey])
+
+  /**
+   * مسافت واقعی جاده — همان الگوی دو مرحله‌ای آب‌وهوا:
+   * پیش‌نویس ساخته می‌شود تا بدانیم کدام نقاط مهم‌اند، بعد ماتریس مسیر گرفته
+   * می‌شود و برنامه با مسافت واقعی از نو ساخته می‌شود.
+   */
+  const routeKey = useMemo(() => {
+    if (!plan || matrix) return ''
+    return routingPoints(plan)
+      .map((p) => `${p.lat.toFixed(3)},${p.lng.toFixed(3)}`)
+      .join(';')
+  }, [plan, matrix])
+
+  useEffect(() => {
+    if (!plan || routeKey === '') return
+
+    let cancelled = false
+    const points = routingPoints(plan)
+
+    fetchRouteMatrix(points).then((result) => {
+      if (!cancelled && result) setMatrix(result)
+    })
+    fetchElevation(points).then((result) => {
+      if (!cancelled && result) setElevation(result)
+    })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey])
 
   const onPriceChange = useCallback(
     (p: Partial<PriceBook>) => patch({ priceOverrides: { ...input.priceOverrides, ...p } }),

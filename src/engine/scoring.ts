@@ -9,6 +9,7 @@ import type {
 } from '../domain/types'
 import { distanceToCorridor, haversineKm, type LatLng } from './geo'
 import { weatherScoreAdjust, weatherValueFactor } from './climate'
+import { BIAS_STRENGTH, type CategoryBias } from './preferences'
 
 /** خلاصهٔ گروه از روی فهرست همسفران */
 export function buildGroupProfile(travelers: Traveler[]): GroupProfile {
@@ -146,6 +147,7 @@ export function scorePOI(
   destination: LatLng | null,
   tripMonth: number,
   weather?: WeatherProfile,
+  bias?: CategoryBias,
 ): number {
   let score = 100
 
@@ -195,6 +197,9 @@ export function scorePOI(
     score += weatherScoreAdjust(p, weather)
     score *= weatherValueFactor(p, weather)
   }
+
+  // سلیقهٔ آموخته‌شده از امتیازهای سفرهای قبل — ضربی، تا در برابر فاصله محو نشود
+  if (bias?.[p.cat]) score *= 1 + BIAS_STRENGTH * bias[p.cat]!
 
   // پین کاربر بعد از ضریب جوّی اعمال می‌شود: خواستهٔ صریح کاربر را
   // هوا کم‌رنگ نمی‌کند

@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { CustomStop, POICategory, TripInput, TripPlan } from '../../domain/types'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, DIFFICULTY_LABEL, POI_BY_ID } from '../../data/pois'
 import { CITIES, getCity } from '../../data/cities'
 import { duration, faNum, toman } from '../../lib/format'
 import { newId } from '../../lib/storage'
+import { discoverNearby, type OsmPlace } from '../../services/overpass'
+import { describeBias, learnPreferences } from '../../engine/preferences'
+import { listJournals } from '../../lib/journal'
 
 /**
  * جاذبه‌هایی که در برنامه نیستند.
@@ -40,7 +43,11 @@ export function NearbyPanel({
 
   return (
     <div className="space-y-4">
+      <LearnedTaste />
+
       <CustomStopForm plan={plan} onChange={onChange} />
+
+      <OsmDiscovery plan={plan} onChange={onChange} />
 
       {blocked.length > 0 && (
         <div className="rounded-2xl border border-ink-200/70 bg-white p-5 dark:border-ink-800 dark:bg-ink-900">
@@ -248,6 +255,150 @@ function CustomStopForm({
             افزودن به برنامه
           </button>
         </div>
+      )}
+    </div>
+  )
+}
+
+
+/**
+ * آنچه از سفرهای گذشتهٔ خودِ کاربر یاد گرفته‌ایم.
+ * نشان‌دادنش لازم است: وزنی که کاربر نمی‌بیند، وزنی است که نمی‌تواند اصلاحش کند.
+ */
+function LearnedTaste() {
+  const bias = useMemo(() => learnPreferences(listJournals()), [])
+  const { liked, disliked } = describeBias(bias)
+
+  if (liked.length === 0 && disliked.length === 0) return null
+
+  return (
+    <div className="rounded-2xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-900/20">
+      <h3 className="text-sm font-bold">از سفرهای قبلی شما</h3>
+      <p className="mt-1 text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">
+        بر اساس امتیازهایی که به توقف‌های سفرهای گذشته داده‌اید، این برنامه کمی به سلیقهٔ
+        شما متمایل شده است.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {liked.map((c) => (
+          <span key={c} className="badge bg-brand-100 text-brand-800 dark:bg-brand-900/50 dark:text-brand-200">
+            👍 {CATEGORY_LABEL[c]}
+          </span>
+        ))}
+        {disliked.map((c) => (
+          <span key={c} className="badge bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+            👎 {CATEGORY_LABEL[c]}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * کشف جاذبه از OpenStreetMap — برای پرکردن حفره‌های پوشش دیتاست ما.
+ *
+ * نتیجه‌ها عمداً «دادهٔ خام» برچسب می‌خورند: OSM مدت بازدید، بلیت و سختی مسیر
+ * ندارد، پس این‌ها وارد امتیازدهی نمی‌شوند و فقط به‌عنوان توقف دلخواه — با
+ * مقادیری که خودِ کاربر تعیین می‌کند — به برنامه اضافه می‌شوند.
+ */
+function OsmDiscovery({
+  plan,
+  onChange,
+}: {
+  plan: TripPlan
+  onChange: (patch: Partial<TripInput>) => void
+}) {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'empty'>('idle')
+  const [places, setPlaces] = useState<OsmPlace[]>([])
+  const [cityId, setCityId] = useState(plan.days[0]?.baseCityId ?? plan.input.originCityId)
+
+  const search = async () => {
+    setState('loading')
+    const city = getCity(cityId)
+    const found = await discoverNearby(city, 25)
+    setPlaces(found)
+    setState(found.length > 0 ? 'done' : 'empty')
+  }
+
+  const addAsStop = (place: OsmPlace) => {
+    onChange({
+      customStops: [
+        ...plan.input.customStops,
+        {
+          id: newId(),
+          name: place.name,
+          cityId,
+          visitMinutes: 60,
+          ticket: 0,
+          cat: place.cat,
+          note: `از OpenStreetMap · ${place.rawTag}`,
+          lat: place.lat,
+          lng: place.lng,
+        },
+      ],
+    })
+    setPlaces((prev) => prev.filter((p) => p.osmId !== place.osmId))
+  }
+
+  const cities = [
+    plan.input.originCityId,
+    ...plan.days.map((d) => d.baseCityId),
+  ].filter((v, i, arr) => arr.indexOf(v) === i)
+
+  return (
+    <div className="rounded-2xl border border-ink-200/70 bg-white p-5 dark:border-ink-800 dark:bg-ink-900">
+      <h3 className="text-sm font-bold">کشف از OpenStreetMap</h3>
+      <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
+        اگر جایی در فهرست ما نیست، شاید در نقشهٔ آزاد باشد. این‌ها دادهٔ خام‌اند — مدت
+        بازدید، بلیت و سختی مسیرشان را ما نمی‌دانیم، پس به‌صورت «توقف دلخواه» اضافه
+        می‌شوند تا خودتان تعیینشان کنید. نیاز به اینترنت دارد.
+      </p>
+
+      <div className="mt-3 flex gap-2">
+        <select className="field" value={cityId} onChange={(e) => setCityId(e.target.value)}>
+          {cities.map((id) => (
+            <option key={id} value={id}>
+              اطراف {getCity(id).name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn-ghost shrink-0"
+          onClick={search}
+          disabled={state === 'loading'}
+        >
+          {state === 'loading' ? 'در حال جست‌وجو…' : '🔍 جست‌وجو'}
+        </button>
+      </div>
+
+      {state === 'empty' && (
+        <p className="mt-3 text-xs text-ink-400">
+          چیزی پیدا نشد — یا اینترنت وصل نیست، یا در این محدوده جاذبهٔ نام‌داری ثبت نشده است.
+        </p>
+      )}
+
+      {places.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {places.map((p) => (
+            <li
+              key={p.osmId}
+              className="flex items-center justify-between gap-3 rounded-xl border border-ink-200 p-2.5 dark:border-ink-800"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm">
+                  <span aria-hidden>{CATEGORY_EMOJI[p.cat]}</span> {p.name}
+                </p>
+                <p className="mt-0.5 text-[10px] text-ink-400">
+                  دادهٔ خام OSM · {p.rawTag}
+                </p>
+              </div>
+              <button type="button" className="btn-ghost btn-sm shrink-0" onClick={() => addAsStop(p)}>
+                افزودن
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

@@ -37,6 +37,7 @@ export function DayTimeline({ day, actions }: { day: DayPlan; actions?: DayActio
           <p className="mt-0.5 text-xs text-ink-500">
             {staysOver ? `شب در ${city.name}` : `پایان روز در ${city.name}`} ·{' '}
             {faNum(visits.length)} بازدید
+            {day.maxElevationM !== undefined && ` · تا ارتفاع ${faNum(day.maxElevationM)} متر`}
           </p>
         </div>
         <dl className="flex gap-4 text-xs">

@@ -1,5 +1,6 @@
 import type { City, Terrain, Vehicle } from '../domain/types'
 import { BASE_SPEED_KMH, DETOUR_FACTOR, TERRAIN_SPEED } from '../data/pricing'
+import { lookupLeg, type RouteMatrix } from '../services/routing'
 
 export interface LatLng {
   lat: number
@@ -57,23 +58,45 @@ export interface Leg {
   roadKm: number
   minutes: number
   terrain: Terrain
+  /** osrm = مسیر واقعی جاده · estimate = فاصلهٔ هوایی × ضریب پیچش */
+  source: 'osrm' | 'estimate'
 }
 
-/** یک مرحلهٔ حرکت بین دو نقطه با محاسبهٔ کامل */
+/**
+ * یک مرحلهٔ حرکت بین دو نقطه.
+ *
+ * اگر ماتریس مسیر واقعی در دسترس باشد، مسافت و زمانِ خودِ جاده استفاده می‌شود.
+ * زمان OSRM برای یک خودروی معمولی در جادهٔ خلوت است، پس ضریب خودرو و ضریب
+ * گروه همچنان روی آن اعمال می‌شوند — اتوبوس و گروهِ با کودک واقعاً کندترند.
+ */
 export function computeLeg(
   from: LatLng,
   to: LatLng,
   terrain: Terrain,
   vehicle: Vehicle,
   groupSlowdown = 1,
+  matrix?: RouteMatrix,
 ): Leg {
   const straight = haversineKm(from, to)
+  const real = lookupLeg(matrix, from, to)
+
+  if (real) {
+    return {
+      straightKm: straight,
+      roadKm: real.km,
+      minutes: real.minutes / Math.max(0.3, vehicle.speedFactor * groupSlowdown),
+      terrain,
+      source: 'osrm',
+    }
+  }
+
   const road = roadKm(straight, terrain)
   return {
     straightKm: straight,
     roadKm: road,
     minutes: drivingMinutes(road, terrain, vehicle, groupSlowdown),
     terrain,
+    source: 'estimate',
   }
 }
 

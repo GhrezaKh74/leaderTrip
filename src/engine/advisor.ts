@@ -166,6 +166,20 @@ export function dayWarnings(day: DayPlan, ctx: AdviceContext): Warning[] {
     }
   }
 
+  // ─ گردنهٔ مرتفع ─
+  // ارتفاع تنها چیزی است که ریسک بسته‌شدن جاده را از پیش قابل دیدن می‌کند
+  if (day.maxElevationM && day.maxElevationM >= 2200) {
+    const cold = month(ctx) <= 3 || month(ctx) >= 11
+    out.push({
+      level: cold ? 'warn' : 'info',
+      title: `⛰️ ارتفاع ${faNum(day.maxElevationM)} متر در برنامهٔ این روز`,
+      detail: cold
+        ? 'در فصل سرد، گردنه‌های این ارتفاع ممکن است برفی یا بسته باشند. پیش از حرکت وضعیت جاده را از ۱۴۱ بپرسید و زنجیر چرخ همراه داشته باشید.'
+        : 'هوای این ارتفاع حتی در تابستان خنک است؛ یک لایهٔ گرم همراه داشته باشید. تنگی نفس خفیف در روز اول طبیعی است.',
+      day: d,
+    })
+  }
+
   // ─ نکات محلی ─
   if (input.days > 0) {
     const city = getCity(day.baseCityId)
@@ -293,10 +307,14 @@ function tripWarnings(ctx: AdviceContext): Warning[] {
   return out
 }
 
+function month(ctx: AdviceContext): number {
+  return fromISODate(ctx.input.startDate).getMonth() + 1
+}
+
 function climateTips(ctx: AdviceContext): Warning[] {
   const out: Warning[] = []
   const climates = new Set(ctx.days.map((d) => getCity(d.baseCityId).climate))
-  const month = fromISODate(ctx.input.startDate).getMonth() + 1
+  const m = month(ctx)
 
   if (climates.has('desert')) {
     out.push({
@@ -306,21 +324,21 @@ function climateTips(ctx: AdviceContext): Warning[] {
         'اختلاف دمای روز و شب در کویر زیاد است؛ حتی در تابستان لباس گرم شب ببرید. آب ذخیره داشته باشید و شب‌ها بدون راهنما وارد کویر نشوید.',
     })
   }
-  if (climates.has('caspian') && month >= 5 && month <= 9) {
+  if (climates.has('caspian') && m >= 5 && m <= 9) {
     out.push({
       level: 'info',
       title: 'شمال در فصل گرم',
       detail: 'رطوبت بالا و پشه فراوان است؛ ضدپشه ببرید و ترافیک آخر هفتهٔ جاده‌های شمال را در نظر بگیرید.',
     })
   }
-  if (climates.has('gulf') && (month >= 5 && month <= 9)) {
+  if (climates.has('gulf') && m >= 5 && m <= 9) {
     out.push({
       level: 'warn',
       title: 'جنوب در تابستان',
       detail: 'گرما و شرجی جنوب در این ماه‌ها طاقت‌فرساست. اگر امکان دارد سفر را به آبان تا اسفند موکول کنید.',
     })
   }
-  if (climates.has('mountain') && (month <= 3 || month >= 11)) {
+  if (climates.has('mountain') && (m <= 3 || m >= 11)) {
     out.push({
       level: 'warn',
       title: 'جاده‌های کوهستانی در فصل سرد',

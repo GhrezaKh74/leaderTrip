@@ -9,6 +9,9 @@
 | استک | Vite + React 19 + TypeScript + Tailwind | سریع، تایپ‌سیف، بدون پیچیدگی اضافی |
 | نقشه | Leaflet + کاشی OpenStreetMap | رایگان، بدون کلید API |
 | هواشناسی | Open-Meteo | رایگان، بدون کلید، CORS باز، اختیاری |
+| مسیریابی | OSRM (سرور عمومی) | مسافت و زمان واقعی جاده؛ بدون آن، تخمین ضریب پیچش |
+| ارتفاع | Open-Meteo Elevation | هشدار گردنه‌های مرتفع؛ اختیاری |
+| کشف جاذبه | Overpass (OpenStreetMap) | فقط برای پرکردن حفرهٔ پوشش، نه جایگزین دیتاست |
 | دادهٔ جاذبه‌ها | فایل TypeScript همراه اپ | آفلاین کار می‌کند، تایپ‌سیف، قابل بازبینی در گیت |
 | ذخیره‌سازی | `localStorage` | بدون سرور |
 | تاریخ شمسی | پیاده‌سازی داخلی | حذف وابستگی، کنترل کامل |
@@ -41,8 +44,11 @@ src/
 │   ├── packing.ts        تولید چک‌لیست
 │   └── sun.ts            طلوع/غروب
 │
-├── services/
-│   └── weather.ts        Open-Meteo (با fallback)
+├── services/            سرویس‌های بیرونی — همه اختیاری، همه با fallback
+│   ├── weather.ts        Open-Meteo
+│   ├── routing.ts        OSRM — ماتریس مسافت و زمان واقعی
+│   ├── elevation.ts      ارتفاع نقاط
+│   └── overpass.ts       کشف جاذبه از OpenStreetMap
 │
 ├── lib/                  ابزارهای عمومی
 │   ├── jalali.ts         تبدیل تاریخ شمسی

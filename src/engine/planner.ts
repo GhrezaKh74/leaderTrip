@@ -11,7 +11,7 @@ import type {
   WeatherProfile,
 } from '../domain/types'
 import { CITIES, getCity } from '../data/cities'
-import { POIS } from '../data/pois'
+import { POIS, POI_BY_ID } from '../data/pois'
 import { getVehicle } from '../data/vehicles'
 import {
   LODGING_FACTOR,
@@ -22,6 +22,9 @@ import {
 } from '../data/pricing'
 import { addDays, fromISODate, toISODate } from '../lib/jalali'
 import { computeLeg, haversineKm, type LatLng, terrainBetween } from './geo'
+import type { RouteMatrix } from '../services/routing'
+import { lookupElevation, type ElevationMap } from '../services/elevation'
+import type { CategoryBias } from './preferences'
 import { sunTimes } from './sun'
 import { optimizeOrder } from './router'
 import { computeCost, effectiveFuelPrice, loadFactor, resolvePrices } from './cost'
@@ -54,7 +57,23 @@ const SIESTA_MIN = 60
 /** شهرهایی که می‌شود شب را در آن‌ها ماند */
 const STAY_CITIES = CITIES.filter((c) => c.amenities >= 2)
 
-export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
+/**
+ * داده‌های بیرونی دربارهٔ «جهان» — همه اختیاری.
+ * نبودشان برنامه را از کار نمی‌اندازد، فقط دقتش را کم می‌کند.
+ */
+export interface PlanContext {
+  matrix?: RouteMatrix
+  elevation?: ElevationMap
+  /** سلیقهٔ آموخته‌شده از امتیازهای سفرهای گذشته */
+  preferences?: CategoryBias
+}
+
+export function generatePlan(
+  input: TripInput,
+  weather?: WeatherMap,
+  world: PlanContext = {},
+): TripPlan {
+  const { matrix, elevation, preferences } = world
   const origin = getCity(input.originCityId)
   const destination = input.destinationCityId ? getCity(input.destinationCityId) : null
   const vehicle = getVehicle(input.vehicleId)
@@ -98,7 +117,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
 
     scored.push({
       poi: p,
-      score: scorePOI(p, input, group, origin, destination, month, weatherProfile),
+      score: scorePOI(p, input, group, origin, destination, month, weatherProfile, preferences),
     })
   }
 
@@ -114,6 +133,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
     vehicle,
     slowdown,
     timeFactor,
+    matrix,
   })
 
   // ─── هزینه‌های واحد برای محاسبهٔ هزینهٔ هر بلوک ────────────
@@ -143,6 +163,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
   const visited: POI[] = []
   let totalKm = 0
   let mountainKm = 0
+  let realRoutedKm = 0
   let mealsAmount = 0
   let breakfasts = 0
   let lunches = 0
@@ -211,12 +232,12 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
     // پرکردن روز با جاذبه‌ها
     while (dayQueue.length > 0) {
       const next = dayQueue[0]
-      const leg = legBetween(currentPoint, next, currentCity, vehicle, daySlowdown)
+      const leg = legBetween(currentPoint, next, currentCity, vehicle, daySlowdown, matrix)
       const visitMin = Math.round(next.visitMinutes * timeFactor)
 
       // پس از این جاذبه باید به جایی برای شب برسیم
       const endCity = forcedEnd ?? pickStayCity(next, dayQueue[1] ?? null)
-      const backLeg = legBetween(next, endCity, cityOf(next), vehicle, daySlowdown)
+      const backLeg = legBetween(next, endCity, cityOf(next), vehicle, daySlowdown, matrix)
 
       const needsRest = continuousDrive + leg.minutes > CONTINUOUS_DRIVE_LIMIT_MIN
       const restCost = needsRest ? REST_MIN : 0
@@ -270,6 +291,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
       kmSinceFuel += leg.roadKm
       dayCost += driveCost
       if (leg.terrain === 'mountain') mountainKm += leg.roadKm
+      if (leg.source === 'osrm') realRoutedKm += leg.roadKm
 
       // ناهار اگر وقتش رسیده
       if (!lunchDone && t >= LUNCH_WINDOW.from && t <= LUNCH_WINDOW.to) {
@@ -344,10 +366,11 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
             vehicle,
             daySlowdown,
             currentCity,
+            matrix,
           ))
 
     if (stayCity.id !== currentCity.id || haversineKm(currentPoint, stayCity) > 5) {
-      const leg = legBetween(currentPoint, stayCity, currentCity, vehicle, daySlowdown)
+      const leg = legBetween(currentPoint, stayCity, currentCity, vehicle, daySlowdown, matrix)
       const driveCost = legCost(leg.roadKm, leg.terrain)
       blocks.push({
         kind: 'drive',
@@ -363,6 +386,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
       dayKm += leg.roadKm
       dayCost += driveCost
       if (leg.terrain === 'mountain') mountainKm += leg.roadKm
+      if (leg.source === 'osrm') realRoutedKm += leg.roadKm
     }
 
     currentPoint = stayCity
@@ -432,6 +456,13 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
       dayCost += snack
     }
 
+    // بلندترین نقطهٔ روز — پایهٔ هشدار گردنه
+    const dayPoints = [stayCity, ...dayPois]
+    const elevations = dayPoints
+      .map((p) => lookupElevation(elevation, p))
+      .filter((v): v is number => v !== null)
+    const maxElevationM = elevations.length > 0 ? Math.round(Math.max(...elevations)) : undefined
+
     days.push({
       index: d + 1,
       date: dateISO,
@@ -444,6 +475,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
       cost: dayCost,
       warnings: [],
       weather: dayW,
+      maxElevationM,
     })
 
     totalKm += dayKm
@@ -501,8 +533,44 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
       inPlan: inPlanIds.has(s.poi.id),
     })),
     weather: weatherProfile,
+    routing:
+      totalKm === 0 || realRoutedKm === 0
+        ? 'estimate'
+        : realRoutedKm >= totalKm - 1
+          ? 'osrm'
+          : 'mixed',
     generatedAt: new Date().toISOString(),
   }
+}
+
+/**
+ * نقاطی که ارزش دارد مسافت واقعی جاده‌شان گرفته شود.
+ *
+ * از روی یک پیش‌نویس برنامه ساخته می‌شود: خودِ توقف‌های برنامه، شهرهای اقامت،
+ * و بهترین گزینه‌های جایگزین — تا وقتی مسافت واقعی رسید، انتخاب دوباره
+ * با همان دادهٔ درست انجام شود، نه فقط چیدمان همان انتخاب قبلی.
+ */
+export function routingPoints(plan: TripPlan, limit = 60): LatLng[] {
+  const points: LatLng[] = [getCity(plan.input.originCityId)]
+
+  for (const day of plan.days) {
+    points.push(getCity(day.baseCityId))
+    for (const b of day.blocks) {
+      if (b.kind === 'visit' && b.poiId) {
+        const poi = POI_BY_ID.get(b.poiId)
+        if (poi) points.push(poi)
+      }
+    }
+  }
+
+  // گزینه‌های جایگزین، به ترتیب امتیاز
+  for (const c of [...plan.candidates].filter((x) => !x.inPlan).sort((a, b) => b.score - a.score)) {
+    if (points.length >= limit) break
+    const poi = POI_BY_ID.get(c.poiId)
+    if (poi) points.push(poi)
+  }
+
+  return points.slice(0, limit)
 }
 
 export const CUSTOM_PREFIX = 'custom:'
@@ -518,8 +586,8 @@ export function customStopToPoi(stop: CustomStop): POI {
     id: `${CUSTOM_PREFIX}${stop.id}`,
     name: stop.name,
     cityId: stop.cityId,
-    lat: city.lat,
-    lng: city.lng,
+    lat: stop.lat ?? city.lat,
+    lng: stop.lng ?? city.lng,
     cat: stop.cat,
     tags: ['توقف دلخواه'],
     rating: 4,
@@ -547,6 +615,7 @@ interface SelectArgs {
   vehicle: ReturnType<typeof getVehicle>
   slowdown: number
   timeFactor: number
+  matrix?: RouteMatrix
 }
 
 /**
@@ -566,6 +635,7 @@ function selectRoute({
   vehicle,
   slowdown,
   timeFactor,
+  matrix,
 }: SelectArgs): POI[] {
   const cityFor = (pt: LatLng & { cityId?: string }): City =>
     pt.cityId ? getCity(pt.cityId) : (pt as City)
@@ -573,7 +643,7 @@ function selectRoute({
   const driveMin = (a: LatLng & { cityId?: string }, b: LatLng & { cityId?: string }) => {
     const straight = haversineKm(a, b)
     const terrain = terrainBetween(cityFor(a), cityFor(b), straight)
-    return computeLeg(a, b, terrain, vehicle, slowdown).minutes
+    return computeLeg(a, b, terrain, vehicle, slowdown, matrix).minutes
   }
 
   // وقتی کاربر جاذبه‌ای را «حتماً برو» کرده، کمی از بودجهٔ رانندگی را دست‌نخورده
@@ -668,12 +738,13 @@ function legBetween(
   fromCity: City,
   vehicle: ReturnType<typeof getVehicle>,
   slowdown: number,
+  matrix?: RouteMatrix,
 ) {
   const toCity: City =
     'cityId' in to && to.cityId ? getCity(to.cityId) : (to as unknown as City)
   const straight = haversineKm(from, to)
   const terrain = terrainBetween(fromCity, toCity, straight)
-  return computeLeg(from, to, terrain, vehicle, slowdown)
+  return computeLeg(from, to, terrain, vehicle, slowdown, matrix)
 }
 
 /**
@@ -745,6 +816,7 @@ function pickTransferCity(
   vehicle: ReturnType<typeof getVehicle>,
   slowdown: number,
   fromCity: City,
+  matrix?: RouteMatrix,
 ): City {
   if (!nextPoi) return fromCity
 
@@ -752,7 +824,7 @@ function pickTransferCity(
   let bestDistToNext = haversineKm(from, nextPoi)
 
   for (const c of STAY_CITIES) {
-    const leg = legBetween(from, c, fromCity, vehicle, slowdown)
+    const leg = legBetween(from, c, fromCity, vehicle, slowdown, matrix)
     if (leg.minutes > remainingDriveMin) continue
     const d = haversineKm(c, nextPoi)
     if (d < bestDistToNext) {

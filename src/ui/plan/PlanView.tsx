@@ -77,7 +77,17 @@ export function PlanView({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Stat label="مسافت کل" value={km(plan.stats.totalKm)} />
+          <Stat
+            label="مسافت کل"
+            value={km(plan.stats.totalKm)}
+            sub={
+              plan.routing === 'osrm'
+                ? 'مسیر واقعی جاده'
+                : plan.routing === 'mixed'
+                  ? 'بخشی واقعی، بخشی تخمینی'
+                  : 'تخمینی'
+            }
+          />
           <Stat label="زمان رانندگی" value={duration(plan.stats.totalDrivingMin)} />
           <Stat label="جاذبه‌ها" value={`${faNum(plan.stats.poiCount)} مورد`} />
           <Stat
@@ -208,7 +218,9 @@ export function PlanView({
           <TripMap plan={plan} dayFilter={activeDay} />
 
           <p className="text-[11px] text-ink-400">
-            خط‌چین مسیر تقریبی است، نه مسیر واقعی جاده. مسافت‌ها با ضریب پیچش جاده تخمین زده شده‌اند.
+            {plan.routing === 'estimate'
+              ? 'مسافت‌ها با ضریب پیچش جاده تخمین زده شده‌اند (خطای حدود ±۱۵٪). با اتصال به اینترنت، مسیر واقعی جاده گرفته می‌شود.'
+              : 'مسافت و زمان از مسیر واقعی جاده گرفته شده است. خط‌چین روی نقشه فقط ترتیب توقف‌ها را نشان می‌دهد، نه شکل جاده.'}
           </p>
         </div>
       )}

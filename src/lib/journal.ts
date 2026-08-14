@@ -27,6 +27,24 @@ export function loadJournal(tripId: string): TripJournal {
   }
 }
 
+/** همهٔ دفترچه‌های ذخیره‌شده — پایهٔ یادگیری سلیقه از سفرهای گذشته */
+export function listJournals(): TripJournal[] {
+  const out: TripJournal[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i)
+      if (!key?.startsWith(PREFIX)) continue
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw) as TripJournal
+      if (parsed?.checkIns) out.push(parsed)
+    }
+  } catch {
+    /* هرچه خوانده شد کافی است */
+  }
+  return out
+}
+
 export function saveJournal(journal: TripJournal): void {
   try {
     localStorage.setItem(

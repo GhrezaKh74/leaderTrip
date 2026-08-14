@@ -204,6 +204,9 @@ export interface CustomStop {
   ticket: number
   cat: POICategory
   note?: string
+  /** مختصات دقیق، اگر داشته باشیم (مثلاً از OpenStreetMap) — وگرنه مرکز شهر */
+  lat?: number
+  lng?: number
 }
 
 // ───────────────────────── قیمت‌ها ─────────────────────────
@@ -271,6 +274,8 @@ export interface DayPlan {
   cost: number
   warnings: Warning[]
   weather?: DayWeather
+  /** بلندترین نقطهٔ روز از سطح دریا، متر — اگر دادهٔ ارتفاع در دسترس باشد */
+  maxElevationM?: number
 }
 
 // ───────────────────────── آب‌وهوا ─────────────────────────
@@ -352,6 +357,11 @@ export interface TripPlan {
   /** همهٔ کاندیدهای قبول‌شده با امتیازشان — برای فهرست «جاذبه‌های دیگر» */
   candidates: { poiId: string; score: number; inPlan: boolean }[]
   weather: WeatherProfile
+  /**
+   * منبع مسافت‌ها: osrm = مسیر واقعی جاده · estimate = فاصلهٔ هوایی × ضریب پیچش
+   * · mixed = ترکیبی. در رابط کاربری صادقانه نمایش داده می‌شود.
+   */
+  routing: 'osrm' | 'estimate' | 'mixed'
   generatedAt: string
 }
 
