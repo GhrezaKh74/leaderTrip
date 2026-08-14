@@ -1,11 +1,13 @@
 import type {
   City,
   DayPlan,
+  DayWeather,
   POI,
   PlanBlock,
   TripInput,
   TripPlan,
-  Warning,
+  WeatherMap,
+  WeatherProfile,
 } from '../domain/types'
 import { CITIES, getCity } from '../data/cities'
 import { POIS } from '../data/pois'
@@ -17,8 +19,7 @@ import {
   seasonFactor,
   ticketFactor,
 } from '../data/pricing'
-import { addDays, fromISODate, isNowruzPeriod, toISODate } from '../lib/jalali'
-import { faNum } from '../lib/format'
+import { addDays, fromISODate, toISODate } from '../lib/jalali'
 import { computeLeg, haversineKm, type LatLng, terrainBetween } from './geo'
 import { sunTimes } from './sun'
 import { optimizeOrder } from './router'
@@ -30,6 +31,14 @@ import {
   scorePOI,
   visitTimeFactor,
 } from './scoring'
+import { advise } from './advisor'
+import {
+  buildWeatherProfile,
+  needsSiesta,
+  pickDayWeather,
+  weatherSpeedFactor,
+  weatherWindowShift,
+} from './climate'
 
 /** حداکثر رانندگی پیوسته پیش از توقف اجباری استراحت */
 const CONTINUOUS_DRIVE_LIMIT_MIN = 120
@@ -39,11 +48,12 @@ const LUNCH_WINDOW = { from: 12 * 60, to: 14.5 * 60 }
 const DINNER_MIN = 75
 const FUEL_STOP_EVERY_KM = 350
 const FUEL_STOP_MIN = 15
+const SIESTA_MIN = 60
 
 /** شهرهایی که می‌شود شب را در آن‌ها ماند */
 const STAY_CITIES = CITIES.filter((c) => c.amenities >= 2)
 
-export function generatePlan(input: TripInput): TripPlan {
+export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
   const origin = getCity(input.originCityId)
   const destination = input.destinationCityId ? getCity(input.destinationCityId) : null
   const vehicle = getVehicle(input.vehicleId)
@@ -55,7 +65,16 @@ export function generatePlan(input: TripInput): TripPlan {
   const slowdown = groupSlowdown(group)
   const timeFactor = visitTimeFactor(group)
 
-  const warnings: Warning[] = []
+  // خلاصهٔ جوّی سفر — از همهٔ روزهایی که داده دارند، برای وزن‌دهی به
+  // جاذبه‌های سرپوشیده در برابر فضای باز
+  const tripDates = new Set(
+    Array.from({ length: input.days }, (_, i) => toISODate(addDays(startDate, i))),
+  )
+  const weatherProfile: WeatherProfile = buildWeatherProfile(
+    Object.values(weather ?? {}).filter((w) => tripDates.has(w.date)),
+  )
+
+  const pinnedConflicts: { name: string; reason: string }[] = []
 
   // ─── گام ۱ و ۲: کاندیدها و امتیازدهی ──────────────────────
   const rejected = new Map<string, string>()
@@ -70,16 +89,11 @@ export function generatePlan(input: TripInput): TripPlan {
       if (!reason.includes('دور') && !reason.includes('شعاع')) rejected.set(p.id, reason)
       continue
     }
-    if (reason && isPinned) {
-      warnings.push({
-        level: 'warn',
-        title: `«${p.name}» با شرایط سفر جور نیست`,
-        detail: `${reason} — چون خودتان آن را پین کرده‌اید در برنامه نگه داشته شد.`,
-      })
-    }
+    if (reason && isPinned) pinnedConflicts.push({ name: p.name, reason })
+
     scored.push({
       poi: p,
-      score: scorePOI(p, input, group, origin, destination, month),
+      score: scorePOI(p, input, group, origin, destination, month, weatherProfile),
     })
   }
 
@@ -133,11 +147,17 @@ export function generatePlan(input: TripInput): TripPlan {
   for (let d = 0; d < input.days; d += 1) {
     const isLastDay = d === input.days - 1
     const date = addDays(startDate, d)
-    const dayWarnings: Warning[] = []
+    const dateISO = toISODate(date)
     const blocks: PlanBlock[] = []
 
-    const { windowStart, windowEnd } = dayWindow(input, date, currentPoint)
+    // آب‌وهوای جایی که این روز را از آن شروع می‌کنیم
+    const dayW: DayWeather | undefined = pickDayWeather(weather, currentCity.id, dateISO)
+    // هوای بد یعنی سرعت کمتر یعنی مسافت کمتر در روز — این واقعاً برنامه را عوض می‌کند
+    const daySlowdown = slowdown * weatherSpeedFactor(dayW)
+
+    const { windowStart, windowEnd } = dayWindow(input, date, currentPoint, dayW)
     const drivingCap = input.maxDrivingHoursPerDay * 60
+    let siestaDone = !needsSiesta(dayW)
 
     let t = windowStart
     let drivingUsed = 0
@@ -174,12 +194,12 @@ export function generatePlan(input: TripInput): TripPlan {
     // پرکردن روز با جاذبه‌ها
     while (queue.length > 0) {
       const next = queue[0]
-      const leg = legBetween(currentPoint, next, currentCity, vehicle, slowdown)
+      const leg = legBetween(currentPoint, next, currentCity, vehicle, daySlowdown)
       const visitMin = Math.round(next.visitMinutes * timeFactor)
 
       // پس از این جاذبه باید به جایی برای شب برسیم
       const endCity = forcedEnd ?? pickStayCity(next, queue[1] ?? null)
-      const backLeg = legBetween(next, endCity, cityOf(next), vehicle, slowdown)
+      const backLeg = legBetween(next, endCity, cityOf(next), vehicle, daySlowdown)
 
       const needsRest = continuousDrive + leg.minutes > CONTINUOUS_DRIVE_LIMIT_MIN
       const restCost = needsRest ? REST_MIN : 0
@@ -247,6 +267,20 @@ export function generatePlan(input: TripInput): TripPlan {
         lunchDone = true
       }
 
+      // استراحت نیم‌روزی در گرمای شدید — بین ۱۳ تا ۱۷ بیرون بودن خطرناک است
+      if (!siestaDone && t >= 13 * 60) {
+        blocks.push({
+          kind: 'rest',
+          startMin: t,
+          durationMin: SIESTA_MIN,
+          title: 'استراحت نیم‌روزی',
+          cost: 0,
+          note: 'گرمای شدید — ساعت اوج آفتاب',
+        })
+        t += SIESTA_MIN
+        siestaDone = true
+      }
+
       // بازدید
       const ticketCost = next.ticket * ticketWeight
       blocks.push({
@@ -280,16 +314,6 @@ export function generatePlan(input: TripInput): TripPlan {
       lunches += 1
     }
 
-    // روز بدون هیچ جاذبه‌ای: روز جابه‌جایی است
-    if (dayPois.length === 0 && queue.length > 0) {
-      dayWarnings.push({
-        level: 'info',
-        title: 'روز جابه‌جایی',
-        detail: 'فاصله زیاد بود و جاذبه‌ای در این روز جا نشد؛ این روز صرف نزدیک‌شدن به مقصد می‌شود.',
-        day: d + 1,
-      })
-    }
-
     // ─── رسیدن به محل اقامت ──────────────────────────────
     const stayCity =
       forcedEnd ??
@@ -298,7 +322,7 @@ export function generatePlan(input: TripInput): TripPlan {
         : pickTransferCity(currentPoint, queue[0] ?? null, drivingCap - drivingUsed, vehicle, slowdown, currentCity))
 
     if (stayCity.id !== currentCity.id || haversineKm(currentPoint, stayCity) > 5) {
-      const leg = legBetween(currentPoint, stayCity, currentCity, vehicle, slowdown)
+      const leg = legBetween(currentPoint, stayCity, currentCity, vehicle, daySlowdown)
       const driveCost = legCost(leg.roadKm, leg.terrain)
       blocks.push({
         kind: 'drive',
@@ -383,28 +407,9 @@ export function generatePlan(input: TripInput): TripPlan {
       dayCost += snack
     }
 
-    // هشدارهای روز
-    if (drivingUsed > 5 * 60 && group.drivers < 2) {
-      dayWarnings.push({
-        level: 'danger',
-        title: `${faNum(drivingUsed / 60)} ساعت رانندگی با یک راننده`,
-        detail: 'برای این حجم رانندگی راننده دوم لازم است، یا این روز را کوتاه‌تر کنید.',
-        day: d + 1,
-      })
-    }
-    const hardVisits = dayPois.filter((p) => p.difficulty >= 2).length
-    if (hardVisits >= 2 && (group.hasChild || group.hasSenior || group.hasToddler)) {
-      dayWarnings.push({
-        level: 'warn',
-        title: 'روز پرفشار برای اعضای گروه',
-        detail: `${faNum(hardVisits)} بازدید با پیاده‌روی سنگین در یک روز، با وجود کودک یا سالمند در جمع.`,
-        day: d + 1,
-      })
-    }
-
     days.push({
       index: d + 1,
-      date: toISODate(date),
+      date: dateISO,
       baseCityId: stayCity.id,
       blocks: blocks
         .map((b) => ({ ...b, startMin: Math.round(b.startMin), durationMin: Math.round(b.durationMin) }))
@@ -412,11 +417,11 @@ export function generatePlan(input: TripInput): TripPlan {
       distanceKm: Math.round(dayKm),
       drivingMinutes: Math.round(drivingUsed),
       cost: dayCost,
-      warnings: dayWarnings,
+      warnings: [],
+      weather: dayW,
     })
 
     totalKm += dayKm
-    warnings.push(...dayWarnings)
   }
 
   // ─── گام ۷: هزینه ─────────────────────────────────────────
@@ -432,53 +437,25 @@ export function generatePlan(input: TripInput): TripPlan {
     mealsActual: { amount: mealsAmount, breakfasts, lunches, dinners },
   })
 
-  // ─── گام ۸: هشدارهای کلی ─────────────────────────────────
-  if (group.drivers === 0) {
-    warnings.unshift({
-      level: 'danger',
-      title: 'هیچ راننده‌ای مشخص نشده',
-      detail: 'دست‌کم یک نفر از همسفران را به‌عنوان راننده علامت بزنید.',
-    })
-  }
+  // ─── گام ۸: هشدارها ───────────────────────────────────────
+  // برنامه‌ریز فقط واقعیت می‌سازد؛ قضاوت دربارهٔ آن کار مشاور است.
+  const inPlanIds = new Set(visited.map((p) => p.id))
+  const warnings = advise({
+    input,
+    group,
+    vehicle,
+    days,
+    cost,
+    weather: weatherProfile,
+    rejected,
+    droppedCount: queue.length,
+    pinnedConflicts,
+    unscheduledPinned: input.pinnedPoiIds.filter((id) => !inPlanIds.has(id)),
+  })
 
-  if (cost.overBudget > 0) {
-    warnings.unshift({
-      level: 'warn',
-      title: `${faNum((cost.overBudget / Math.max(1, input.budgetTotal)) * 100)}٪ بالاتر از بودجه`,
-      detail: 'در پنل هزینه می‌توانید سطح اقامت را پایین بیاورید یا جاذبه‌های دورتر را حذف کنید.',
-    })
-  } else if (input.budgetTotal > 0 && cost.total < input.budgetTotal * 0.6) {
-    warnings.push({
-      level: 'info',
-      title: 'بودجه جای بیشتری دارد',
-      detail: 'می‌توانید شعاع سفر را بیشتر کنید یا سطح اقامت را یک پله بالا ببرید.',
-    })
-  }
-
-  if (isNowruzPeriod(startDate)) {
-    warnings.push({
-      level: 'warn',
-      title: 'سفر در بازهٔ نوروز',
-      detail: 'قیمت اقامت تا ۴۵٪ بالاتر حساب شده است. حتماً از قبل رزرو کنید.',
-    })
-  }
-
-  const droppedHighScore = queue.slice(0, 5).map((p) => p.id)
-  if (queue.length > 0) {
-    warnings.push({
-      level: 'info',
-      title: `${faNum(queue.length)} جاذبه در برنامه جا نشد`,
-      detail: 'با افزودن یک روز به سفر یا بالا بردن سقف رانندگی روزانه می‌توانید بیشترشان را بگنجانید.',
-    })
-  }
-
-  const missedByVehicle = [...rejected.entries()].filter(([, r]) => r.includes('خودرو')).length
-  if (missedByVehicle >= 3 && vehicle.offroad === 0) {
-    warnings.push({
-      level: 'info',
-      title: `${faNum(missedByVehicle)} جاذبه به‌خاطر نوع خودرو حذف شد`,
-      detail: 'این مقصدها جادهٔ خاکی یا کوهستانی دارند و با خودروی سواری توصیه نمی‌شوند.',
-    })
+  // هشدارهای مربوط به هر روز، به همان روز برگردانده می‌شوند
+  for (const day of days) {
+    day.warnings = warnings.filter((w) => w.day === day.index)
   }
 
   return {
@@ -492,7 +469,13 @@ export function generatePlan(input: TripInput): TripPlan {
       poiCount: visited.length,
       nights: nightCities.length,
     },
-    droppedPoiIds: droppedHighScore,
+    droppedPoiIds: queue.slice(0, 8).map((p) => p.id),
+    candidates: scored.map((s) => ({
+      poiId: s.poi.id,
+      score: s.score,
+      inPlan: inPlanIds.has(s.poi.id),
+    })),
+    weather: weatherProfile,
     generatedAt: new Date().toISOString(),
   }
 }
@@ -536,7 +519,11 @@ function selectRoute({
     return computeLeg(a, b, terrain, vehicle, slowdown).minutes
   }
 
-  const driveBudget = input.days * input.maxDrivingHoursPerDay * 60
+  // وقتی کاربر جاذبه‌ای را «حتماً برو» کرده، کمی از بودجهٔ رانندگی را دست‌نخورده
+  // نگه می‌داریم؛ وگرنه درج حریصانه بودجه را پر می‌کند و جای پین‌شده در
+  // زمان‌بندی روزها تنگ می‌شود.
+  const headroom = input.pinnedPoiIds.length > 0 ? 0.85 : 1
+  const driveBudget = input.days * input.maxDrivingHoursPerDay * 60 * headroom
   // ساعات مفید روز منهای وعده‌های غذایی و توقف‌ها
   const usablePerDay = Math.max(0, (input.dayEndHour - input.dayStartHour) * 60 - 150)
   const timeBudget = input.days * usablePerDay
@@ -632,13 +619,20 @@ function legBetween(
   return computeLeg(from, to, terrain, vehicle, slowdown)
 }
 
-/** پنجرهٔ ساعات مفید روز، با در نظر گرفتن طلوع و غروب واقعی */
-function dayWindow(input: TripInput, date: Date, at: LatLng) {
-  // طلوع و غروب برای تنظیم پنجرهٔ روز — پیاده‌سازی در sun.ts
+/**
+ * پنجرهٔ ساعات مفید روز — طلوع و غروب واقعی، به‌علاوهٔ جابه‌جایی جوّی:
+ * گرمای شدید روز را جلو می‌کشد، یخبندان عقب می‌اندازد.
+ */
+function dayWindow(input: TripInput, date: Date, at: LatLng, w?: DayWeather) {
   const { sunriseMin, sunsetMin } = sunTimesCached(date, at)
+  const shift = weatherWindowShift(w)
+
+  const earliest = sunriseMin - 30
+  const latest = sunsetMin + 60
+
   return {
-    windowStart: Math.max(input.dayStartHour * 60, sunriseMin - 30),
-    windowEnd: Math.min(input.dayEndHour * 60, sunsetMin + 60),
+    windowStart: Math.max(earliest, input.dayStartHour * 60 + shift.start),
+    windowEnd: Math.min(latest, input.dayEndHour * 60 + shift.end),
   }
 }
 

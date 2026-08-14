@@ -238,6 +238,43 @@ export interface DayPlan {
   drivingMinutes: number
   cost: number
   warnings: Warning[]
+  weather?: DayWeather
+}
+
+// ───────────────────────── آب‌وهوا ─────────────────────────
+
+export interface DayWeather {
+  /** تاریخ میلادی YYYY-MM-DD */
+  date: string
+  tMax: number
+  tMin: number
+  /** میلی‌متر بارش */
+  precipMm: number
+  /** احتمال بارش، ۰ تا ۱۰۰ */
+  precipProb: number
+  windMaxKmh: number
+  /** کد وضعیت جوی WMO */
+  code: number
+  /**
+   * forecast = پیش‌بینی واقعی (تا ۱۶ روز آینده)
+   * historical = میانگین همان بازه در سال گذشته، برای تاریخ‌های دورتر
+   */
+  source: 'forecast' | 'historical'
+}
+
+/** کلید: `${cityId}|${date}` */
+export type WeatherMap = Record<string, DayWeather>
+
+/** خلاصهٔ جوّی کل سفر — ورودی امتیازدهی جاذبه‌ها */
+export interface WeatherProfile {
+  avgTMax: number
+  avgPrecipProb: number
+  hasRain: boolean
+  hasHeat: boolean
+  hasFrost: boolean
+  hasSnow: boolean
+  hasStorm: boolean
+  source: 'forecast' | 'historical' | 'none'
 }
 
 // ───────────────────────── هزینه ─────────────────────────
@@ -280,5 +317,34 @@ export interface TripPlan {
   stats: TripStats
   /** جاذبه‌هایی که امتیاز آوردند ولی در برنامه جا نشدند */
   droppedPoiIds: string[]
+  /** همهٔ کاندیدهای قبول‌شده با امتیازشان — برای فهرست «جاذبه‌های دیگر» */
+  candidates: { poiId: string; score: number; inPlan: boolean }[]
+  weather: WeatherProfile
   generatedAt: string
+}
+
+// ───────────────────────── چک‌لیست بار ─────────────────────────
+
+export interface PackingItem {
+  label: string
+  /** چرا این قلم پیشنهاد شده — مثلاً «چون کودک زیر ۳ سال همراه است» */
+  reason?: string
+  essential: boolean
+}
+
+export interface PackingGroup {
+  title: string
+  icon: string
+  items: PackingItem[]
+}
+
+// ───────────────────────── اهرم‌های کاهش هزینه ─────────────────────────
+
+export interface BudgetLever {
+  id: string
+  title: string
+  detail: string
+  /** صرفه‌جویی واقعی، از اجرای دوبارهٔ برنامه‌ریز به‌دست آمده */
+  saving: number
+  patch: Partial<TripInput>
 }

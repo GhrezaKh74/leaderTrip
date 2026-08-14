@@ -4,6 +4,7 @@ import { CATEGORY_EMOJI, CATEGORY_LABEL, DIFFICULTY_LABEL, POI_BY_ID } from '../
 import { clock, duration, faNum, km, toman } from '../../lib/format'
 import { formatJalali, fromISODate } from '../../lib/jalali'
 import { WarningList } from './Warnings'
+import { WeatherBadge } from './WeatherBadge'
 
 const KIND_STYLE: Record<BlockKind, { icon: string; ring: string; label: string }> = {
   drive: { icon: '🚗', ring: 'bg-ink-400', label: 'رانندگی' },
@@ -14,7 +15,7 @@ const KIND_STYLE: Record<BlockKind, { icon: string; ring: string; label: string 
   lodging: { icon: '🛏️', ring: 'bg-ink-600', label: 'اقامت' },
 }
 
-export function DayTimeline({ day }: { day: DayPlan }) {
+export function DayTimeline({ day, onBlock }: { day: DayPlan; onBlock?: (poiId: string) => void }) {
   const city = getCity(day.baseCityId)
   const visits = day.blocks.filter((b) => b.kind === 'visit')
 
@@ -45,18 +46,20 @@ export function DayTimeline({ day }: { day: DayPlan }) {
         </dl>
       </header>
 
+      {day.weather && <WeatherBadge w={day.weather} />}
+
       {day.warnings.length > 0 && <WarningList warnings={day.warnings} compact />}
 
       <ol className="relative space-y-1 border-r border-ink-200 pr-4 dark:border-ink-800">
         {day.blocks.map((b, i) => (
-          <BlockRow key={`${b.kind}-${b.startMin}-${i}`} block={b} />
+          <BlockRow key={`${b.kind}-${b.startMin}-${i}`} block={b} onBlock={onBlock} />
         ))}
       </ol>
     </section>
   )
 }
 
-function BlockRow({ block }: { block: PlanBlock }) {
+function BlockRow({ block, onBlock }: { block: PlanBlock; onBlock?: (poiId: string) => void }) {
   const style = KIND_STYLE[block.kind]
   const poi = block.poiId ? POI_BY_ID.get(block.poiId) : null
   const isVisit = block.kind === 'visit'
@@ -101,6 +104,15 @@ function BlockRow({ block }: { block: PlanBlock }) {
             <p className="mt-2 pr-[3.4rem] text-xs leading-relaxed text-ink-600 dark:text-ink-300">
               {poi.desc}
             </p>
+            {onBlock && (
+              <button
+                type="button"
+                onClick={() => onBlock(poi.id)}
+                className="no-print mt-2 mr-[3.4rem] text-[11px] text-ink-400 underline-offset-2 hover:text-[#d03b3b] hover:underline"
+              >
+                این را نمی‌خواهم — از برنامه حذف کن
+              </button>
+            )}
             <div className="mt-2 flex flex-wrap gap-1.5 pr-[3.4rem]">
               <Tag>
                 {CATEGORY_EMOJI[poi.cat]} {CATEGORY_LABEL[poi.cat]}

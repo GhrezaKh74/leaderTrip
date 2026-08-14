@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PriceBook, TripPlan } from '../../domain/types'
+import type { PriceBook, TripInput, TripPlan, WeatherMap } from '../../domain/types'
 import { getCity } from '../../data/cities'
 import { getVehicle } from '../../data/vehicles'
 import { STYLE_LABEL } from '../../data/pricing'
@@ -10,17 +10,28 @@ import { CostPanel, CostThemeVars } from './CostPanel'
 import { DayTimeline } from './DayTimeline'
 import { TripMap } from './TripMap'
 import { WarningList } from './Warnings'
+import { NearbyPanel } from './NearbyPanel'
+import { OptimizerPanel } from './OptimizerPanel'
+import { PackingPanel } from './PackingPanel'
 
-type Tab = 'plan' | 'cost' | 'map'
+type Tab = 'plan' | 'cost' | 'map' | 'packing' | 'nearby'
+
+export type WeatherStatus = 'idle' | 'loading' | 'ok' | 'unavailable'
 
 export function PlanView({
   plan,
+  weather,
+  weatherStatus,
   onEdit,
   onPriceChange,
+  onInputChange,
 }: {
   plan: TripPlan
+  weather?: WeatherMap
+  weatherStatus: WeatherStatus
   onEdit: () => void
   onPriceChange: (patch: Partial<PriceBook>) => void
+  onInputChange: (patch: Partial<TripInput>) => void
 }) {
   const [tab, setTab] = useState<Tab>('plan')
   const [activeDay, setActiveDay] = useState<number | null>(null)
@@ -74,13 +85,15 @@ export function PlanView({
             ['plan', '📅 برنامه'],
             ['cost', '💰 هزینه'],
             ['map', '🗺️ نقشه'],
+            ['packing', '🎒 چک‌لیست'],
+            ['nearby', '✨ بیشتر'],
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
+            className={`flex-1 whitespace-nowrap rounded-lg px-1 py-2 text-xs font-medium transition sm:text-sm ${
               tab === id
                 ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-800 dark:text-ink-50'
                 : 'text-ink-500'
@@ -93,17 +106,39 @@ export function PlanView({
 
       {tab === 'plan' && (
         <div className="space-y-8">
+          {weatherStatus === 'loading' && (
+            <p className="text-xs text-ink-400">در حال گرفتن آب‌وهوای مقصدها…</p>
+          )}
+          {weatherStatus === 'unavailable' && (
+            <p className="rounded-lg bg-ink-100 p-2.5 text-[11px] text-ink-500 dark:bg-ink-900">
+              آب‌وهوا در دسترس نیست (اینترنت وصل نیست یا سرویس پاسخ نداد). برنامه بدون در نظر
+              گرفتن هوا چیده شده است — پیش از حرکت خودتان هواشناسی را چک کنید.
+            </p>
+          )}
           {plan.days.map((day) => (
-            <DayTimeline key={day.index} day={day} />
+            <DayTimeline
+              key={day.index}
+              day={day}
+              onBlock={(poiId) =>
+                onInputChange({ blockedPoiIds: [...plan.input.blockedPoiIds, poiId] })
+              }
+            />
           ))}
         </div>
       )}
 
       {tab === 'cost' && (
         <CostThemeVars>
-          <CostPanel plan={plan} onPriceChange={onPriceChange} />
+          <div className="space-y-5">
+            <CostPanel plan={plan} onPriceChange={onPriceChange} />
+            <OptimizerPanel plan={plan} weather={weather} onApply={onInputChange} />
+          </div>
         </CostThemeVars>
       )}
+
+      {tab === 'packing' && <PackingPanel plan={plan} />}
+
+      {tab === 'nearby' && <NearbyPanel plan={plan} onChange={onInputChange} />}
 
       {tab === 'map' && (
         <div className="space-y-3">

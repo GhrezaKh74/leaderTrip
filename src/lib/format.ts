@@ -50,9 +50,11 @@ export function km(v: number): string {
   return `${faNum(Math.round(v))} کیلومتر`
 }
 
-/** «۲۴٪» */
+/** «۲۴٪» — کسرهای بسیار کوچک به «کمتر از ۱٪» تبدیل می‌شوند تا «۰٪» گمراه‌کننده نباشد */
 export function percent(fraction: number): string {
-  return `${faNum(Math.round(fraction * 100))}٪`
+  const v = fraction * 100
+  if (v > 0 && v < 1) return 'کمتر از ۱٪'
+  return `${faNum(Math.round(v))}٪`
 }
 
 /** درجهٔ سلسیوس */

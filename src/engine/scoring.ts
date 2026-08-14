@@ -5,8 +5,10 @@ import type {
   Traveler,
   TripInput,
   Vehicle,
+  WeatherProfile,
 } from '../domain/types'
 import { distanceToCorridor, haversineKm, type LatLng } from './geo'
+import { weatherScoreAdjust, weatherValueFactor } from './climate'
 
 /** خلاصهٔ گروه از روی فهرست همسفران */
 export function buildGroupProfile(travelers: Traveler[]): GroupProfile {
@@ -143,6 +145,7 @@ export function scorePOI(
   origin: LatLng,
   destination: LatLng | null,
   tripMonth: number,
+  weather?: WeatherProfile,
 ): number {
   let score = 100
 
@@ -187,6 +190,14 @@ export function scorePOI(
   // جاذبه‌های رایگان کمی جذاب‌ترند وقتی بودجه تنگ است
   if (p.ticket === 0) score += 4
 
+  // اثر آب‌وهوا — روز بارانی جاذبهٔ سرپوشیده را جلو می‌اندازد
+  if (weather) {
+    score += weatherScoreAdjust(p, weather)
+    score *= weatherValueFactor(p, weather)
+  }
+
+  // پین کاربر بعد از ضریب جوّی اعمال می‌شود: خواستهٔ صریح کاربر را
+  // هوا کم‌رنگ نمی‌کند
   if (input.pinnedPoiIds.includes(p.id)) score += 30
 
   return score

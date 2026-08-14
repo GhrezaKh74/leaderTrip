@@ -1,15 +1,19 @@
-import { useCallback, useMemo, useState } from 'react'
-import type { PriceBook, TripInput, TripPlan } from './domain/types'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { PriceBook, TripInput, TripPlan, WeatherMap } from './domain/types'
 import { defaultInput, generatePlan } from './engine/planner'
+import { fetchWeather, type WeatherRequest } from './services/weather'
+import { getCity } from './data/cities'
 import { loadDraft, saveDraft } from './lib/storage'
 import { ThemeToggle, useTheme } from './ui/common/Bits'
 import { Wizard } from './ui/wizard/Wizard'
-import { PlanView } from './ui/plan/PlanView'
+import { PlanView, type WeatherStatus } from './ui/plan/PlanView'
 
 export default function App() {
   const [theme, setTheme] = useTheme()
   const [input, setInput] = useState<TripInput>(() => loadDraft() ?? defaultInput())
   const [showPlan, setShowPlan] = useState(false)
+  const [weather, setWeather] = useState<WeatherMap | undefined>(undefined)
+  const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>('idle')
 
   const patch = useCallback((p: Partial<TripInput>) => {
     setInput((prev) => {
@@ -19,15 +23,68 @@ export default function App() {
     })
   }, [])
 
-  // ساخت برنامه یک تابع خالص است — خطایش هم بخشی از همین محاسبه است، نه یک اثر جانبی
+  /**
+   * ساخت برنامه یک تابع خالص است — خطایش هم بخشی از همین محاسبه است، نه یک اثر جانبی.
+   *
+   * دو مرحله‌ای است: اول یک پیش‌نویس بدون آب‌وهوا ساخته می‌شود تا بدانیم کدام
+   * شهرها و کدام روزها را باید از هواشناسی بپرسیم؛ بعد همان برنامه با دادهٔ
+   * آب‌وهوا دوباره ساخته می‌شود. ساخت برنامه چند میلی‌ثانیه است، پس دو بار
+   * اجرا کردنش از پیچیده کردن معماری بهتر است.
+   */
   const { plan, error } = useMemo<{ plan: TripPlan | null; error: string | null }>(() => {
     if (!showPlan) return { plan: null, error: null }
     try {
-      return { plan: generatePlan(input), error: null }
+      return { plan: generatePlan(input, weather), error: null }
     } catch (e) {
       return { plan: null, error: e instanceof Error ? e.message : 'خطای ناشناخته در ساخت برنامه' }
     }
-  }, [input, showPlan])
+  }, [input, showPlan, weather])
+
+  /** کلید شهرها و تاریخ‌های برنامه — تا فقط وقتی واقعاً عوض شدند دوباره بپرسیم */
+  const weatherTargets = useMemo(() => {
+    if (!plan) return null
+    const byCity = new Map<string, Set<string>>()
+    for (const day of plan.days) {
+      const set = byCity.get(day.baseCityId) ?? new Set<string>()
+      set.add(day.date)
+      byCity.set(day.baseCityId, set)
+    }
+    const requests: WeatherRequest[] = [...byCity.entries()].map(([cityId, dates]) => {
+      const city = getCity(cityId)
+      return { cityId, lat: city.lat, lng: city.lng, dates: [...dates].sort() }
+    })
+    return { requests, key: requests.map((r) => `${r.cityId}:${r.dates.join(',')}`).sort().join('|') }
+  }, [plan])
+
+  const targetKey = weatherTargets?.key ?? ''
+
+  useEffect(() => {
+    if (!weatherTargets || targetKey === '') return
+
+    let cancelled = false
+    setWeatherStatus('loading')
+
+    fetchWeather(weatherTargets.requests)
+      .then((data) => {
+        if (cancelled) return
+        // ادغام با آنچه داریم: برنامه پس از رسیدن آب‌وهوا ممکن است شهرهایش
+        // جابه‌جا شود، و نباید دادهٔ قبلی را از دست بدهیم
+        setWeather((prev) => {
+          const merged = { ...prev, ...data }
+          const changed = Object.keys(merged).length !== Object.keys(prev ?? {}).length
+          return changed ? merged : prev
+        })
+        setWeatherStatus(Object.keys(data).length > 0 ? 'ok' : 'unavailable')
+      })
+      .catch(() => {
+        if (!cancelled) setWeatherStatus('unavailable')
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetKey])
 
   const onPriceChange = useCallback(
     (p: Partial<PriceBook>) => patch({ priceOverrides: { ...input.priceOverrides, ...p } }),
@@ -69,7 +126,14 @@ export default function App() {
       )}
 
       {showPlan && plan ? (
-        <PlanView plan={plan} onEdit={() => setShowPlan(false)} onPriceChange={onPriceChange} />
+        <PlanView
+          plan={plan}
+          weather={weather}
+          weatherStatus={weatherStatus}
+          onEdit={() => setShowPlan(false)}
+          onPriceChange={onPriceChange}
+          onInputChange={patch}
+        />
       ) : (
         <>
           <Intro />
