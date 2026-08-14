@@ -1,5 +1,6 @@
 import type {
   City,
+  CustomStop,
   DayPlan,
   DayWeather,
   POI,
@@ -80,9 +81,13 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
   const rejected = new Map<string, string>()
   const scored: { poi: POI; score: number }[] = []
 
-  for (const p of POIS) {
+  // توقف‌های دلخواه کاربر مثل هر جاذبهٔ دیگری رفتار می‌کنند — تا بقیهٔ موتور
+  // لازم نباشد دربارهٔ آن‌ها چیزی بداند
+  const allPois = [...POIS, ...input.customStops.map(customStopToPoi)]
+
+  for (const p of allPois) {
     const reason = hardRejectReason(p, input, group, vehicle, origin, destination, month)
-    const isPinned = input.pinnedPoiIds.includes(p.id)
+    const isPinned = input.pinnedPoiIds.includes(p.id) || p.id.startsWith(CUSTOM_PREFIX)
 
     if (reason && !isPinned) {
       // فقط جاذبه‌های داخل محدودهٔ سفر ارزش گزارش‌کردن دارند
@@ -130,7 +135,9 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
 
   // ─── گام ۵: ساخت روزها ────────────────────────────────────
   const nightsTotal = Math.max(0, input.days - 1)
-  const queue = [...ordered]
+  /** جاذبه‌هایی که هنوز جایی در برنامه پیدا نکرده‌اند، به ترتیب مسیر */
+  let remaining = [...ordered]
+  const assignment = input.dayAssignment
   const days: DayPlan[] = []
   const nightCities: City[] = []
   const visited: POI[] = []
@@ -191,14 +198,24 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
     // مقصد پایان روز: روز آخرِ سفر رفت‌وبرگشتی به مبدأ برمی‌گردد
     const forcedEnd = isLastDay && input.roundTrip ? origin : null
 
+    /**
+     * صف امروز: اول آن‌هایی که کاربر دستی به همین روز سنجاق کرده، بعد
+     * بقیه به ترتیب مسیر. هر جاذبه‌ای که به روز دیگری سنجاق شده، امروز
+     * اصلاً دیده نمی‌شود.
+     */
+    const dayNumber = d + 1
+    const pinnedToday = remaining.filter((p) => assignment[p.id] === dayNumber)
+    const unassigned = remaining.filter((p) => assignment[p.id] === undefined)
+    const dayQueue = [...pinnedToday, ...unassigned]
+
     // پرکردن روز با جاذبه‌ها
-    while (queue.length > 0) {
-      const next = queue[0]
+    while (dayQueue.length > 0) {
+      const next = dayQueue[0]
       const leg = legBetween(currentPoint, next, currentCity, vehicle, daySlowdown)
       const visitMin = Math.round(next.visitMinutes * timeFactor)
 
       // پس از این جاذبه باید به جایی برای شب برسیم
-      const endCity = forcedEnd ?? pickStayCity(next, queue[1] ?? null)
+      const endCity = forcedEnd ?? pickStayCity(next, dayQueue[1] ?? null)
       const backLeg = legBetween(next, endCity, cityOf(next), vehicle, daySlowdown)
 
       const needsRest = continuousDrive + leg.minutes > CONTINUOUS_DRIVE_LIMIT_MIN
@@ -297,7 +314,8 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
 
       dayPois.push(next)
       visited.push(next)
-      queue.shift()
+      dayQueue.shift()
+      remaining = remaining.filter((p) => p.id !== next.id)
       currentPoint = next
       currentCity = cityOf(next)
     }
@@ -318,8 +336,15 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
     const stayCity =
       forcedEnd ??
       (dayPois.length > 0
-        ? pickStayCity(dayPois[dayPois.length - 1], queue[0] ?? null)
-        : pickTransferCity(currentPoint, queue[0] ?? null, drivingCap - drivingUsed, vehicle, slowdown, currentCity))
+        ? pickStayCity(dayPois[dayPois.length - 1], remaining[0] ?? null)
+        : pickTransferCity(
+            currentPoint,
+            remaining[0] ?? null,
+            drivingCap - drivingUsed,
+            vehicle,
+            daySlowdown,
+            currentCity,
+          ))
 
     if (stayCity.id !== currentCity.id || haversineKm(currentPoint, stayCity) > 5) {
       const leg = legBetween(currentPoint, stayCity, currentCity, vehicle, daySlowdown)
@@ -448,7 +473,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
     cost,
     weather: weatherProfile,
     rejected,
-    droppedCount: queue.length,
+    droppedCount: remaining.length,
     pinnedConflicts,
     unscheduledPinned: input.pinnedPoiIds.filter((id) => !inPlanIds.has(id)),
   })
@@ -469,7 +494,7 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
       poiCount: visited.length,
       nights: nightCities.length,
     },
-    droppedPoiIds: queue.slice(0, 8).map((p) => p.id),
+    droppedPoiIds: remaining.slice(0, 8).map((p) => p.id),
     candidates: scored.map((s) => ({
       poiId: s.poi.id,
       score: s.score,
@@ -477,6 +502,38 @@ export function generatePlan(input: TripInput, weather?: WeatherMap): TripPlan {
     })),
     weather: weatherProfile,
     generatedAt: new Date().toISOString(),
+  }
+}
+
+export const CUSTOM_PREFIX = 'custom:'
+
+/**
+ * توقف دلخواه کاربر را به شکل یک جاذبهٔ کامل درمی‌آورد.
+ * مختصات از شهر انتخابی می‌آید — بدون سرویس ژئوکدینگ، این دقیق‌ترین چیزی است
+ * که می‌شود آفلاین به‌دست آورد، و برای تخمین مسافت کافی است.
+ */
+export function customStopToPoi(stop: CustomStop): POI {
+  const city = getCity(stop.cityId)
+  return {
+    id: `${CUSTOM_PREFIX}${stop.id}`,
+    name: stop.name,
+    cityId: stop.cityId,
+    lat: city.lat,
+    lng: city.lng,
+    cat: stop.cat,
+    tags: ['توقف دلخواه'],
+    rating: 4,
+    visitMinutes: stop.visitMinutes,
+    ticket: stop.ticket,
+    bestMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    indoor: false,
+    difficulty: 0,
+    minAge: 0,
+    kidFriendly: true,
+    seniorFriendly: true,
+    requiresVehicle: 0,
+    nightSuitable: false,
+    desc: stop.note || `توقف دلخواه در ${city.name}`,
   }
 }
 
@@ -731,6 +788,8 @@ export function defaultInput(): TripInput {
     roundTrip: true,
     pinnedPoiIds: [],
     blockedPoiIds: [],
+    dayAssignment: {},
+    customStops: [],
     subsidizedFuelShare: 0.6,
     priceOverrides: {},
   }

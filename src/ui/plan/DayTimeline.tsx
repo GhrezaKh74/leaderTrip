@@ -15,9 +15,17 @@ const KIND_STYLE: Record<BlockKind, { icon: string; ring: string; label: string 
   lodging: { icon: '🛏️', ring: 'bg-ink-600', label: 'اقامت' },
 }
 
-export function DayTimeline({ day, onBlock }: { day: DayPlan; onBlock?: (poiId: string) => void }) {
+export interface DayActions {
+  onBlock: (poiId: string) => void
+  onMove: (poiId: string, targetDay: number) => void
+  totalDays: number
+}
+
+export function DayTimeline({ day, actions }: { day: DayPlan; actions?: DayActions }) {
   const city = getCity(day.baseCityId)
   const visits = day.blocks.filter((b) => b.kind === 'visit')
+  // روزی که بلوک اقامت ندارد، شبش جایی نمی‌مانیم — برمی‌گردیم
+  const staysOver = day.blocks.some((b) => b.kind === 'lodging')
 
   return (
     <section className="space-y-4">
@@ -27,7 +35,8 @@ export function DayTimeline({ day, onBlock }: { day: DayPlan; onBlock?: (poiId: 
             روز {faNum(day.index)} — {formatJalali(fromISODate(day.date), true)}
           </h2>
           <p className="mt-0.5 text-xs text-ink-500">
-            شب در {city.name} · {faNum(visits.length)} بازدید
+            {staysOver ? `شب در ${city.name}` : `پایان روز در ${city.name}`} ·{' '}
+            {faNum(visits.length)} بازدید
           </p>
         </div>
         <dl className="flex gap-4 text-xs">
@@ -52,14 +61,27 @@ export function DayTimeline({ day, onBlock }: { day: DayPlan; onBlock?: (poiId: 
 
       <ol className="relative space-y-1 border-r border-ink-200 pr-4 dark:border-ink-800">
         {day.blocks.map((b, i) => (
-          <BlockRow key={`${b.kind}-${b.startMin}-${i}`} block={b} onBlock={onBlock} />
+          <BlockRow
+            key={`${b.kind}-${b.startMin}-${i}`}
+            block={b}
+            actions={actions}
+            dayIndex={day.index}
+          />
         ))}
       </ol>
     </section>
   )
 }
 
-function BlockRow({ block, onBlock }: { block: PlanBlock; onBlock?: (poiId: string) => void }) {
+function BlockRow({
+  block,
+  actions,
+  dayIndex,
+}: {
+  block: PlanBlock
+  actions?: DayActions
+  dayIndex: number
+}) {
   const style = KIND_STYLE[block.kind]
   const poi = block.poiId ? POI_BY_ID.get(block.poiId) : null
   const isVisit = block.kind === 'visit'
@@ -104,14 +126,34 @@ function BlockRow({ block, onBlock }: { block: PlanBlock; onBlock?: (poiId: stri
             <p className="mt-2 pr-[3.4rem] text-xs leading-relaxed text-ink-600 dark:text-ink-300">
               {poi.desc}
             </p>
-            {onBlock && (
-              <button
-                type="button"
-                onClick={() => onBlock(poi.id)}
-                className="no-print mt-2 mr-[3.4rem] text-[11px] text-ink-400 underline-offset-2 hover:text-[#d03b3b] hover:underline"
-              >
-                این را نمی‌خواهم — از برنامه حذف کن
-              </button>
+            {actions && (
+              <div className="no-print mt-2 mr-[3.4rem] flex flex-wrap items-center gap-1.5">
+                {dayIndex > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => actions.onMove(poi.id, dayIndex - 1)}
+                    className="btn btn-sm border border-ink-200 text-ink-600 dark:border-ink-700 dark:text-ink-300"
+                  >
+                    ← روز {faNum(dayIndex - 1)}
+                  </button>
+                )}
+                {dayIndex < actions.totalDays && (
+                  <button
+                    type="button"
+                    onClick={() => actions.onMove(poi.id, dayIndex + 1)}
+                    className="btn btn-sm border border-ink-200 text-ink-600 dark:border-ink-700 dark:text-ink-300"
+                  >
+                    روز {faNum(dayIndex + 1)} →
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => actions.onBlock(poi.id)}
+                  className="text-[11px] text-ink-400 underline-offset-2 hover:text-[#d03b3b] hover:underline"
+                >
+                  حذف از برنامه
+                </button>
+              </div>
             )}
             <div className="mt-2 flex flex-wrap gap-1.5 pr-[3.4rem]">
               <Tag>

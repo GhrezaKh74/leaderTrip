@@ -115,4 +115,8 @@
     @apply border border-ink-300 shadow-none;
     break-inside: avoid;
   }
+  /* سند چاپی خودش حاشیه دارد؛ چیدمان صفحه نباید فضا بگیرد */
+  @page {
+    margin: 14mm;
+  }
 }

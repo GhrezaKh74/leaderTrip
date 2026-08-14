@@ -4,14 +4,17 @@ import { defaultInput, generatePlan } from './engine/planner'
 import { fetchWeather, type WeatherRequest } from './services/weather'
 import { getCity } from './data/cities'
 import { loadDraft, saveDraft } from './lib/storage'
+import { readTripFromUrl } from './lib/share'
 import { ThemeToggle, useTheme } from './ui/common/Bits'
 import { Wizard } from './ui/wizard/Wizard'
 import { PlanView, type WeatherStatus } from './ui/plan/PlanView'
 
 export default function App() {
   const [theme, setTheme] = useTheme()
-  const [input, setInput] = useState<TripInput>(() => loadDraft() ?? defaultInput())
-  const [showPlan, setShowPlan] = useState(false)
+  // اگر با لینک اشتراکی وارد شده‌ایم، همان سفر را باز کن
+  const shared = useMemo(() => readTripFromUrl(), [])
+  const [input, setInput] = useState<TripInput>(() => shared ?? loadDraft() ?? defaultInput())
+  const [showPlan, setShowPlan] = useState(() => shared !== null)
   const [weather, setWeather] = useState<WeatherMap | undefined>(undefined)
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>('idle')
 
@@ -133,6 +136,10 @@ export default function App() {
           onEdit={() => setShowPlan(false)}
           onPriceChange={onPriceChange}
           onInputChange={patch}
+          onLoadTrip={(next) => {
+            setInput(next)
+            saveDraft(next)
+          }}
         />
       ) : (
         <>

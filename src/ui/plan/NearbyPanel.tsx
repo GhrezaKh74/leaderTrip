@@ -1,7 +1,9 @@
-import type { TripInput, TripPlan } from '../../domain/types'
+import { useState } from 'react'
+import type { CustomStop, POICategory, TripInput, TripPlan } from '../../domain/types'
 import { CATEGORY_EMOJI, CATEGORY_LABEL, DIFFICULTY_LABEL, POI_BY_ID } from '../../data/pois'
-import { getCity } from '../../data/cities'
+import { CITIES, getCity } from '../../data/cities'
 import { duration, faNum, toman } from '../../lib/format'
+import { newId } from '../../lib/storage'
 
 /**
  * جاذبه‌هایی که در برنامه نیستند.
@@ -38,6 +40,8 @@ export function NearbyPanel({
 
   return (
     <div className="space-y-4">
+      <CustomStopForm plan={plan} onChange={onChange} />
+
       {blocked.length > 0 && (
         <div className="rounded-2xl border border-ink-200/70 bg-white p-5 dark:border-ink-800 dark:bg-ink-900">
           <h3 className="text-sm font-bold">جاذبه‌های حذف‌شده</h3>
@@ -107,6 +111,144 @@ export function NearbyPanel({
           </ul>
         )}
       </div>
+    </div>
+  )
+}
+
+
+/**
+ * افزودن توقف دلخواه — خانهٔ فامیل، رستوران محبوب، هر جایی که در پایگاه دادهٔ
+ * ما نیست. مختصات از شهر انتخابی گرفته می‌شود؛ بدون سرویس ژئوکدینگ این
+ * دقیق‌ترین چیزی است که آفلاین ممکن است، و برای تخمین مسافت کافی است.
+ */
+function CustomStopForm({
+  plan,
+  onChange,
+}: {
+  plan: TripPlan
+  onChange: (patch: Partial<TripInput>) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [cityId, setCityId] = useState(plan.input.originCityId)
+  const [minutes, setMinutes] = useState(90)
+  const [ticket, setTicket] = useState(0)
+  const [cat, setCat] = useState<POICategory>('entertainment')
+
+  const stops = plan.input.customStops
+  const sortedCities = [...CITIES].sort((a, b) => a.name.localeCompare(b.name, 'fa'))
+
+  const add = () => {
+    if (!name.trim()) return
+    const stop: CustomStop = {
+      id: newId(),
+      name: name.trim(),
+      cityId,
+      visitMinutes: minutes,
+      ticket,
+      cat,
+    }
+    onChange({ customStops: [...stops, stop] })
+    setName('')
+    setOpen(false)
+  }
+
+  const remove = (id: string) =>
+    onChange({
+      customStops: stops.filter((s) => s.id !== id),
+      dayAssignment: Object.fromEntries(
+        Object.entries(plan.input.dayAssignment).filter(([k]) => k !== `custom:${id}`),
+      ),
+    })
+
+  return (
+    <div className="rounded-2xl border border-ink-200/70 bg-white p-5 dark:border-ink-800 dark:bg-ink-900">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold">توقف‌های دلخواه شما</h3>
+        <button type="button" className="btn-ghost btn-sm" onClick={() => setOpen((v) => !v)}>
+          {open ? 'بستن' : '+ افزودن'}
+        </button>
+      </div>
+      <p className="mt-1 text-[11px] text-ink-500">
+        هر جایی که در فهرست ما نیست — خانهٔ فامیل، رستوران، هر توقفی. همیشه در برنامه می‌آید.
+      </p>
+
+      {stops.length > 0 && (
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {stops.map((s) => (
+            <li key={s.id}>
+              <span className="chip chip-on">
+                {s.name}
+                <span className="text-[10px] opacity-70">{getCity(s.cityId).name}</span>
+                <button type="button" onClick={() => remove(s.id)} aria-label={`حذف ${s.name}`}>
+                  ✕
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <input
+            className="field"
+            placeholder="نام توقف — مثلاً «خانهٔ عمو در لاهیجان»"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+
+          <div className="grid grid-cols-2 gap-2">
+            <select className="field" value={cityId} onChange={(e) => setCityId(e.target.value)}>
+              {sortedCities.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="field"
+              value={cat}
+              onChange={(e) => setCat(e.target.value as POICategory)}
+            >
+              {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="label">مدت توقف (دقیقه)</span>
+              <input
+                className="field"
+                type="number"
+                min={15}
+                step={15}
+                value={minutes}
+                onChange={(e) => setMinutes(Number(e.target.value))}
+              />
+            </label>
+            <label className="block">
+              <span className="label">هزینهٔ ورودی (تومان)</span>
+              <input
+                className="field"
+                type="number"
+                min={0}
+                step={50_000}
+                value={ticket}
+                onChange={(e) => setTicket(Number(e.target.value))}
+              />
+            </label>
+          </div>
+
+          <button type="button" className="btn-primary w-full" onClick={add} disabled={!name.trim()}>
+            افزودن به برنامه
+          </button>
+        </div>
+      )}
     </div>
   )
 }

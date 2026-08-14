@@ -13,8 +13,11 @@ import { WarningList } from './Warnings'
 import { NearbyPanel } from './NearbyPanel'
 import { OptimizerPanel } from './OptimizerPanel'
 import { PackingPanel } from './PackingPanel'
+import { EmergencyCard } from './EmergencyCard'
+import { TripsPanel } from './TripsPanel'
+import { PrintSheet } from './PrintSheet'
 
-type Tab = 'plan' | 'cost' | 'map' | 'packing' | 'nearby'
+type Tab = 'plan' | 'cost' | 'map' | 'prep' | 'nearby' | 'share'
 
 export type WeatherStatus = 'idle' | 'loading' | 'ok' | 'unavailable'
 
@@ -25,6 +28,7 @@ export function PlanView({
   onEdit,
   onPriceChange,
   onInputChange,
+  onLoadTrip,
 }: {
   plan: TripPlan
   weather?: WeatherMap
@@ -32,6 +36,7 @@ export function PlanView({
   onEdit: () => void
   onPriceChange: (patch: Partial<PriceBook>) => void
   onInputChange: (patch: Partial<TripInput>) => void
+  onLoadTrip: (input: TripInput) => void
 }) {
   const [tab, setTab] = useState<Tab>('plan')
   const [activeDay, setActiveDay] = useState<number | null>(null)
@@ -42,8 +47,11 @@ export function PlanView({
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-20 pt-4">
+      {/* سند چاپی — مستقل از زبانهٔ باز، همیشه کامل */}
+      <PrintSheet plan={plan} />
+
       {/* سربرگ */}
-      <header className="mb-4">
+      <header className="mb-4 print:hidden">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold">
@@ -73,20 +81,21 @@ export function PlanView({
       </header>
 
       {plan.warnings.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-4 print:hidden">
           <WarningList warnings={plan.warnings.filter((w) => !w.day)} />
         </div>
       )}
 
       {/* زبانه‌ها */}
-      <nav className="no-print mb-4 flex gap-1 rounded-xl bg-ink-100 p-1 dark:bg-ink-900">
+      <nav className="no-print mb-4 flex gap-1 overflow-x-auto rounded-xl bg-ink-100 p-1 dark:bg-ink-900">
         {(
           [
             ['plan', '📅 برنامه'],
             ['cost', '💰 هزینه'],
             ['map', '🗺️ نقشه'],
-            ['packing', '🎒 چک‌لیست'],
+            ['prep', '🎒 آماده‌سازی'],
             ['nearby', '✨ بیشتر'],
+            ['share', '🔗 اشتراک'],
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <button
@@ -105,7 +114,7 @@ export function PlanView({
       </nav>
 
       {tab === 'plan' && (
-        <div className="space-y-8">
+        <div className="space-y-8 print:hidden">
           {weatherStatus === 'loading' && (
             <p className="text-xs text-ink-400">در حال گرفتن آب‌وهوای مقصدها…</p>
           )}
@@ -119,9 +128,17 @@ export function PlanView({
             <DayTimeline
               key={day.index}
               day={day}
-              onBlock={(poiId) =>
-                onInputChange({ blockedPoiIds: [...plan.input.blockedPoiIds, poiId] })
-              }
+              actions={{
+                totalDays: plan.days.length,
+                onBlock: (poiId) =>
+                  onInputChange({ blockedPoiIds: [...plan.input.blockedPoiIds, poiId] }),
+                // جابه‌جایی دستی به‌عنوان قید ورودی ثبت می‌شود، نه دستکاری خروجی —
+                // برنامه همچنان از نو و سازگار ساخته می‌شود
+                onMove: (poiId, targetDay) =>
+                  onInputChange({
+                    dayAssignment: { ...plan.input.dayAssignment, [poiId]: targetDay },
+                  }),
+              }}
             />
           ))}
         </div>
@@ -129,19 +146,34 @@ export function PlanView({
 
       {tab === 'cost' && (
         <CostThemeVars>
-          <div className="space-y-5">
+          <div className="space-y-5 print:hidden">
             <CostPanel plan={plan} onPriceChange={onPriceChange} />
             <OptimizerPanel plan={plan} weather={weather} onApply={onInputChange} />
           </div>
         </CostThemeVars>
       )}
 
-      {tab === 'packing' && <PackingPanel plan={plan} />}
+      {tab === 'prep' && (
+        <div className="space-y-6 print:hidden">
+          <PackingPanel plan={plan} />
+          <EmergencyCard plan={plan} />
+        </div>
+      )}
 
-      {tab === 'nearby' && <NearbyPanel plan={plan} onChange={onInputChange} />}
+      {tab === 'nearby' && (
+        <div className="print:hidden">
+          <NearbyPanel plan={plan} onChange={onInputChange} />
+        </div>
+      )}
+
+      {tab === 'share' && (
+        <div className="print:hidden">
+          <TripsPanel plan={plan} onLoad={onLoadTrip} />
+        </div>
+      )}
 
       {tab === 'map' && (
-        <div className="space-y-3">
+        <div className="space-y-3 print:hidden">
           <div className="flex flex-wrap gap-1.5">
             <DayChip on={activeDay === null} onClick={() => setActiveDay(null)}>
               کل سفر

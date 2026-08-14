@@ -380,6 +380,7 @@ function TravelersStep({
           age: 30,
           mobility: 'full',
           isDriver: false,
+          phone: '',
         },
       ],
     })
@@ -397,17 +398,17 @@ function TravelersStep({
         {input.travelers.map((t, i) => (
           <div
             key={t.id}
-            className="grid grid-cols-12 items-center gap-2 rounded-xl border border-ink-200 p-2 dark:border-ink-800"
+            className="space-y-2 rounded-xl border border-ink-200 p-2 dark:border-ink-800"
           >
-            <input
-              className="field col-span-4 py-2"
-              placeholder={`همسفر ${toFa(i + 1)}`}
-              value={t.name}
-              onChange={(e) => update(t.id, { name: e.target.value })}
-            />
-            <div className="col-span-3">
+            <div className="grid grid-cols-12 gap-2">
               <input
-                className="field py-2 text-center"
+                className="field col-span-7 py-2"
+                placeholder={`همسفر ${toFa(i + 1)}`}
+                value={t.name}
+                onChange={(e) => update(t.id, { name: e.target.value })}
+              />
+              <input
+                className="field col-span-3 py-2 text-center"
                 type="number"
                 min={0}
                 max={110}
@@ -415,42 +416,55 @@ function TravelersStep({
                 onChange={(e) => update(t.id, { age: Number(e.target.value) })}
                 aria-label="سن"
               />
+              <button
+                type="button"
+                onClick={() => remove(t.id)}
+                disabled={input.travelers.length === 1}
+                className="col-span-2 rounded-lg text-ink-400 hover:text-[#d03b3b] disabled:opacity-30"
+                title="حذف همسفر"
+              >
+                ✕
+              </button>
             </div>
-            <select
-              className="field col-span-3 py-2"
-              value={t.mobility}
-              onChange={(e) =>
-                update(t.id, { mobility: e.target.value as TripInput['travelers'][number]['mobility'] })
-              }
-              aria-label="وضعیت تحرک"
-            >
-              <option value="full">تحرک کامل</option>
-              <option value="limited">تحرک محدود</option>
-              <option value="wheelchair">ویلچر</option>
-            </select>
 
-            <button
-              type="button"
-              title={t.isDriver ? 'راننده است' : 'راننده نیست'}
-              onClick={() => update(t.id, { isDriver: !t.isDriver })}
-              className={`col-span-1 rounded-lg py-2 text-center text-base ${
-                t.isDriver
-                  ? 'bg-brand-100 dark:bg-brand-900/50'
-                  : 'bg-ink-100 opacity-40 dark:bg-ink-800'
-              }`}
-            >
-              🚗
-            </button>
+            <div className="grid grid-cols-12 gap-2">
+              <input
+                className="field col-span-6 py-2"
+                type="tel"
+                inputMode="tel"
+                placeholder="شمارهٔ تماس (اختیاری)"
+                value={t.phone ?? ''}
+                onChange={(e) => update(t.id, { phone: e.target.value })}
+                aria-label="شمارهٔ تماس"
+              />
+              <select
+                className="field col-span-4 py-2"
+                value={t.mobility}
+                onChange={(e) =>
+                  update(t.id, {
+                    mobility: e.target.value as TripInput['travelers'][number]['mobility'],
+                  })
+                }
+                aria-label="وضعیت تحرک"
+              >
+                <option value="full">تحرک کامل</option>
+                <option value="limited">تحرک محدود</option>
+                <option value="wheelchair">ویلچر</option>
+              </select>
 
-            <button
-              type="button"
-              onClick={() => remove(t.id)}
-              disabled={input.travelers.length === 1}
-              className="col-span-1 rounded-lg py-2 text-center text-ink-400 hover:text-[#d03b3b] disabled:opacity-30"
-              title="حذف"
-            >
-              ✕
-            </button>
+              <button
+                type="button"
+                title={t.isDriver ? 'راننده است' : 'راننده نیست'}
+                onClick={() => update(t.id, { isDriver: !t.isDriver })}
+                className={`col-span-2 rounded-lg py-2 text-center text-base ${
+                  t.isDriver
+                    ? 'bg-brand-100 dark:bg-brand-900/50'
+                    : 'bg-ink-100 opacity-40 dark:bg-ink-800'
+                }`}
+              >
+                🚗
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -461,7 +475,8 @@ function TravelersStep({
 
       <p className="mt-3 text-xs text-ink-500">
         مجموع {faNum(input.travelers.length)} نفر ·{' '}
-        {faNum(input.travelers.filter((t) => t.isDriver).length)} راننده
+        {faNum(input.travelers.filter((t) => t.isDriver).length)} راننده · شماره‌ها فقط برای
+        کارت اضطراری استفاده می‌شوند و روی دستگاه خودتان می‌مانند
       </p>
     </Card>
   )

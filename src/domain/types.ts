@@ -118,6 +118,8 @@ export interface Traveler {
   age: number
   mobility: MobilityLevel
   isDriver: boolean
+  /** برای کارت اطلاعات اضطراری — اختیاری */
+  phone?: string
 }
 
 /** خلاصهٔ گروه — از روی فهرست همسفران محاسبه می‌شود */
@@ -168,10 +170,32 @@ export interface TripInput {
   roundTrip: boolean
   pinnedPoiIds: string[]
   blockedPoiIds: string[]
+  /**
+   * ویرایش دستی: هر جاذبه به روز مشخصی سنجاق می‌شود (شمارهٔ روز، از ۱).
+   * دستکاری کاربر به‌جای دور زدن الگوریتم، به‌عنوان **قید ورودی** ثبت می‌شود،
+   * تا برنامه همچنان یک تابع خالص از ورودی بماند و با هر تغییر دیگری از نو
+   * و درست ساخته شود.
+   */
+  dayAssignment: Record<string, number>
+  /** توقف‌های دلخواه کاربر که در پایگاه دادهٔ جاذبه‌ها نیستند */
+  customStops: CustomStop[]
+  /** عنوان سفر — برای فهرست سفرهای ذخیره‌شده */
+  title?: string
   /** سهم سوخت سهمیه‌ای، ۰ تا ۱ */
   subsidizedFuelShare: number
   /** ضرایب قیمت دست‌کاری‌شده توسط کاربر */
   priceOverrides: Partial<PriceBook>
+}
+
+/** توقفی که کاربر خودش تعریف کرده — مختصاتش از شهر انتخابی می‌آید */
+export interface CustomStop {
+  id: string
+  name: string
+  cityId: string
+  visitMinutes: number
+  ticket: number
+  cat: POICategory
+  note?: string
 }
 
 // ───────────────────────── قیمت‌ها ─────────────────────────
