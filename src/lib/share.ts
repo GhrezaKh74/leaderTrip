@@ -11,6 +11,7 @@ import { defaultInput } from '../engine/planner'
  */
 
 const KEY_MAP: Record<keyof TripInput, string> = {
+  id: 'id',
   originCityId: 'o',
   destinationCityId: 'de',
   startDate: 'sd',

@@ -16,8 +16,11 @@ import { PackingPanel } from './PackingPanel'
 import { EmergencyCard } from './EmergencyCard'
 import { TripsPanel } from './TripsPanel'
 import { PrintSheet } from './PrintSheet'
+import { LivePanel } from './LivePanel'
+import { loadJournal, saveJournal } from '../../lib/journal'
+import type { TripJournal } from '../../domain/types'
 
-type Tab = 'plan' | 'cost' | 'map' | 'prep' | 'nearby' | 'share'
+type Tab = 'plan' | 'cost' | 'map' | 'live' | 'prep' | 'nearby' | 'share'
 
 export type WeatherStatus = 'idle' | 'loading' | 'ok' | 'unavailable'
 
@@ -40,6 +43,12 @@ export function PlanView({
 }) {
   const [tab, setTab] = useState<Tab>('plan')
   const [activeDay, setActiveDay] = useState<number | null>(null)
+  const [journal, setJournal] = useState<TripJournal>(() => loadJournal(plan.input.id))
+
+  const updateJournal = (next: TripJournal) => {
+    setJournal(next)
+    saveJournal(next)
+  }
 
   const origin = getCity(plan.input.originCityId)
   const vehicle = getVehicle(plan.input.vehicleId)
@@ -93,6 +102,7 @@ export function PlanView({
             ['plan', '📅 برنامه'],
             ['cost', '💰 هزینه'],
             ['map', '🗺️ نقشه'],
+            ['live', '🧳 حین سفر'],
             ['prep', '🎒 آماده‌سازی'],
             ['nearby', '✨ بیشتر'],
             ['share', '🔗 اشتراک'],
@@ -151,6 +161,12 @@ export function PlanView({
             <OptimizerPanel plan={plan} weather={weather} onApply={onInputChange} />
           </div>
         </CostThemeVars>
+      )}
+
+      {tab === 'live' && (
+        <div className="print:hidden">
+          <LivePanel plan={plan} journal={journal} onChange={updateJournal} />
+        </div>
       )}
 
       {tab === 'prep' && (

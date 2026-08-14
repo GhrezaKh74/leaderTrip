@@ -767,6 +767,7 @@ function pickTransferCity(
 export function defaultInput(): TripInput {
   const today = new Date()
   return {
+    id: `trip-${Math.random().toString(36).slice(2, 10)}`,
     originCityId: 'tehran',
     destinationCityId: null,
     startDate: toISODate(addDays(today, 7)),

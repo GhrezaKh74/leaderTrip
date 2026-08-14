@@ -9,12 +9,27 @@ import { ThemeToggle, useTheme } from './ui/common/Bits'
 import { Wizard } from './ui/wizard/Wizard'
 import { PlanView, type WeatherStatus } from './ui/plan/PlanView'
 
+const PLAN_OPEN_KEY = 'leadertrip.planOpen.v1'
+
 export default function App() {
   const [theme, setTheme] = useTheme()
   // اگر با لینک اشتراکی وارد شده‌ایم، همان سفر را باز کن
   const shared = useMemo(() => readTripFromUrl(), [])
   const [input, setInput] = useState<TripInput>(() => shared ?? loadDraft() ?? defaultInput())
-  const [showPlan, setShowPlan] = useState(() => shared !== null)
+  // اینکه برنامه باز بوده یا ویزارد، خودش هم باید بماند: در جاده رفرش‌کردن
+  // نباید کاربر را به گام اول برگرداند
+  const [showPlan, setShowPlanState] = useState(
+    () => shared !== null || localStorage.getItem(PLAN_OPEN_KEY) === '1',
+  )
+
+  const setShowPlan = useCallback((open: boolean) => {
+    setShowPlanState(open)
+    try {
+      localStorage.setItem(PLAN_OPEN_KEY, open ? '1' : '0')
+    } catch {
+      /* بی‌اهمیت */
+    }
+  }, [])
   const [weather, setWeather] = useState<WeatherMap | undefined>(undefined)
   const [weatherStatus, setWeatherStatus] = useState<WeatherStatus>('idle')
 

@@ -120,7 +120,13 @@ export interface Traveler {
   isDriver: boolean
   /** برای کارت اطلاعات اضطراری — اختیاری */
   phone?: string
+  /** نقش در گروه، جدا از رانندگی */
+  role?: TravelerRole
+  /** در کاروان چندخودرویی، سوار خودروی چندم است (از ۱) */
+  vehicleIndex?: number
 }
+
+export type TravelerRole = 'treasurer' | 'navigator' | 'cook' | 'medic' | 'photographer'
 
 /** خلاصهٔ گروه — از روی فهرست همسفران محاسبه می‌شود */
 export interface GroupProfile {
@@ -149,6 +155,8 @@ export type LodgingKind = 'hotel' | 'ecolodge' | 'villa' | 'camp' | 'friends'
 export type SplitMode = 'equal' | 'weighted' | 'itemized'
 
 export interface TripInput {
+  /** شناسهٔ پایدار سفر — دفترچهٔ حین سفر به همین کلید بسته می‌شود */
+  id: string
   originCityId: string
   /** خالی = حالت کشف آزاد */
   destinationCityId: string | null
@@ -371,4 +379,99 @@ export interface BudgetLever {
   /** صرفه‌جویی واقعی، از اجرای دوبارهٔ برنامه‌ریز به‌دست آمده */
   saving: number
   patch: Partial<TripInput>
+}
+
+
+// ───────────────────────── حین سفر ─────────────────────────
+
+/**
+ * دفترچهٔ سفر — چیزی که **واقعاً اتفاق افتاد**.
+ *
+ * عمداً بیرون از `TripInput` زندگی می‌کند: ورودی، قیدهای برنامه‌ریزی است و
+ * برنامه یک تابع خالص از آن؛ دفترچه اما مشاهده است، نه قید. اگر این دو قاطی
+ * شوند، ثبت یک هزینهٔ واقعی باعث بازچینش برنامه می‌شود — که بی‌معناست.
+ */
+export interface TripJournal {
+  tripId: string
+  /** کلید: شناسهٔ جاذبه یا `lodging:<روز>` */
+  checkIns: Record<string, CheckIn>
+  expenses: Expense[]
+  updatedAt: string
+}
+
+export interface CheckIn {
+  /** زمان واقعی رسیدن، ISO */
+  at: string
+  /** امتیاز شخصی، ۱ تا ۵ */
+  rating?: number
+  note?: string
+  /** شناسهٔ عکس در IndexedDB */
+  photoId?: string
+}
+
+/** دسته‌های هزینه — با کلیدهای موتور هزینه یکی است تا مقایسه معنا بدهد */
+export type ExpenseCategory =
+  | 'fuel'
+  | 'toll'
+  | 'lodging'
+  | 'meals'
+  | 'snacks'
+  | 'tickets'
+  | 'other'
+
+export interface Expense {
+  id: string
+  /** شمارهٔ روز سفر، از ۱ */
+  day: number
+  category: ExpenseCategory
+  /** تومان */
+  amount: number
+  note?: string
+  /** شناسهٔ همسفری که پول را داده */
+  paidBy: string
+  /** چه کسانی در این هزینه سهیم‌اند؛ خالی یعنی همه */
+  sharedWith: string[]
+  at: string
+}
+
+// ───────────────────────── تسویه‌حساب ─────────────────────────
+
+export interface Balance {
+  travelerId: string
+  name: string
+  /** جمع آنچه پرداخت کرده */
+  paid: number
+  /** جمع سهم واقعی‌اش */
+  owed: number
+  /** مثبت = طلبکار، منفی = بدهکار */
+  net: number
+}
+
+export interface Transfer {
+  fromId: string
+  fromName: string
+  toId: string
+  toName: string
+  amount: number
+}
+
+// ───────────────────────── تخمین در برابر واقعیت ─────────────────────────
+
+export interface ActualLine {
+  key: string
+  label: string
+  estimated: number
+  actual: number
+  /** actual − estimated؛ مثبت یعنی بیشتر از تخمین خرج شده */
+  delta: number
+}
+
+export interface ActualsReport {
+  lines: ActualLine[]
+  totalEstimated: number
+  totalActual: number
+  delta: number
+  /** چند روز از سفر هزینهٔ ثبت‌شده دارد */
+  daysRecorded: number
+  hasData: boolean
 }
