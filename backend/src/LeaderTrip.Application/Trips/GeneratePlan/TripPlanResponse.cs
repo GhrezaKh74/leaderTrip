@@ -20,6 +20,11 @@ public sealed record TripPlanResponse
 
     /// <summary>«Routed» یعنی مسیر واقعی جاده، «Estimated» یعنی تخمین ضریب پیچش.</summary>
     public required DistanceSource DistanceSource { get; init; }
+
+    /// <summary>هشدارهای لیدر — همان چیزی که «فهرست جاها» را به «دستیار» تبدیل می‌کند.</summary>
+    public required IReadOnlyList<AdviceDto> Advice { get; init; }
+
+    public required IReadOnlyList<PackingItemDto> Packing { get; init; }
 }
 
 public sealed record DayPlanDto(
@@ -53,3 +58,11 @@ public sealed record CostBreakdownDto(
     decimal OverBudget);
 
 public sealed record CostLineDto(string Key, string Label, decimal Amount, string Formula);
+
+/// <param name="Code">شناسهٔ ماشین‌خوان — رابط کاربری روی این شرط می‌گذارد، نه روی متن.</param>
+/// <param name="Level">شدت: <c>Info</c>، <c>Warning</c> یا <c>Critical</c>.</param>
+/// <param name="Title">عنوان کوتاه.</param>
+/// <param name="Detail">توضیح و راه‌حل پیشنهادی.</param>
+public sealed record AdviceDto(string Code, string Level, string Title, string Detail);
+
+public sealed record PackingItemDto(string Group, string Item, string Reason);

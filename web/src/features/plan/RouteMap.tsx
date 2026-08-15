@@ -33,9 +33,9 @@ export interface MapStop {
  * جای خالی خاکستری نمی‌ماند: پیام صریح می‌دهد و فهرست توقف‌ها را نشان می‌دهد،
  * چون همان فهرست کار اصلی را در جاده انجام می‌دهد.</p>
  */
-export function RouteMap({ stops }: { stops: MapStop[] }) {
+export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expectTiles?: boolean }) {
   const container = useRef<HTMLDivElement | null>(null)
-  const [tilesFailed, setTilesFailed] = useState(false)
+  const [tilesFailed, setTilesFailed] = useState(!expectTiles)
   const theme = useTheme()
 
   useEffect(() => {
@@ -98,8 +98,9 @@ export function RouteMap({ stops }: { stops: MapStop[] }) {
     <Stack spacing={2}>
       {tilesFailed ? (
         <Alert severity="warning">
-          کاشی‌های نقشه بارگذاری نشدند. ترتیب توقف‌ها زیر همین کادر هست و برنامه
-          بدون نقشه هم کامل است.
+          {expectTiles
+            ? 'کاشی‌های نقشه بارگذاری نشدند. ترتیب توقف‌ها زیر همین کادر هست و برنامه بدون نقشه هم کامل است.'
+            : 'آفلاین هستید و کاشی‌های نقشه در دسترس نیستند. ترتیب توقف‌ها زیر همین کادر هست.'}
         </Alert>
       ) : null}
 

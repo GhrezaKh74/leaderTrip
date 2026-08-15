@@ -142,6 +142,19 @@ export const costBreakdownSchema = z.object({
   overBudget: z.number(),
 })
 
+export const adviceSchema = z.object({
+  code: z.string(),
+  level: z.enum(['Info', 'Warning', 'Critical']),
+  title: z.string(),
+  detail: z.string(),
+})
+
+export const packingItemSchema = z.object({
+  group: z.string(),
+  item: z.string(),
+  reason: z.string(),
+})
+
 export const tripPlanSchema = z.object({
   days: z.array(dayPlanSchema),
   cost: costBreakdownSchema,
@@ -152,6 +165,8 @@ export const tripPlanSchema = z.object({
   // مبدأ مسافت بخشی از قرارداد است، نه جزئیات: عددی که حدس است نباید شبیه
   // اندازه‌گیری نمایش داده شود.
   distanceSource: z.enum(['Estimated', 'Routed']),
+  advice: z.array(adviceSchema),
+  packing: z.array(packingItemSchema),
 })
 
 export type City = z.infer<typeof citySchema>
@@ -167,3 +182,5 @@ export type TripPlan = z.infer<typeof tripPlanSchema>
 export type DayPlan = z.infer<typeof dayPlanSchema>
 export type PlanBlock = z.infer<typeof planBlockSchema>
 export type CostBreakdown = z.infer<typeof costBreakdownSchema>
+export type Advice = z.infer<typeof adviceSchema>
+export type PackingItem = z.infer<typeof packingItemSchema>

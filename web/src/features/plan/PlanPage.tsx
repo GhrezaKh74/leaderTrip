@@ -14,7 +14,9 @@ import { usePois, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
 import type { TripForm } from '../wizard/tripSchema'
 import { duration, faNum, tomanShort } from '../../lib/format'
+import { AdvicePanel } from './AdvicePanel'
 import { CostPanel } from './CostPanel'
+import { PackingPanel } from './PackingPanel'
 import { DayTimeline } from './DayTimeline'
 import { buildStops } from './buildStops'
 import { RouteMap } from './RouteMap'
@@ -22,10 +24,12 @@ import { RouteMap } from './RouteMap'
 export function PlanPage({
   plan,
   input,
+  online,
   onEdit,
 }: {
   plan: TripPlan
   input: TripForm
+  online: boolean
   onEdit: () => void
 }) {
   const [tab, setTab] = useState(0)
@@ -82,6 +86,15 @@ export function PlanPage({
         </Button>
       </Stack>
 
+      {online ? null : (
+        // برنامه از حافظهٔ محلی می‌آید و کامل است. تنها چیزی که آفلاین ممکن
+        // نیست، ساختن برنامهٔ تازه است — و همین صریح گفته می‌شود.
+        <Alert severity="info">
+          آفلاین هستید. این برنامه از حافظهٔ دستگاه خوانده شده و کامل است؛
+          ساخت برنامهٔ تازه به اینترنت نیاز دارد.
+        </Alert>
+      )}
+
       {plan.unscheduledPoiIds.length > 0 ? (
         <Alert severity="warning">
           {faNum(plan.unscheduledPoiIds.length)} جاذبهٔ انتخابی در برنامه جا نشد —
@@ -89,9 +102,11 @@ export function PlanPage({
         </Alert>
       ) : null}
 
-      <Tabs value={tab} onChange={(_, next: number) => setTab(next)} variant="fullWidth">
+      <Tabs value={tab} onChange={(_, next: number) => setTab(next)} variant="scrollable" scrollButtons="auto">
         <Tab label="برنامه" />
         <Tab label="هزینه" />
+        <Tab label={`هشدارها${plan.advice.length > 0 ? ` (${faNum(plan.advice.length)})` : ''}`} />
+        <Tab label="چک‌لیست" />
         <Tab label="نقشه" />
       </Tabs>
 
@@ -108,6 +123,14 @@ export function PlanPage({
       </Box>
 
       <Box hidden={tab !== 2}>
+        <AdvicePanel advice={plan.advice} />
+      </Box>
+
+      <Box hidden={tab !== 3}>
+        <PackingPanel items={plan.packing} />
+      </Box>
+
+      <Box hidden={tab !== 4}>
         {pois.isPending ? (
           <Stack spacing={2} sx={{ py: 6, alignItems: 'center' }}>
             <CircularProgress />
@@ -120,7 +143,7 @@ export function PlanPage({
         ) : (
           // نقشه فقط وقتی ساخته می‌شود که تبش باز باشد: Leaflet در کانتینری با
           // ارتفاع صفر اندازه‌ها را غلط حساب می‌کند و بعد هم خودش را درست نمی‌کند.
-          tab === 2 ? <RouteMap stops={stops} /> : null
+          tab === 4 ? <RouteMap stops={stops} expectTiles={online} /> : null
         )}
       </Box>
     </Stack>

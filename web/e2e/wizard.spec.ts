@@ -53,6 +53,15 @@ const PLAN = {
   },
   totalKilometers: 210, totalDrivingMinutes: 150, visitCount: 1,
   unscheduledPoiIds: [], distanceSource: 'Estimated',
+  advice: [
+    {
+      code: 'driving.fatigue', level: 'Warning', title: 'رانندگی طولانی',
+      detail: 'روز ۱ حدود ۶ ساعت رانندگی دارد.',
+    },
+  ],
+  packing: [
+    { group: 'خودرو', item: 'زنجیر چرخ', reason: 'جادهٔ کوهستانی در زمستان ممکن است زنجیر بخواهد' },
+  ],
 }
 
 const POIS = {
@@ -192,6 +201,49 @@ test('نبودِ کاشی نقشه، فهرست توقف‌ها را از بین
   await expect(page.getByText('ترتیب توقف‌ها', { exact: true })).toBeVisible()
   await expect(page.getByRole('listitem').filter({ hasText: 'کاخ گلستان' })).toBeVisible()
   await expect(page.getByText(/کاشی‌های نقشه بارگذاری نشدند/)).toBeVisible({ timeout: 15_000 })
+})
+
+/**
+ * جبران آفلاین — همان چیزی که با رفتن موتور به سرور از دست رفت و در سند ۶
+ * وعده داده شد.
+ *
+ * ساختن برنامه آنلاین است؛ دیدنش — که کار اصلی در جاده است — نباید باشد.
+ */
+test('برنامهٔ ساخته‌شده پس از قطع اینترنت هم باز می‌شود', async ({ page, context }) => {
+  await stubApi(page)
+  await generatePlan(page)
+
+  // سرویس‌ورکر باید پیش از قطع شبکه فعال شده باشد، وگرنه بارگذاری دوباره
+  // اصلاً به اپ نمی‌رسد که کش برنامه را بخواند.
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
+
+  await context.setOffline(true)
+  await page.reload()
+
+  // ویزارد نباید برگردد: کسی که در جاده اپ را باز می‌کند، برنامهٔ دیروزش را
+  // می‌خواهد ببیند، نه فرم خالی.
+  await expect(page.getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
+  await expect(page.getByText('کاخ گلستان', { exact: true })).toBeVisible()
+  await expect(page.getByText(/آفلاین هستید/)).toBeVisible()
+
+  // تفکیک هزینه هم باید کامل باشد، نه فقط عنوان.
+  await page.getByRole('tab', { name: 'هزینه' }).click()
+  await expect(page.getByText('سوخت', { exact: true })).toBeVisible()
+
+  await context.setOffline(false)
+})
+
+test('هشدارها و چک‌لیست با دلیل هرکدام نشان داده می‌شوند', async ({ page }) => {
+  await stubApi(page)
+  await generatePlan(page)
+
+  await page.getByRole('tab', { name: /هشدارها/ }).click()
+  await expect(page.getByText('رانندگی طولانی')).toBeVisible()
+
+  await page.getByRole('tab', { name: 'چک‌لیست' }).click()
+  await expect(page.getByText('زنجیر چرخ')).toBeVisible()
+  // ستون «چرا» همان چیزی است که چک‌لیست را از فهرست عمومی جدا می‌کند.
+  await expect(page.getByText(/جادهٔ کوهستانی در زمستان/)).toBeVisible()
 })
 
 test('حالت تاریک بین بارگذاری‌ها می‌ماند', async ({ page }) => {

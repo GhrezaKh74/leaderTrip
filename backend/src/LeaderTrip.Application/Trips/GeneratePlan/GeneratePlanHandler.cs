@@ -1,5 +1,6 @@
 using System.Globalization;
 using LeaderTrip.Application.Abstractions;
+using LeaderTrip.Domain.Advice;
 using LeaderTrip.Domain.Common;
 using LeaderTrip.Domain.Entities;
 using LeaderTrip.Domain.Enums;
@@ -236,14 +237,48 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
 
         var attributedDays = CostAttribution.Attribute(schedule.Days, cost, ticketPerPoi);
 
-        return Map(schedule with { Days = attributedDays }, cost, totalDistance, query.BudgetToman);
+        // ─── مشاور و چک‌لیست ───
+        var tripClimates = attributedDays
+            .Select(d => cityById.TryGetValue(d.BaseCityId, out var city) ? city.Climate : origin.Climate)
+            .Append(origin.Climate)
+            .Distinct()
+            .ToList();
+
+        var advice = Advisor.Advise(new AdviceContext
+        {
+            Group = group,
+            Vehicle = vehicle,
+            Days = attributedDays,
+            VisitedPois = visitedPois,
+            Cost = cost,
+            Budget = Money.FromToman(query.BudgetToman),
+            DailyDrivingCap = TimeSpan.FromHours(query.MaxDrivingHoursPerDay),
+            Month = query.StartDate.Month,
+            Climates = tripClimates,
+            VehicleCount = query.VehicleCount,
+        });
+
+        var packing = PackingList.Build(new PackingContext
+        {
+            Group = group,
+            Vehicle = vehicle,
+            Lodging = query.Lodging,
+            Month = query.StartDate.Month,
+            Climates = tripClimates,
+            VisitedPois = visitedPois,
+            Nights = Math.Max(0, query.Days - 1),
+        });
+
+        return Map(schedule with { Days = attributedDays }, cost, totalDistance, query.BudgetToman, advice, packing);
     }
 
     private static TripPlanResponse Map(
         ScheduleResult schedule,
         CostBreakdown cost,
         Distance totalDistance,
-        decimal budget)
+        decimal budget,
+        IReadOnlyList<Advice> advice,
+        IReadOnlyList<PackingItem> packing)
     {
         var days = schedule.Days.Select(day => new DayPlanDto(
             day.Index,
@@ -282,6 +317,8 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             VisitCount = schedule.Days.Sum(d => d.VisitedPoiIds.Count),
             UnscheduledPoiIds = schedule.UnscheduledPoiIds,
             DistanceSource = schedule.DistanceSource,
+            Advice = [.. advice.Select(a => new AdviceDto(a.Code, a.Level.ToString(), a.Title, a.Detail))],
+            Packing = [.. packing.Select(p => new PackingItemDto(p.Group, p.Item, p.Reason))],
         };
     }
 }

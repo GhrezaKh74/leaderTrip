@@ -1,0 +1,16 @@
+{
+  "name": "لیدرتریپ — دستیار لیدر سفر",
+  "short_name": "لیدرتریپ",
+  "description": "برنامهٔ ساعت‌به‌ساعت سفر با تخمین هزینهٔ قابل ردیابی",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

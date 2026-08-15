@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@fontsource-variable/vazirmatn'
 
 import { App } from './App'
+import { registerServiceWorker } from './offline/registerServiceWorker'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,3 +29,5 @@ createRoot(root).render(
     </QueryClientProvider>
   </StrictMode>,
 )
+
+registerServiceWorker()
