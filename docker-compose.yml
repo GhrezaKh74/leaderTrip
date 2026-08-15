@@ -5,6 +5,11 @@
 #   docker compose down              توقف
 #
 # با `restart: unless-stopped` پس از ریستارت سرور یا کرش، خودکار بالا می‌آید.
+#
+# سه سرویس بالا می‌آید: رابط کاربری (nginx)، بک‌اند (.NET) و پایگاه داده
+# (PostgreSQL). بک‌اند بدون پایگاه داده هم کار می‌کند — دادهٔ مرجع همراهش است —
+# ولی آن‌وقت به‌روزرسانی قیمت‌ها بدون انتشار نسخهٔ جدید ممکن نیست، که اصلی‌ترین
+# دلیل داشتن بک‌اند بود.
 
 services:
   app:
@@ -32,11 +37,81 @@ services:
       - /var/run:mode=1777
     security_opt:
       - no-new-privileges:true
-    logging:
+    logging: &logging
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: leadertrip-api:latest
+    container_name: leadertrip-api
+    ports:
+      - "${API_PORT:-8081}:8080"
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__LeaderTrip: >-
+        Host=db;Port=5432;Database=${POSTGRES_DB:-leadertrip};Username=${POSTGRES_USER:-leadertrip};Password=${POSTGRES_PASSWORD:?رمز پایگاه داده لازم است؛ آن را در فایل .env بگذارید}
+      # مبدأهای مجاز مرورگر. خالی یعنی بسته، نه باز.
+      Api__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8080}
+      # خالی‌گذاشتنش یعنی اندپوینت‌های مدیریتی اصلاً ثبت نمی‌شوند.
+      Api__AdminApiKey: ${ADMIN_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  db:
+    image: postgres:17-alpine
+    container_name: leadertrip-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-leadertrip}
+      POSTGRES_USER: ${POSTGRES_USER:-leadertrip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?رمز پایگاه داده لازم است؛ آن را در فایل .env بگذارید}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # پورت پایگاه داده عمداً به بیرون نگاشت نمی‌شود: فقط سرویس api به آن نیاز
+    # دارد. برای اتصال مستقیم، پروفایل db-expose را بالا بیاورید.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-leadertrip} -d ${POSTGRES_DB:-leadertrip}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  # دسترسی مستقیم به پایگاه داده برای اشکال‌زدایی — عمداً پشت پروفایل:
+  #   docker compose --profile db-expose up -d
+  db-expose:
+    profiles: ["db-expose"]
+    image: alpine/socat:latest
+    container_name: leadertrip-db-expose
+    command: tcp-listen:5432,fork,reuseaddr tcp-connect:db:5432
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
 
   # حالت توسعه با بارگذاری زنده — فقط با پروفایل dev بالا می‌آید:
   #   docker compose --profile dev up
@@ -52,3 +127,6 @@ services:
       - .:/app
       # node_modules میزبان نباید روی نسخهٔ داخل کانتینر بیفتد
       - /app/node_modules
+
+volumes:
+  db-data:

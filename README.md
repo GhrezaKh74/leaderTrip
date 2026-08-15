@@ -92,10 +92,12 @@ Vite · React 19 · TypeScript · Tailwind CSS · Leaflet · Open-Meteo
 ## اجرا با داکر (توصیه‌شده)
 
 ```bash
+cp .env.example .env             # و POSTGRES_PASSWORD را پر کنید
 docker compose up -d --build     # ساخت و اجرا در پس‌زمینه
 ```
 
-و تمام — روی <http://localhost:8080> بالا می‌آید.
+و تمام — رابط روی <http://localhost:8080> و بک‌اند روی
+<http://localhost:8081> بالا می‌آید.
 
 ```bash
 docker compose logs -f           # دیدن لاگ‌ها
@@ -105,6 +107,10 @@ docker compose --profile dev up  # حالت توسعه با بارگذاری ز�
 ```
 
 با `restart: unless-stopped` بعد از ریستارت سرور یا کرش، خودکار بالا می‌آید.
+
+**سه سرویس بالا می‌آید:** رابط کاربری (nginx)، بک‌اند .NET، و PostgreSQL.
+بک‌اند بدون پایگاه داده هم کار می‌کند — دادهٔ مرجع همراهش است — ولی آن‌وقت
+به‌روزرسانی قیمت‌ها بدون انتشار نسخهٔ جدید ممکن نیست.
 
 **چند نکتهٔ عمدی در پیکربندی:**
 
@@ -118,6 +124,39 @@ docker compose --profile dev up  # حالت توسعه با بارگذاری ز�
 - **CSP دقیقاً پنج میزبان بیرونی اپ را فهرست می‌کند.** اگر سرویس بیرونی
   جدیدی اضافه کردید، باید در `docker/security-headers.conf` هم اضافه شود،
   وگرنه مرورگر بی‌صدا بلوکش می‌کند.
+
+## بک‌اند .NET
+
+بازنویسی بک‌اند در جریان است ([سند ۶](docs/06-rewrite-architecture.md)).
+لایه‌های Domain، Application، Infrastructure و API ساخته شده‌اند؛ رابط
+React/MUI هنوز نه — تا آن‌ زمان **نسخهٔ TypeScript فعلی همان چیزی است که کار
+می‌کند و حذف نمی‌شود.**
+
+```bash
+cd backend
+dotnet test                      # ۹۴ تست
+dotnet run --project src/LeaderTrip.Api
+```
+
+بدون رشتهٔ اتصال، دادهٔ مرجع از داخل خود اسمبلی خوانده می‌شود و برنامه بدون
+PostgreSQL بالا می‌آید.
+
+| اندپوینت | کار |
+|---|---|
+| `GET /api/reference` | شهرها، خودروها و قیمت‌های پایه |
+| `GET /api/pois` | جاذبه‌ها، با فیلتر شهر/دسته/شعاع |
+| `POST /api/trips/plan` | ساخت برنامهٔ سفر و تفکیک هزینه |
+| `GET /health` | سلامت سرویس |
+| `POST /api/admin/prices` | انتشار نسخهٔ تازهٔ قیمت (فقط با کلید) |
+
+انتقال دادهٔ ۱۴۳ جاذبه و ۸۵ شهر از نسخهٔ TypeScript با اسکریپت انجام می‌شود، نه
+دستی:
+
+```bash
+npm run seed:export              # src/data/*.ts → دادهٔ اولیهٔ بک‌اند
+```
+
+---
 
 ## اجرا بدون داکر
 

@@ -1,6 +1,9 @@
 using FluentValidation;
 using LeaderTrip.Application.Abstractions;
 using LeaderTrip.Application.Behaviors;
+using LeaderTrip.Application.Prices.UpdatePriceBook;
+using LeaderTrip.Application.Reference.GetPois;
+using LeaderTrip.Application.Reference.GetReferenceData;
 using LeaderTrip.Application.Trips.GeneratePlan;
 using LeaderTrip.Domain.Planning;
 using LeaderTrip.Domain.Pricing;
@@ -66,6 +69,29 @@ public static class DependencyInjection
                 sp.GetService<IValidator<GeneratePlanQuery>>()));
 
         services.AddScoped<IValidator<GeneratePlanQuery>, GeneratePlanValidator>();
+
+        // ─── دادهٔ مرجع ───
+        services.AddScoped<GetReferenceDataHandler>();
+        services.AddScoped<IQueryHandler<GetReferenceDataQuery, ReferenceDataResponse>>(sp =>
+            new ValidationDecorator<GetReferenceDataQuery, ReferenceDataResponse>(
+                sp.GetRequiredService<GetReferenceDataHandler>(),
+                sp.GetService<IValidator<GetReferenceDataQuery>>()));
+
+        services.AddScoped<GetPoisHandler>();
+        services.AddScoped<IQueryHandler<GetPoisQuery, PoiListResponse>>(sp =>
+            new ValidationDecorator<GetPoisQuery, PoiListResponse>(
+                sp.GetRequiredService<GetPoisHandler>(),
+                sp.GetService<IValidator<GetPoisQuery>>()));
+
+        // ─── مدیریت قیمت ───
+        services.TryAddScoped<IPriceBookWriter, ReadOnlyPriceBookWriter>();
+        services.AddScoped<UpdatePriceBookHandler>();
+        services.AddScoped<ICommandHandler<UpdatePriceBookCommand, PriceBookVersionResponse>>(sp =>
+            new CommandValidationDecorator<UpdatePriceBookCommand, PriceBookVersionResponse>(
+                sp.GetRequiredService<UpdatePriceBookHandler>(),
+                sp.GetService<IValidator<UpdatePriceBookCommand>>()));
+
+        services.AddScoped<IValidator<UpdatePriceBookCommand>, UpdatePriceBookValidator>();
 
         return services;
     }

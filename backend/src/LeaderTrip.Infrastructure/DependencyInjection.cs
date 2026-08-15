@@ -68,6 +68,8 @@ public static class DependencyInjection
             services.AddScoped<IVehicleRepository, SeedVehicleRepository>();
             services.AddScoped<IPriceBookProvider, SeedPriceBookProvider>();
 
+            // بدون پایگاه داده جایی برای نوشتن نیست. پیش‌فرضِ لایهٔ Application
+            // (ReadOnlyPriceBookWriter) صریحاً خطا برمی‌گرداند، نه سکوت.
             return;
         }
 
@@ -79,6 +81,7 @@ public static class DependencyInjection
         services.AddScoped<IPoiRepository, EfPoiRepository>();
         services.AddScoped<IVehicleRepository, EfVehicleRepository>();
         services.AddScoped<IPriceBookProvider, EfPriceBookProvider>();
+        services.AddScoped<IPriceBookWriter, EfPriceBookWriter>();
 
         services.AddSingleton<DatabaseInitializer>();
     }

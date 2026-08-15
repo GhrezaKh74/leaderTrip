@@ -1,3 +1,5 @@
+using LeaderTrip.Application.Prices.UpdatePriceBook;
+using LeaderTrip.Domain.Common;
 using LeaderTrip.Domain.Entities;
 using LeaderTrip.Domain.Pricing;
 using LeaderTrip.Domain.Scoring;
@@ -90,4 +92,42 @@ public sealed class NoRoadNetworkWarmup : IRoadNetworkWarmup
 {
     public Task WarmAsync(IReadOnlyList<Coordinate> points, CancellationToken cancellationToken) =>
         Task.CompletedTask;
+}
+
+/// <summary>انتشار نسخهٔ تازهٔ دفترچهٔ قیمت.</summary>
+/// <remarks>
+/// <para>
+/// عمداً از <see cref="IPriceBookProvider"/> جداست: خواندن قیمت را همهٔ درخواست‌ها
+/// انجام می‌دهند، نوشتنش را فقط یک اندپوینت مدیریتی. یکی‌کردنشان یعنی هر
+/// مصرف‌کنندهٔ عادی به متدی وابسته شود که هرگز صدا نمی‌زند — و بدتر، متدی که
+/// نباید بتواند صدا بزند.
+/// </para>
+/// <para>
+/// اعتبارسنجی محتوا وظیفهٔ پیاده‌سازی است: نوشتن JSON خرابی که فردا هنگام خواندن
+/// می‌ترکد، بدتر از رد کردن آن در همان لحظه است.
+/// </para>
+/// </remarks>
+public interface IPriceBookWriter
+{
+    Task<Result<PriceBookVersionResponse>> PublishAsync(
+        string payload,
+        string updatedAt,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>وقتی پایگاه داده‌ای برای نوشتن وجود ندارد.</summary>
+/// <remarks>
+/// در حالت بدون پایگاه داده قیمت‌ها داخل باندل‌اند و تغییرشان جایی برای ماندن
+/// ندارد. پذیرفتن درخواست و بی‌صدا دورانداختنش بدترین رفتار ممکن است — کاربر
+/// فکر می‌کند قیمت‌ها به‌روز شده‌اند.
+/// </remarks>
+public sealed class ReadOnlyPriceBookWriter : IPriceBookWriter
+{
+    public Task<Result<PriceBookVersionResponse>> PublishAsync(
+        string payload,
+        string updatedAt,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(Result.Failure<PriceBookVersionResponse>(DomainError.Conflict(
+            "priceBook.readOnly",
+            "این نمونه بدون پایگاه داده اجرا شده است و قیمت‌ها فقط‌خواندنی‌اند.")));
 }

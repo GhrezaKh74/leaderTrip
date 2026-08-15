@@ -6,6 +6,7 @@
     <Project Path="src/LeaderTrip.Infrastructure/LeaderTrip.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/LeaderTrip.Api.Tests/LeaderTrip.Api.Tests.csproj" />
     <Project Path="tests/LeaderTrip.Domain.Tests/LeaderTrip.Domain.Tests.csproj" />
     <Project Path="tests/LeaderTrip.Infrastructure.Tests/LeaderTrip.Infrastructure.Tests.csproj" />
   </Folder>

@@ -10,3 +10,8 @@ dist-ssr
 bin/
 obj/
 *.user
+
+# محیط — رمزها هرگز نباید کامیت شوند
+.env
+.env.*
+!.env.example

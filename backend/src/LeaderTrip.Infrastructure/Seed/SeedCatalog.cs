@@ -24,7 +24,12 @@ namespace LeaderTrip.Infrastructure.Seed;
 /// </remarks>
 public sealed class SeedCatalog
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    /// <summary>تنظیمات مشترک خواندن و نوشتن دادهٔ مرجع.</summary>
+    /// <remarks>
+    /// نوشتن هم از همین تنظیمات استفاده می‌کند تا هر چیزی که ذخیره می‌شود، با
+    /// همان قاعده‌ای خوانده شود که نوشته شده.
+    /// </remarks>
+    internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter(allowIntegerValues: true) },
     };
