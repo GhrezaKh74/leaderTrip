@@ -156,6 +156,22 @@ PostgreSQL بالا می‌آید.
 npm run seed:export              # src/data/*.ts → دادهٔ اولیهٔ بک‌اند
 ```
 
+## رابط تازه (React + MUI)
+
+در `web/` — ویزارد چهارگامی با تم راست‌به‌چپ. هنوز جایگزین نسخهٔ فعلی نشده؛
+نمایش برنامه، هزینه و نقشه کار فاز بعدی است.
+
+```bash
+cd web
+npm install
+npm run dev        # با پروکسی /api به بک‌اند روی ۵۱۹۹
+npm test           # ۲۰ تست واحد
+npm run test:e2e   # ۴ تست مرورگر واقعی روی بیلد تولید
+npm run build
+```
+
+React 19 · TypeScript 7 · MUI 9 · TanStack Query · React Hook Form + Zod · Vite 8
+
 ---
 
 ## اجرا بدون داکر

@@ -1,0 +1,167 @@
+import { z } from 'zod'
+
+/**
+ * قرارداد بک‌اند، به‌صورت اسکیمای اجرایی.
+ *
+ * چرا Zod و نه فقط `interface`: تایپ TypeScript در زمان اجرا وجود ندارد. اگر
+ * بک‌اند فیلدی را عوض کند، با تایپِ تنها، خطا جایی چند کامپوننت آن‌طرف‌تر ظاهر
+ * می‌شود — معمولاً به‌شکل `undefined` که در یک محاسبه `NaN` می‌شود و روی صفحه
+ * «NaN تومان» می‌نشیند. با اسکیما، خطا در همان مرز شبکه و با نام فیلد گرفته
+ * می‌شود.
+ */
+
+export const climateSchema = z.enum(['Desert', 'Mountain', 'Caspian', 'Gulf', 'Plain', 'Steppe'])
+
+export const poiCategorySchema = z.enum([
+  'Historical', 'Nature', 'Religious', 'Museum', 'Adventure', 'Food', 'Shopping',
+  'Entertainment', 'Village', 'Beach', 'Desert', 'Mountain', 'Lake', 'Waterfall', 'Cave', 'Garden',
+])
+
+export const difficultySchema = z.enum(['None', 'Light', 'Heavy', 'Climbing'])
+export const offroadSchema = z.enum(['Paved', 'LightDirt', 'FullOffroad'])
+export const vehicleClassSchema = z.enum(['Sedan', 'Suv', 'Van', 'Minibus', 'Bus', 'Motorcycle', 'Ev'])
+export const fuelKindSchema = z.enum(['Gasoline', 'Diesel', 'Cng', 'Electric'])
+export const travelStyleSchema = z.enum(['Budget', 'Balanced', 'Comfort', 'Luxury'])
+export const lodgingKindSchema = z.enum(['Hotel', 'EcoLodge', 'Villa', 'Camp', 'Friends'])
+export const mobilitySchema = z.enum(['Full', 'Limited', 'Wheelchair'])
+
+export const citySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  province: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  costIndex: z.number(),
+  amenities: z.number().int(),
+  climate: climateSchema,
+  canStayOvernight: z.boolean(),
+})
+
+export const vehicleSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  class: vehicleClassSchema,
+  fuel: fuelKindSchema,
+  consumptionPer100Km: z.number(),
+  seats: z.number().int(),
+  offroad: offroadSchema,
+  depreciationPerKm: z.number(),
+})
+
+const mealPricesSchema = z.object({
+  breakfast: z.number(),
+  lunch: z.number(),
+  dinner: z.number(),
+})
+
+export const priceBookSchema = z.object({
+  subsidizedFuel: z.record(z.string(), z.number()),
+  freeMarketFuel: z.record(z.string(), z.number()),
+  tollPerKilometer: z.number(),
+  freewayShare: z.number(),
+  lodgingPerNight: z.record(z.string(), z.number()),
+  meals: z.record(z.string(), mealPricesSchema),
+  snackRate: z.number(),
+  miscRate: z.record(z.string(), z.number()),
+  bufferRate: z.record(z.string(), z.number()),
+  updatedAt: z.string(),
+})
+
+export const referenceDataSchema = z.object({
+  cities: z.array(citySchema),
+  vehicles: z.array(vehicleSchema),
+  prices: priceBookSchema,
+})
+
+export const poiSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  cityId: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  category: poiCategorySchema,
+  rating: z.number(),
+  visitMinutes: z.number().int(),
+  ticket: z.number(),
+  bestMonths: z.array(z.number().int()),
+  indoor: z.boolean(),
+  difficulty: difficultySchema,
+  minAge: z.number().int(),
+  kidFriendly: z.boolean(),
+  seniorFriendly: z.boolean(),
+  requiredVehicle: offroadSchema,
+  nightSuitable: z.boolean(),
+  tags: z.array(z.string()),
+  description: z.string(),
+})
+
+export const poiListSchema = z.object({
+  total: z.number().int(),
+  items: z.array(poiSchema),
+})
+
+export const planBlockSchema = z.object({
+  kind: z.enum(['Drive', 'Visit', 'Meal', 'Rest', 'Lodging', 'Fuel']),
+  startsAt: z.string(),
+  durationMinutes: z.number(),
+  title: z.string(),
+  cost: z.number(),
+  poiId: z.string().nullable().optional(),
+  kilometers: z.number().nullable().optional(),
+  note: z.string().nullable().optional(),
+})
+
+export const dayPlanSchema = z.object({
+  index: z.number().int(),
+  date: z.string(),
+  baseCityId: z.string(),
+  blocks: z.array(planBlockSchema),
+  kilometers: z.number(),
+  drivingMinutes: z.number(),
+  cost: z.number(),
+})
+
+export const costLineSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  amount: z.number(),
+  formula: z.string(),
+})
+
+export const costBreakdownSchema = z.object({
+  lines: z.array(costLineSchema),
+  subtotal: z.number(),
+  miscellaneous: z.number(),
+  riskBuffer: z.number(),
+  total: z.number(),
+  perPerson: z.number(),
+  optimistic: z.number(),
+  pessimistic: z.number(),
+  overBudget: z.number(),
+})
+
+export const tripPlanSchema = z.object({
+  days: z.array(dayPlanSchema),
+  cost: costBreakdownSchema,
+  totalKilometers: z.number(),
+  totalDrivingMinutes: z.number(),
+  visitCount: z.number().int(),
+  unscheduledPoiIds: z.array(z.string()),
+  // مبدأ مسافت بخشی از قرارداد است، نه جزئیات: عددی که حدس است نباید شبیه
+  // اندازه‌گیری نمایش داده شود.
+  distanceSource: z.enum(['Estimated', 'Routed']),
+})
+
+export type City = z.infer<typeof citySchema>
+export type Vehicle = z.infer<typeof vehicleSchema>
+export type PriceBook = z.infer<typeof priceBookSchema>
+export type ReferenceData = z.infer<typeof referenceDataSchema>
+export type Poi = z.infer<typeof poiSchema>
+export type PoiCategory = z.infer<typeof poiCategorySchema>
+export type TravelStyle = z.infer<typeof travelStyleSchema>
+export type LodgingKind = z.infer<typeof lodgingKindSchema>
+export type MobilityLevel = z.infer<typeof mobilitySchema>
+export type TripPlan = z.infer<typeof tripPlanSchema>
+export type DayPlan = z.infer<typeof dayPlanSchema>
+export type PlanBlock = z.infer<typeof planBlockSchema>
+export type CostBreakdown = z.infer<typeof costBreakdownSchema>

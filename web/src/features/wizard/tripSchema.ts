@@ -1,0 +1,101 @@
+import { z } from 'zod'
+
+import {
+  lodgingKindSchema,
+  mobilitySchema,
+  poiCategorySchema,
+  travelStyleSchema,
+} from '../../api/schemas'
+
+/**
+ * اعتبارسنجی ورودی ویزارد.
+ *
+ * <p>عمداً همان قواعد بک‌اند را تکرار می‌کند و این تکرار توجیه دارد: بک‌اند
+ * قاضی نهایی است و باید باشد (کسی می‌تواند مستقیم درخواست بزند)، ولی کاربری که
+ * ده فیلد پر کرده نباید برای فهمیدن اینکه یکی‌شان غلط است منتظر رفت‌وبرگشت شبکه
+ * بماند. آنچه تکرار نمی‌شود، منطق کسب‌وکار است — این‌جا فقط شکل ورودی سنجیده
+ * می‌شود، نه اینکه «آیا این سفر شدنی است».</p>
+ */
+export const travelerFormSchema = z.object({
+  id: z.string(),
+  name: z.string().max(40, 'نام طولانی است.'),
+  age: z
+    .number({ error: 'سن را وارد کنید.' })
+    .int('سن باید عدد درست باشد.')
+    .min(0, 'سن نمی‌تواند منفی باشد.')
+    .max(120, 'سن را بررسی کنید.'),
+  mobility: mobilitySchema,
+  isDriver: z.boolean(),
+})
+
+export const tripFormSchema = z
+  .object({
+    originCityId: z.string().min(1, 'شهر مبدأ را انتخاب کنید.'),
+    startDate: z.string().min(1, 'تاریخ حرکت را انتخاب کنید.'),
+    days: z.number().int().min(1, 'حداقل یک روز.').max(30, 'حداکثر ۳۰ روز.'),
+    radiusKm: z.number().min(20, 'شعاع خیلی کم است.').max(1500, 'شعاع خیلی زیاد است.'),
+    vehicleId: z.string().min(1, 'خودرو را انتخاب کنید.'),
+    vehicleCount: z.number().int().min(1).max(10),
+    travelers: z
+      .array(travelerFormSchema)
+      .min(1, 'حداقل یک همسفر لازم است.')
+      .max(30, 'تعداد همسفران زیاد است.'),
+    budgetToman: z.number().min(0, 'بودجه نمی‌تواند منفی باشد.'),
+    style: travelStyleSchema,
+    lodging: lodgingKindSchema,
+    interests: z.array(poiCategorySchema),
+    maxDrivingHoursPerDay: z.number().min(1).max(12),
+    dayStartHour: z.number().int().min(0).max(12),
+    dayEndHour: z.number().int().min(12).max(24),
+    roundTrip: z.boolean(),
+    subsidizedFuelShare: z.number().min(0).max(1),
+    pinnedPoiIds: z.array(z.string()),
+    excludedPoiIds: z.array(z.string()),
+  })
+  .refine((v) => v.dayEndHour > v.dayStartHour + 4, {
+    message: 'روز باید دست‌کم پنج ساعت باشد.',
+    path: ['dayEndHour'],
+  })
+  .refine((v) => v.travelers.some((t) => t.isDriver && t.age >= 18), {
+    // بدون رانندهٔ واجد شرایط، برنامه‌ای که موتور می‌سازد روی کاغذ درست است و
+    // در جاده غیرقابل اجرا.
+    message: 'دست‌کم یک همسفر ۱۸ سال به بالا باید راننده باشد.',
+    path: ['travelers'],
+  })
+
+export type TripForm = z.infer<typeof tripFormSchema>
+
+/** بدنهٔ درخواستی که بک‌اند انتظار دارد. */
+export type TripRequest = TripForm
+
+export const DEFAULT_TRIP: TripForm = {
+  originCityId: 'tehran',
+  startDate: isoToday(),
+  days: 3,
+  radiusKm: 400,
+  vehicleId: 'sedan-206',
+  vehicleCount: 1,
+  travelers: [
+    { id: 't1', name: '', age: 35, mobility: 'Full', isDriver: true },
+    { id: 't2', name: '', age: 33, mobility: 'Full', isDriver: false },
+  ],
+  budgetToman: 50_000_000,
+  style: 'Balanced',
+  lodging: 'Hotel',
+  interests: [],
+  maxDrivingHoursPerDay: 5,
+  dayStartHour: 8,
+  dayEndHour: 21,
+  roundTrip: true,
+  subsidizedFuelShare: 0.6,
+  pinnedPoiIds: [],
+  excludedPoiIds: [],
+}
+
+function isoToday(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+
+  return `${now.getFullYear()}-${month}-${day}`
+}
