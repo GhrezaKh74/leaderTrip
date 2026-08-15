@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "seed:export": "node scripts/export-seed.mjs",
     "test": "vitest run",
     "typecheck": "tsc -b"
   },

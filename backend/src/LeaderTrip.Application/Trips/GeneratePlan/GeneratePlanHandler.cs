@@ -20,10 +20,15 @@ namespace LeaderTrip.Application.Trips.GeneratePlan;
 /// </remarks>
 internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, TripPlanResponse>
 {
+    /// <summary>بیشترین تعداد نقطه‌ای که برای ماتریس مسافت واقعی درخواست می‌شود.</summary>
+    private const int RouteWarmupLimit = 60;
+
     private readonly ICityRepository _cities;
     private readonly IPoiRepository _pois;
     private readonly IVehicleRepository _vehicles;
     private readonly IPriceBookProvider _prices;
+    private readonly IWeatherProvider _weather;
+    private readonly IRoadNetworkWarmup _roadNetwork;
     private readonly PoiScorer _scorer;
     private readonly ItinerarySelector _selector;
     private readonly DayScheduler _scheduler;
@@ -34,6 +39,8 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         IPoiRepository pois,
         IVehicleRepository vehicles,
         IPriceBookProvider prices,
+        IWeatherProvider weather,
+        IRoadNetworkWarmup roadNetwork,
         PoiScorer scorer,
         ItinerarySelector selector,
         DayScheduler scheduler,
@@ -43,6 +50,8 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         _pois = pois;
         _vehicles = vehicles;
         _prices = prices;
+        _weather = weather;
+        _roadNetwork = roadNetwork;
         _scorer = scorer;
         _selector = selector;
         _scheduler = scheduler;
@@ -80,6 +89,12 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         var allPois = await _pois.GetAllAsync(cancellationToken).ConfigureAwait(false);
         var priceBook = await _prices.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
 
+        // آب‌وهوا اختیاری است: اگر سرویس نبود، `null` می‌ماند و قاعدهٔ آب‌وهوا
+        // ضریب خنثی برمی‌گرداند. برنامه ساخته می‌شود، فقط کورتر.
+        var outlook = await _weather
+            .GetOutlookAsync(origin.Location, query.StartDate, query.Days, cancellationToken)
+            .ConfigureAwait(false);
+
         var cityById = cities.ToDictionary(c => c.Id, StringComparer.Ordinal);
         var radius = Distance.FromKilometers(query.RadiusKm);
         var excluded = query.ExcludedPoiIds.ToHashSet(StringComparer.Ordinal);
@@ -109,6 +124,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             PinnedPoiIds = pinned,
             PerPersonDailyBudget = Money.FromToman(
                 query.BudgetToman / Math.Max(1, group.Count * query.Days)),
+            Weather = outlook,
         };
 
         foreach (var poi in allPois)
@@ -129,6 +145,19 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
 
             candidates.Add(new ScoredPoi(poi, _scorer.Score(poi, scoringContext).Value));
         }
+
+        // ─── پیش‌بارگذاری مسافت‌های واقعی ───
+        // فقط برای نامزدهای برتر: سرویس‌های مسیریابی سقف اندازهٔ ماتریس دارند و
+        // درخواست‌دادن برای هر ۱۴۳ جاذبه هم رد می‌شود هم بی‌فایده است — بیشترشان
+        // هرگز به مسیر نمی‌رسند. سقف صریح است، نه بی‌صدا.
+        var warmupPoints = candidates
+            .OrderByDescending(c => c.Score)
+            .Take(RouteWarmupLimit - 1)
+            .Select(c => c.Poi.Location)
+            .Prepend(origin.Location)
+            .ToList();
+
+        await _roadNetwork.WarmAsync(warmupPoints, cancellationToken).ConfigureAwait(false);
 
         // ─── انتخاب مسیر ───
         var climates = cities.ToDictionary(c => c.Id, c => c.Climate, StringComparer.Ordinal);

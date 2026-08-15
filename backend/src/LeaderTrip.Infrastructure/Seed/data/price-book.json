@@ -1,0 +1,58 @@
+{
+  "subsidizedFuel": {
+    "Gasoline": 1500,
+    "Diesel": 400,
+    "Cng": 600,
+    "Electric": 1000
+  },
+  "freeMarketFuel": {
+    "Gasoline": 3000,
+    "Diesel": 1500,
+    "Cng": 600,
+    "Electric": 1000
+  },
+  "tollPerKilometer": 300,
+  "freewayShare": 0.45,
+  "lodgingPerNight": {
+    "Budget": 400000,
+    "Balanced": 900000,
+    "Comfort": 1800000,
+    "Luxury": 4000000
+  },
+  "meals": {
+    "Budget": {
+      "breakfast": 80000,
+      "lunch": 250000,
+      "dinner": 250000
+    },
+    "Balanced": {
+      "breakfast": 150000,
+      "lunch": 450000,
+      "dinner": 450000
+    },
+    "Comfort": {
+      "breakfast": 250000,
+      "lunch": 800000,
+      "dinner": 800000
+    },
+    "Luxury": {
+      "breakfast": 450000,
+      "lunch": 1500000,
+      "dinner": 1500000
+    }
+  },
+  "snackRate": 0.15,
+  "miscRate": {
+    "Budget": 0.05,
+    "Balanced": 0.08,
+    "Comfort": 0.1,
+    "Luxury": 0.15
+  },
+  "bufferRate": {
+    "Budget": 0.1,
+    "Balanced": 0.12,
+    "Comfort": 0.12,
+    "Luxury": 0.15
+  },
+  "updatedAt": "۱۴۰۴/۰۵"
+}

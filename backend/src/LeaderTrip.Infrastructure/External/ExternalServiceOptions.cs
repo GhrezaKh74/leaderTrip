@@ -1,0 +1,54 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace LeaderTrip.Infrastructure.External;
+
+/// <summary>تنظیمات سرویس مسیریابی.</summary>
+/// <remarks>
+/// آدرس سرور پیکربندی است نه ثابت: سرور عمومی OSRM سهمیهٔ سختگیرانه دارد و در
+/// تولید باید با نمونهٔ خودی عوض شود — بدون تغییر یک خط کد.
+/// </remarks>
+public sealed class RoutingOptions
+{
+    public const string SectionName = "Routing";
+
+    /// <summary>خاموش‌کردنش یعنی برگشت به تخمین فاصلهٔ هوایی، نه خطا.</summary>
+    public bool Enabled { get; set; } = true;
+
+    [Required]
+    public Uri BaseAddress { get; set; } = new("https://router.project-osrm.org/");
+
+    /// <summary>سقف تعداد نقاط در یک درخواست ماتریس — سرور عمومی روی ۱۰۰ است.</summary>
+    [Range(2, 500)]
+    public int MaxMatrixPoints { get; set; } = 90;
+
+    [Range(1, 120)]
+    public int TimeoutSeconds { get; set; } = 15;
+
+    /// <summary>مدت اعتبار مسافت‌های کش‌شده. جادهٔ بین دو نقطه زود عوض نمی‌شود.</summary>
+    [Range(1, 720)]
+    public int CacheHours { get; set; } = 168;
+}
+
+/// <summary>تنظیمات سرویس هواشناسی.</summary>
+public sealed class WeatherOptions
+{
+    public const string SectionName = "Weather";
+
+    public bool Enabled { get; set; } = true;
+
+    [Required]
+    public Uri ForecastAddress { get; set; } = new("https://api.open-meteo.com/");
+
+    [Required]
+    public Uri ArchiveAddress { get; set; } = new("https://archive-api.open-meteo.com/");
+
+    /// <summary>افق پیش‌بینی واقعی؛ دورتر از آن، «انتظار فصلی» سال گذشته.</summary>
+    [Range(1, 16)]
+    public int ForecastHorizonDays { get; set; } = 16;
+
+    [Range(1, 120)]
+    public int TimeoutSeconds { get; set; } = 10;
+
+    [Range(1, 168)]
+    public int CacheHours { get; set; } = 6;
+}

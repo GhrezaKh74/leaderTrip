@@ -9,6 +9,7 @@ using LeaderTrip.Domain.Routing;
 using LeaderTrip.Domain.Scoring;
 using LeaderTrip.Domain.Scoring.Rules;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace LeaderTrip.Application;
 
@@ -20,6 +21,14 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddScoped<IDispatcher, Dispatcher>();
+
+        // ─── پیش‌فرض‌های بی‌خطر برای پورت‌های اختیاری ───
+        // `TryAdd` یعنی اگر لایهٔ Infrastructure پیاده‌سازی واقعی ثبت کرده باشد،
+        // این‌ها کنار می‌روند. بدون آن‌ها، نبودِ سرویس بیرونی = خطای زمان اجرا؛
+        // با آن‌ها، نبودِ سرویس = برنامه‌ای که فقط آب‌وهوا ندارد.
+        services.TryAddScoped<IWeatherProvider, NoWeatherProvider>();
+        services.TryAddScoped<IRoadNetworkWarmup, NoRoadNetworkWarmup>();
+        services.TryAddSingleton<IRoadDistanceProvider>(NoRoadDistanceProvider.Instance);
 
         // ─── قاعده‌های امتیازدهی ───
         // افزودن قاعدهٔ تازه یعنی یک خط این‌جا و یک کلاس تازه؛ هیچ کد موجودی

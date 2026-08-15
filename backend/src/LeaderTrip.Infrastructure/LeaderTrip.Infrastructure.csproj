@@ -1,7 +1,35 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- دادهٔ مرجع داخل اسمبلی می‌نشیند: برنامه بدون فایل جانبی بالا می‌آید و
+       نسخهٔ داده همیشه با نسخهٔ کد یکی است. -->
+  <!-- تست‌ها به اجزای internal دسترسی دارند: آداپترها و مخزن‌ها عمداً از بیرون
+       اسمبلی دیده نمی‌شوند، ولی همان‌ها هستند که باید تست شوند. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="LeaderTrip.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Seed\data\*.json" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\LeaderTrip.Application\LeaderTrip.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.11" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
   <PropertyGroup>

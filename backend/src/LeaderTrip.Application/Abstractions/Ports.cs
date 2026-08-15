@@ -1,5 +1,7 @@
 using LeaderTrip.Domain.Entities;
 using LeaderTrip.Domain.Pricing;
+using LeaderTrip.Domain.Scoring;
+using LeaderTrip.Domain.ValueObjects;
 
 namespace LeaderTrip.Application.Abstractions;
 
@@ -36,4 +38,56 @@ public interface IVehicleRepository
 public interface IPriceBookProvider
 {
     Task<PriceBook> GetCurrentAsync(CancellationToken cancellationToken);
+}
+
+/// <summary>پیش‌بینی آب‌وهوای بازهٔ سفر.</summary>
+/// <remarks>
+/// خروجی <see cref="WeatherOutlook"/> است، نه پاسخ خام سرویس هواشناسی: دامنه
+/// «دمای بیشینه و احتمال بارش» می‌خواهد، نه ساختار JSON فلان API. اگر سرویس در
+/// دسترس نبود <see langword="null"/> برمی‌گردد و برنامه بدون آب‌وهوا ساخته می‌شود —
+/// هیچ ویژگی‌ای نباید به یک سرویس بیرونی گروگان باشد.
+/// </remarks>
+public interface IWeatherProvider
+{
+    Task<WeatherOutlook?> GetOutlookAsync(
+        Coordinate location,
+        DateOnly startDate,
+        int days,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>وقتی هیچ سرویس هواشناسی پیکربندی نشده است.</summary>
+public sealed class NoWeatherProvider : IWeatherProvider
+{
+    public Task<WeatherOutlook?> GetOutlookAsync(
+        Coordinate location,
+        DateOnly startDate,
+        int days,
+        CancellationToken cancellationToken) => Task.FromResult<WeatherOutlook?>(null);
+}
+
+/// <summary>
+/// پیش‌بارگذاری مسافت‌های واقعی جاده برای مجموعه‌ای از نقاط.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <see cref="Domain.Routing.IRoadDistanceProvider"/> عمداً همگام است، چون در
+/// دلِ حلقهٔ انتخاب مسیر صدا زده می‌شود و نباید هر مقایسه یک درخواست شبکه بزند.
+/// این پورت پل آن شکاف است: یک‌بار به‌صورت ناهمگام ماتریس مسافت را می‌گیرد و پر
+/// می‌کند، بعد دامنه همگام از آن می‌خواند.
+/// </para>
+/// <para>
+/// پیاده‌سازی پیش‌فرض هیچ کاری نمی‌کند، پس مسیر بدون سرویس مسیریابی هم کار می‌کند.
+/// </para>
+/// </remarks>
+public interface IRoadNetworkWarmup
+{
+    Task WarmAsync(IReadOnlyList<Coordinate> points, CancellationToken cancellationToken);
+}
+
+/// <summary>پیش‌بارگذاری بی‌اثر — برای وقتی سرویس مسیریابی وجود ندارد.</summary>
+public sealed class NoRoadNetworkWarmup : IRoadNetworkWarmup
+{
+    public Task WarmAsync(IReadOnlyList<Coordinate> points, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }

@@ -27,7 +27,9 @@ public sealed class PointOfInterest
         bool isKidFriendly,
         bool isSeniorFriendly,
         OffroadCapability requiredVehicle,
-        string description)
+        string description,
+        bool isNightSuitable = false,
+        IReadOnlyList<string>? tags = null)
     {
         Id = id;
         Name = name;
@@ -45,6 +47,8 @@ public sealed class PointOfInterest
         IsSeniorFriendly = isSeniorFriendly;
         RequiredVehicle = requiredVehicle;
         Description = description;
+        IsNightSuitable = isNightSuitable;
+        Tags = tags ?? [];
     }
 
     public string Id { get; }
@@ -80,6 +84,12 @@ public sealed class PointOfInterest
     public OffroadCapability RequiredVehicle { get; }
 
     public string Description { get; }
+
+    /// <summary>آیا بازدید شبانه معنا دارد؟ — برای برنامهٔ شب‌های سفر.</summary>
+    public bool IsNightSuitable { get; }
+
+    /// <summary>برچسب‌های آزاد («یونسکو»، «رایگان»، …) — برای نمایش و جست‌وجو.</summary>
+    public IReadOnlyList<string> Tags { get; }
 
     public bool IsFree => Ticket == Money.Zero;
 
