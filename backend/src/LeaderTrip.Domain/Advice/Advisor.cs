@@ -48,6 +48,9 @@ public sealed record AdviceContext
     public required IReadOnlyList<Climate> Climates { get; init; }
 
     public required int VehicleCount { get; init; }
+
+    /// <summary>بیشترین ارتفاع مسیر به متر، یا <see langword="null"/> اگر داده‌ای نبود.</summary>
+    public double? PeakElevationMetres { get; init; }
 }
 
 /// <summary>هشدارها و توصیه‌های لیدر.</summary>
@@ -82,6 +85,7 @@ public static class Advisor
         AddBudget(context, advice);
         AddClimate(context, advice);
         AddNowruz(context, advice);
+        AddMountainPass(context, advice);
 
         return advice.OrderByDescending(a => a.Level).ToList();
     }
@@ -238,6 +242,42 @@ public static class Advisor
                 "احتمال باران",
                 "سواحل خزر در این فصل باران دارد. بارانی و کفش ضدآب ببرید."));
         }
+    }
+
+    /// <summary>بیش از این ارتفاع، گردنه در زمستان ریسک واقعی دارد.</summary>
+    private const double HighPassMetres = 2000;
+
+    /// <summary>
+    /// هشدار گردنهٔ مرتفع.
+    /// </summary>
+    /// <remarks>
+    /// در ایران خیلی از مسیرهای زیبا از گردنه‌های بالای ۲۰۰۰ متر می‌گذرند.
+    /// همان مسیری که در مهر دل‌انگیز است، در دی می‌تواند بسته باشد — و ارتفاع
+    /// تنها چیزی است که این ریسک را از پیش قابل دیدن می‌کند.
+    ///
+    /// اگر دادهٔ ارتفاع نبود، هیچ هشداری ساخته نمی‌شود. هشدارِ حدسی بدتر از
+    /// نبودِ هشدار است: کاربر یا بی‌جهت می‌ترسد یا یاد می‌گیرد نادیده‌اش بگیرد.
+    /// </remarks>
+    private static void AddMountainPass(AdviceContext context, List<Advice> advice)
+    {
+        if (context.PeakElevationMetres is not { } peak || peak < HighPassMetres)
+        {
+            return;
+        }
+
+        bool coldSeason = context.Month is 11 or 12 or 1 or 2 or 3;
+
+        advice.Add(new Advice(
+            "route.highPass",
+            coldSeason ? AdviceLevel.Critical : AdviceLevel.Info,
+            "گردنهٔ مرتفع در مسیر",
+            coldSeason
+                ? string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"بلندترین نقطهٔ مسیر حدود {peak:0} متر است و در این فصل احتمال برف و بسته‌شدن جاده هست. پیش از حرکت وضعیت جاده را بگیرید و زنجیر چرخ ببرید.")
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"بلندترین نقطهٔ مسیر حدود {peak:0} متر است. شب‌ها سرد می‌شود و در ارتفاع، تنگی نفس خفیف طبیعی است.")));
     }
 
     private static void AddNowruz(AdviceContext context, List<Advice> advice)

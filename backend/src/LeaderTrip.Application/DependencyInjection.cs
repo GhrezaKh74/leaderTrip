@@ -2,9 +2,11 @@ using FluentValidation;
 using LeaderTrip.Application.Abstractions;
 using LeaderTrip.Application.Behaviors;
 using LeaderTrip.Application.Prices.UpdatePriceBook;
+using LeaderTrip.Application.Reference.DiscoverPlaces;
 using LeaderTrip.Application.Reference.GetPois;
 using LeaderTrip.Application.Reference.GetReferenceData;
 using LeaderTrip.Application.Trips.GeneratePlan;
+using LeaderTrip.Application.Trips.OptimizeBudget;
 using LeaderTrip.Domain.Planning;
 using LeaderTrip.Domain.Pricing;
 using LeaderTrip.Domain.Pricing.Components;
@@ -31,6 +33,8 @@ public static class DependencyInjection
         // با آن‌ها، نبودِ سرویس = برنامه‌ای که فقط آب‌وهوا ندارد.
         services.TryAddScoped<IWeatherProvider, NoWeatherProvider>();
         services.TryAddScoped<IRoadNetworkWarmup, NoRoadNetworkWarmup>();
+        services.TryAddScoped<IElevationProvider, NoElevationProvider>();
+        services.TryAddScoped<IPlaceDiscovery, NoPlaceDiscovery>();
         services.TryAddSingleton<IRoadDistanceProvider>(NoRoadDistanceProvider.Instance);
 
         // ─── قاعده‌های امتیازدهی ───
@@ -82,6 +86,17 @@ public static class DependencyInjection
             new ValidationDecorator<GetPoisQuery, PoiListResponse>(
                 sp.GetRequiredService<GetPoisHandler>(),
                 sp.GetService<IValidator<GetPoisQuery>>()));
+
+        services.AddScoped<DiscoverPlacesHandler>();
+        services.AddScoped<IQueryHandler<DiscoverPlacesQuery, DiscoveredPlacesResponse>>(sp =>
+            sp.GetRequiredService<DiscoverPlacesHandler>());
+
+        // ─── بهینه‌ساز بودجه ───
+        // مسئولِ برنامه را از ظرف می‌گیرد، یعنی همان مسیرِ اعتبارسنجی‌شده را چند
+        // بار اجرا می‌کند. صرفه‌جویی‌ها از اجرای واقعی می‌آیند، نه از تخمین.
+        services.AddScoped<OptimizeBudgetHandler>();
+        services.AddScoped<IQueryHandler<OptimizeBudgetQuery, BudgetLeversResponse>>(sp =>
+            sp.GetRequiredService<OptimizeBudgetHandler>());
 
         // ─── مدیریت قیمت ───
         services.TryAddScoped<IPriceBookWriter, ReadOnlyPriceBookWriter>();

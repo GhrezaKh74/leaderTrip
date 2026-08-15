@@ -82,9 +82,100 @@ internal sealed partial class OpenMeteoWeatherProvider : IWeatherProvider
         return outlook;
     }
 
+    /// <summary>هوای هر روز، برای نمایش کنار برنامه.</summary>
+    /// <remarks>
+    /// از همان پاسخی خوانده می‌شود که خلاصهٔ امتیازدهی از آن می‌آید — یک
+    /// درخواست، دو مصرف‌کننده. جدا پرسیدن یعنی دو رفت‌وبرگشت شبکه برای یک داده،
+    /// و بدتر: امکان اینکه نمایش و امتیازدهی از دو پاسخ متفاوت تغذیه شوند.
+    /// </remarks>
+    public async Task<IReadOnlyList<DailyWeather>> GetDailyAsync(
+        Coordinate location,
+        DateOnly startDate,
+        int days,
+        CancellationToken cancellationToken)
+    {
+        if (!_options.Enabled || days < 1)
+        {
+            return [];
+        }
+
+        var endDate = startDate.AddDays(days - 1);
+        var key = (
+            Math.Round(location.Latitude, 1),
+            Math.Round(location.Longitude, 1),
+            startDate,
+            endDate,
+            "daily");
+
+        if (_cache.TryGetValue(key, out IReadOnlyList<DailyWeather>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var (payload, withinForecast) = await FetchRawAsync(location, startDate, endDate, cancellationToken)
+            .ConfigureAwait(false);
+
+        var daily = ToDaily(payload, startDate, days, withinForecast);
+
+        if (daily.Count > 0)
+        {
+            _cache.Set(key, daily, TimeSpan.FromHours(_options.CacheHours));
+        }
+
+        return daily;
+    }
+
+    private static List<DailyWeather> ToDaily(
+        DailyBlock? block,
+        DateOnly startDate,
+        int days,
+        bool withinForecast)
+    {
+        if (block?.Temperature2mMax is not { Length: > 0 } maxima)
+        {
+            return [];
+        }
+
+        var daily = new List<DailyWeather>();
+
+        for (int i = 0; i < days && i < maxima.Length; i++)
+        {
+            if (maxima[i] is not { } max)
+            {
+                continue;
+            }
+
+            double precipitation = withinForecast && block.PrecipitationProbabilityMax is { } chances
+                ? chances.ElementAtOrDefault(i) ?? 0d
+                : Math.Min(100d, (block.PrecipitationSum?.ElementAtOrDefault(i) ?? 0d) * 20d);
+
+            daily.Add(new DailyWeather(
+                startDate.AddDays(i),
+                max,
+                block.Temperature2mMin?.ElementAtOrDefault(i) ?? max,
+                precipitation,
+                (block.SnowfallSum?.ElementAtOrDefault(i) ?? 0d) > 0.1,
+                withinForecast));
+        }
+
+        return daily;
+    }
+
     private static string Iso(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private async Task<WeatherOutlook?> FetchAsync(
+        Coordinate location,
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken)
+    {
+        var (payload, withinForecast) = await FetchRawAsync(location, startDate, endDate, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Summarize(payload, withinForecast);
+    }
+
+    private async Task<(DailyBlock? Payload, bool WithinForecast)> FetchRawAsync(
         Coordinate location,
         DateOnly startDate,
         DateOnly endDate,
@@ -103,7 +194,7 @@ internal sealed partial class OpenMeteoWeatherProvider : IWeatherProvider
             $"v1/{(withinForecast ? "forecast" : "archive")}" +
             $"?latitude={location.Latitude.ToString("F3", CultureInfo.InvariantCulture)}" +
             $"&longitude={location.Longitude.ToString("F3", CultureInfo.InvariantCulture)}" +
-            "&daily=temperature_2m_max,precipitation_sum,snowfall_sum" +
+            "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum" +
             (withinForecast ? ",precipitation_probability_max" : string.Empty) +
             $"&timezone=Asia%2FTehran&start_date={Iso(from)}&end_date={Iso(to)}";
 
@@ -116,7 +207,7 @@ internal sealed partial class OpenMeteoWeatherProvider : IWeatherProvider
             {
                 LogBadStatus(_logger, (int)response.StatusCode);
 
-                return null;
+                return (null, withinForecast);
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
@@ -124,22 +215,22 @@ internal sealed partial class OpenMeteoWeatherProvider : IWeatherProvider
                 .DeserializeAsync<OpenMeteoResponse>(stream, JsonOptions.Web, cancellationToken)
                 .ConfigureAwait(false);
 
-            return Summarize(payload?.Daily, withinForecast);
+            return (payload?.Daily, withinForecast);
         }
         catch (HttpRequestException ex)
         {
             LogUnreachable(_logger, ex);
-            return null;
+            return (null, withinForecast);
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
             LogTimedOut(_logger, ex);
-            return null;
+            return (null, withinForecast);
         }
         catch (JsonException ex)
         {
             LogUnreadable(_logger, ex);
-            return null;
+            return (null, withinForecast);
         }
     }
 
@@ -217,6 +308,7 @@ internal sealed partial class OpenMeteoWeatherProvider : IWeatherProvider
     /// </remarks>
     private sealed record DailyBlock(
         [property: JsonPropertyName("temperature_2m_max")] double?[]? Temperature2mMax,
+        [property: JsonPropertyName("temperature_2m_min")] double?[]? Temperature2mMin,
         [property: JsonPropertyName("precipitation_sum")] double?[]? PrecipitationSum,
         [property: JsonPropertyName("snowfall_sum")] double?[]? SnowfallSum,
         [property: JsonPropertyName("precipitation_probability_max")] double?[]? PrecipitationProbabilityMax);

@@ -1,6 +1,8 @@
 using LeaderTrip.Application.Abstractions;
 using LeaderTrip.Domain.Routing;
 using LeaderTrip.Infrastructure.External;
+using LeaderTrip.Infrastructure.External.Discovery;
+using LeaderTrip.Infrastructure.External.Elevation;
 using LeaderTrip.Infrastructure.External.Routing;
 using LeaderTrip.Infrastructure.External.Weather;
 using LeaderTrip.Infrastructure.Persistence;
@@ -41,9 +43,15 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<DiscoveryOptions>()
+            .Bind(configuration.GetSection(DiscoveryOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         AddDataAccess(services, configuration);
         AddRouting(services);
         AddWeather(services);
+        AddDiscovery(services);
 
         return services;
     }
@@ -132,6 +140,23 @@ public static class DependencyInjection
 
         services.RemoveAll<IWeatherProvider>();
         services.AddScoped<IWeatherProvider, OpenMeteoWeatherProvider>();
+
+        // ارتفاع از همان میزبان Open-Meteo می‌آید، پس کلاینت مشترک است.
+        services.RemoveAll<IElevationProvider>();
+        services.AddScoped<IElevationProvider, OpenMeteoElevationProvider>();
+    }
+
+    private static void AddDiscovery(IServiceCollection services)
+    {
+        services.AddHttpClient<OverpassPlaceDiscovery>((provider, client) =>
+        {
+            var options = GetOptions<DiscoveryOptions>(provider);
+            client.BaseAddress = options.BaseAddress;
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
+        services.RemoveAll<IPlaceDiscovery>();
+        services.AddScoped<IPlaceDiscovery>(sp => sp.GetRequiredService<OverpassPlaceDiscovery>());
     }
 
     private static TOptions GetOptions<TOptions>(IServiceProvider provider)

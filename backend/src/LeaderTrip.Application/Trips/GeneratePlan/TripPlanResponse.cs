@@ -34,7 +34,23 @@ public sealed record DayPlanDto(
     IReadOnlyList<PlanBlockDto> Blocks,
     double Kilometers,
     double DrivingMinutes,
-    decimal Cost);
+    decimal Cost,
+    DayWeatherDto? Weather);
+
+/// <param name="MaxTemperature">بیشینهٔ دما.</param>
+/// <param name="MinTemperature">کمینهٔ دما.</param>
+/// <param name="PrecipitationProbability">احتمال بارش، ۰ تا ۱۰۰.</param>
+/// <param name="HasSnow">آیا برف پیش‌بینی شده است.</param>
+/// <param name="IsForecast">
+/// پیش‌بینی واقعی یا «انتظار فصلی» از بایگانی سال گذشته. دومی پیش‌بینی نیست و
+/// در رابط کاربری هم همین‌طور برچسب می‌خورد.
+/// </param>
+public sealed record DayWeatherDto(
+    double MaxTemperature,
+    double MinTemperature,
+    double PrecipitationProbability,
+    bool HasSnow,
+    bool IsForecast);
 
 public sealed record PlanBlockDto(
     BlockKind Kind,

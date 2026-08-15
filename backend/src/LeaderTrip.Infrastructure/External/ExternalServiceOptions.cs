@@ -52,3 +52,25 @@ public sealed class WeatherOptions
     [Range(1, 168)]
     public int CacheHours { get; set; } = 6;
 }
+
+/// <summary>تنظیمات کشف مکان از OpenStreetMap.</summary>
+public sealed class DiscoveryOptions
+{
+    public const string SectionName = "Discovery";
+
+    /// <summary>
+    /// پیش‌فرض خاموش است.
+    /// </summary>
+    /// <remarks>
+    /// سرور عمومی Overpass سهمیهٔ سختگیرانه دارد و هر پرسش گران است. این ویژگی
+    /// «پرکردن حفرهٔ پوشش» است نه بخش اصلی محصول، پس روشن‌کردنش تصمیم آگاهانهٔ
+    /// کسی است که نمونه را اجرا می‌کند.
+    /// </remarks>
+    public bool Enabled { get; set; }
+
+    [Required]
+    public Uri BaseAddress { get; set; } = new("https://overpass-api.de/");
+
+    [Range(1, 120)]
+    public int TimeoutSeconds { get; set; } = 25;
+}

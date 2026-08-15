@@ -29,6 +29,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
     private readonly IVehicleRepository _vehicles;
     private readonly IPriceBookProvider _prices;
     private readonly IWeatherProvider _weather;
+    private readonly IElevationProvider _elevation;
     private readonly IRoadNetworkWarmup _roadNetwork;
     private readonly PoiScorer _scorer;
     private readonly ItinerarySelector _selector;
@@ -41,6 +42,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         IVehicleRepository vehicles,
         IPriceBookProvider prices,
         IWeatherProvider weather,
+        IElevationProvider elevation,
         IRoadNetworkWarmup roadNetwork,
         PoiScorer scorer,
         ItinerarySelector selector,
@@ -52,6 +54,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         _vehicles = vehicles;
         _prices = prices;
         _weather = weather;
+        _elevation = elevation;
         _roadNetwork = roadNetwork;
         _scorer = scorer;
         _selector = selector;
@@ -126,6 +129,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             PerPersonDailyBudget = Money.FromToman(
                 query.BudgetToman / Math.Max(1, group.Count * query.Days)),
             Weather = outlook,
+            LearnedTaste = query.LearnedTaste,
         };
 
         foreach (var poi in allPois)
@@ -237,6 +241,18 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
 
         var attributedDays = CostAttribution.Attribute(schedule.Days, cost, ticketPerPoi);
 
+        // ─── ارتفاع مسیر ───
+        // نقاط بازدید نمونهٔ مسیرند، نه خودِ مسیر. برای هشدار گردنه کافی است:
+        // جاذبه‌ای که بالای ۲۰۰۰ متر است، جاده‌اش هم از ارتفاع می‌گذرد.
+        var routePoints = visitedPois.Select(p => p.Location).Prepend(origin.Location).Distinct().ToList();
+        var elevations = await _elevation.GetAsync(routePoints, cancellationToken).ConfigureAwait(false);
+        double? peakElevation = elevations.Count > 0 ? elevations.Max() : null;
+
+        // ─── هوای روزبه‌روز، برای نمایش ───
+        var dailyWeather = await _weather
+            .GetDailyAsync(origin.Location, query.StartDate, query.Days, cancellationToken)
+            .ConfigureAwait(false);
+
         // ─── مشاور و چک‌لیست ───
         var tripClimates = attributedDays
             .Select(d => cityById.TryGetValue(d.BaseCityId, out var city) ? city.Climate : origin.Climate)
@@ -256,6 +272,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             Month = query.StartDate.Month,
             Climates = tripClimates,
             VehicleCount = query.VehicleCount,
+            PeakElevationMetres = peakElevation,
         });
 
         var packing = PackingList.Build(new PackingContext
@@ -269,7 +286,14 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             Nights = Math.Max(0, query.Days - 1),
         });
 
-        return Map(schedule with { Days = attributedDays }, cost, totalDistance, query.BudgetToman, advice, packing);
+        return Map(
+            schedule with { Days = attributedDays },
+            cost,
+            totalDistance,
+            query.BudgetToman,
+            advice,
+            packing,
+            dailyWeather);
     }
 
     private static TripPlanResponse Map(
@@ -278,8 +302,11 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         Distance totalDistance,
         decimal budget,
         IReadOnlyList<Advice> advice,
-        IReadOnlyList<PackingItem> packing)
+        IReadOnlyList<PackingItem> packing,
+        IReadOnlyList<DailyWeather> weather)
     {
+        var weatherByDate = weather.ToDictionary(w => w.Date);
+
         var days = schedule.Days.Select(day => new DayPlanDto(
             day.Index,
             day.Date,
@@ -295,7 +322,15 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
                 b.Note)).ToList(),
             day.Distance.Kilometers,
             day.DrivingTime.TotalMinutes,
-            day.Cost.Amount)).ToList();
+            day.Cost.Amount,
+            weatherByDate.TryGetValue(day.Date, out var forecast)
+                ? new DayWeatherDto(
+                    forecast.MaxTemperature,
+                    forecast.MinTemperature,
+                    forecast.PrecipitationProbability,
+                    forecast.HasSnow,
+                    forecast.IsForecast)
+                : null)).ToList();
 
         var costDto = new CostBreakdownDto(
             cost.Lines.Select(l => new CostLineDto(l.Key, l.Label, l.Amount.Amount, l.Formula)).ToList(),

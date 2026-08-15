@@ -1,7 +1,9 @@
 using LeaderTrip.Application.Abstractions;
+using LeaderTrip.Application.Reference.DiscoverPlaces;
 using LeaderTrip.Application.Reference.GetPois;
 using LeaderTrip.Application.Reference.GetReferenceData;
 using LeaderTrip.Application.Trips.GeneratePlan;
+using LeaderTrip.Application.Trips.OptimizeBudget;
 using LeaderTrip.Domain.Enums;
 
 namespace LeaderTrip.Api.Endpoints;
@@ -58,6 +60,35 @@ internal static class TripEndpoints
             .WithDescription(
                 "برنامهٔ ساعت‌به‌ساعت و تفکیک هزینه. با وجود اینکه چیزی را تغییر نمی‌دهد "
                 + "POST است، چون ورودی‌اش برای یک رشتهٔ پرس‌وجو بزرگ است.")
+            .RequireRateLimiting(RateLimitPolicies.Plan);
+
+        api.MapPost("/trips/optimize", async (
+                    GeneratePlanQuery request,
+                    IDispatcher dispatcher,
+                    CancellationToken cancellationToken) =>
+                (await dispatcher.QueryAsync(
+                    new OptimizeBudgetQuery { Trip = request },
+                    cancellationToken)).ToHttpResult())
+            .WithName("OptimizeBudget")
+            .WithSummary("راه‌های کاهش هزینه")
+            .WithDescription(
+                "هر راه با عدد صرفه‌جویی واقعی — برنامه با آن تغییر دوباره ساخته می‌شود، "
+                + "پس عدد تخمین نیست.")
+            // گران‌ترین اندپوینت است: چند بار اجرای کامل موتور.
+            .RequireRateLimiting(RateLimitPolicies.Plan);
+
+        api.MapGet("/pois/discover", async (
+                    IDispatcher dispatcher,
+                    double lat,
+                    double lng,
+                    double? radiusKm,
+                    CancellationToken cancellationToken) =>
+                (await dispatcher.QueryAsync(
+                    new DiscoverPlacesQuery { Lat = lat, Lng = lng, RadiusKm = radiusKm ?? 15 },
+                    cancellationToken)).ToHttpResult())
+            .WithName("DiscoverPlaces")
+            .WithSummary("کشف مکان از OpenStreetMap")
+            .WithDescription("دادهٔ خام، برای پرکردن حفرهٔ پوشش دیتاست.")
             .RequireRateLimiting(RateLimitPolicies.Plan);
     }
 }

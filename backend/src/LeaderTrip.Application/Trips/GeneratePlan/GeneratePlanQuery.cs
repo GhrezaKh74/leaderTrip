@@ -41,6 +41,17 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
     public IReadOnlyList<string> PinnedPoiIds { get; init; } = [];
 
     public IReadOnlyList<string> ExcludedPoiIds { get; init; } = [];
+
+    /// <summary>
+    /// سلیقهٔ آموخته‌شده از امتیازهای سفرهای گذشته، ‎−۱ تا ۱ برای هر دسته.
+    /// </summary>
+    /// <remarks>
+    /// کلاینت آن را از امتیازهای ذخیره‌شده روی همان دستگاه می‌سازد و می‌فرستد.
+    /// نگه‌داشتنش سمت سرور یعنی حساب کاربری، و حساب کاربری یعنی دادهٔ شخصی —
+    /// بهایی که این ویژگی به تنهایی توجیهش نمی‌کند.
+    /// </remarks>
+    public IReadOnlyDictionary<PoiCategory, double> LearnedTaste { get; init; } =
+        new Dictionary<PoiCategory, double>();
 }
 
 public sealed record TravelerDto(string Id, string Name, int Age, MobilityLevel Mobility, bool IsDriver);
