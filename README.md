@@ -134,7 +134,7 @@ React/MUI هنوز نه — تا آن‌ زمان **نسخهٔ TypeScript فعل
 
 ```bash
 cd backend
-dotnet test                      # ۹۴ تست
+dotnet test                      # ۹۸ تست
 dotnet run --project src/LeaderTrip.Api
 ```
 
@@ -158,19 +158,19 @@ npm run seed:export              # src/data/*.ts → دادهٔ اولیهٔ ب�
 
 ## رابط تازه (React + MUI)
 
-در `web/` — ویزارد چهارگامی با تم راست‌به‌چپ. هنوز جایگزین نسخهٔ فعلی نشده؛
-نمایش برنامه، هزینه و نقشه کار فاز بعدی است.
+در `web/` — ویزارد چهارگامی، برنامهٔ ساعت‌به‌ساعت، تفکیک هزینه با فرمول هر قلم،
+و نقشهٔ مسیر. هنوز جایگزین نسخهٔ فعلی نشده؛ هم‌ترازی کامل کار فاز بعدی است.
 
 ```bash
 cd web
 npm install
 npm run dev        # با پروکسی /api به بک‌اند روی ۵۱۹۹
-npm test           # ۲۰ تست واحد
-npm run test:e2e   # ۴ تست مرورگر واقعی روی بیلد تولید
+npm test           # ۲۵ تست واحد
+npm run test:e2e   # ۷ تست مرورگر واقعی روی بیلد تولید
 npm run build
 ```
 
-React 19 · TypeScript 7 · MUI 9 · TanStack Query · React Hook Form + Zod · Vite 8
+React 19 · TypeScript 7 · MUI 9 · TanStack Query · React Hook Form + Zod · Leaflet · Vite 8
 
 ---
 

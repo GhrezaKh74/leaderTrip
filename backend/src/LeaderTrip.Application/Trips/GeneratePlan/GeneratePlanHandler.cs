@@ -225,7 +225,18 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             Month = query.StartDate.Month,
         });
 
-        return Map(schedule, cost, totalDistance, query.BudgetToman);
+        // ─── نشاندن هزینه روی روزها ───
+        // بدون این گام، هر روز «۰ تومان» است — و صفر روی صفحه یعنی «رایگان»،
+        // نه «هنوز حساب نشده».
+        decimal ticketWeight = group.Travelers.Sum(t => AgeFactors.Ticket(t.Age));
+        var ticketPerPoi = visitedPois.ToDictionary(
+            p => p.Id,
+            p => Money.FromToman(p.Ticket.Amount * ticketWeight),
+            StringComparer.Ordinal);
+
+        var attributedDays = CostAttribution.Attribute(schedule.Days, cost, ticketPerPoi);
+
+        return Map(schedule with { Days = attributedDays }, cost, totalDistance, query.BudgetToman);
     }
 
     private static TripPlanResponse Map(

@@ -30,6 +30,9 @@ export default defineConfig({
     },
   },
   test: {
+    // تست‌های Playwright در `e2e/` با runner خودشان اجرا می‌شوند؛ اگر Vitest هم
+    // برشان دارد، با خطای گیج‌کنندهٔ «test() اینجا انتظار نمی‌رفت» شکست می‌خورند.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

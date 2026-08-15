@@ -101,7 +101,9 @@ export const poiListSchema = z.object({
 })
 
 export const planBlockSchema = z.object({
-  kind: z.enum(['Drive', 'Visit', 'Meal', 'Rest', 'Lodging', 'Fuel']),
+  // «Refuel» است نه «Fuel» — نام دقیق `BlockKind` در بک‌اند. حدس‌زدنش یعنی
+  // اولین برنامه‌ای که توقف سوخت دارد، در مرز شبکه رد شود.
+  kind: z.enum(['Drive', 'Visit', 'Meal', 'Rest', 'Lodging', 'Refuel']),
   startsAt: z.string(),
   durationMinutes: z.number(),
   title: z.string(),
