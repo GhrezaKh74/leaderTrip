@@ -1,0 +1,18 @@
+<Project>
+  <!-- تنظیمات مشترک همهٔ پروژه‌ها — یک جا، نه تکرار در هر csproj -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- هشدار = خطا. کدی که هشدار دارد وارد شاخهٔ اصلی نمی‌شود. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- اجبار به کامنت XML روی هر عضو عمومی نویز است، نه کیفیت -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+</Project>

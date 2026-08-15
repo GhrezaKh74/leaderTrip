@@ -1,0 +1,16 @@
+<Project>
+  <!-- تنظیمات ریشه را وارد کن، بعد چیزهای مخصوص تست را روی آن بگذار -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+
+    <!--
+      CA1707 زیرخط در نام عضو را ممنوع می‌کند، ولی «متد_سناریو_انتظار» قرارداد
+      استاندارد نام‌گذاری تست است و خروجی تست را واقعاً خواناتر می‌کند. این‌جا
+      قاعده اشتباه است، نه کد — پس فقط برای پروژه‌های تست خاموش می‌شود، نه همه‌جا.
+      CA1515 هم دربارهٔ عمومی‌نبودن تایپ‌هاست که برای کلاس‌های تست معنا ندارد.
+    -->
+    <NoWarn>$(NoWarn);CA1707;CA1515</NoWarn>
+  </PropertyGroup>
+</Project>
