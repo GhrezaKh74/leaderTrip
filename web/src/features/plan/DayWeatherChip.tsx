@@ -1,8 +1,6 @@
 import Chip from '@mui/material/Chip'
 import Tooltip from '@mui/material/Tooltip'
-import AcUnitIcon from '@mui/icons-material/AcUnitOutlined'
-import UmbrellaIcon from '@mui/icons-material/UmbrellaOutlined'
-import ThermostatIcon from '@mui/icons-material/ThermostatOutlined'
+import { RainIcon, SnowIcon, SunIcon } from '../../components/icons'
 
 import type { DayWeather } from '../../api/schemas'
 import { faNum } from '../../lib/format'
@@ -22,7 +20,7 @@ export function DayWeatherChip({ weather }: { weather: DayWeather }) {
     ` / ${faNum(Math.round(weather.minTemperature))}°` +
     (rain >= 20 ? ` · بارش ${faNum(rain)}٪` : '')
 
-  const icon = weather.hasSnow ? <AcUnitIcon /> : rain >= 20 ? <UmbrellaIcon /> : <ThermostatIcon />
+  const icon = weather.hasSnow ? <SnowIcon /> : rain >= 20 ? <RainIcon /> : <SunIcon />
 
   return (
     <Tooltip

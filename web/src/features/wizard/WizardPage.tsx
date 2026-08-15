@@ -13,7 +13,20 @@ import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import UploadIcon from '@mui/icons-material/UploadFileOutlined'
+import Skeleton from '@mui/material/Skeleton'
+import { alpha } from '@mui/material/styles'
+import type { StepIconProps } from '@mui/material/StepIcon'
+
+import {
+  CarIcon,
+  CheckIcon,
+  PeopleIcon,
+  PinPointIcon,
+  SlidersIcon,
+  UploadIcon,
+  VisitPinIcon,
+} from '../../components/icons'
+import { girihPattern, heroGradient } from '../../theme/tokens'
 
 import { useGeneratePlan, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
@@ -39,6 +52,40 @@ const STEPS: { label: string; fields: (keyof TripForm)[] }[] = [
   { label: 'سبک سفر', fields: ['style', 'lodging', 'interests', 'roundTrip'] },
   { label: 'جاذبه‌ها', fields: ['pinnedPoiIds', 'excludedPoiIds'] },
 ]
+
+const STEP_ICONS = [PinPointIcon, PeopleIcon, CarIcon, SlidersIcon, VisitPinIcon] as const
+
+/**
+ * نشان‌گر گام ویزارد — کاشی گرد با آیکون همان گام.
+ *
+ * <p>گامِ فعال و گام‌های انجام‌شده گرادیان برند را می‌گیرند؛ انجام‌شده تیک
+ * می‌خورد. عددِ خالی پیش‌فرض MUI هیچ‌چیزی دربارهٔ محتوای گام نمی‌گوید — آیکون
+ * می‌گوید «این گام دربارهٔ چیست»، پیش از آنکه کاربر واردش شود.</p>
+ */
+function BrandStepIcon({ active, completed, icon }: StepIconProps) {
+  const Icon = STEP_ICONS[Number(icon) - 1] ?? PinPointIcon
+  const lit = active === true || completed === true
+
+  return (
+    <Box
+      sx={{
+        width: 38,
+        height: 38,
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: lit ? heroGradient : 'transparent',
+        color: lit ? '#fff' : 'text.disabled',
+        border: lit ? 'none' : '1.5px solid',
+        borderColor: 'divider',
+        transition: 'all .2s ease',
+      }}
+    >
+      {completed === true ? <CheckIcon sx={{ fontSize: 19 }} /> : <Icon sx={{ fontSize: 21 }} />}
+    </Box>
+  )
+}
 
 const STORAGE_KEY = 'leadertrip.trip.v2'
 
@@ -96,10 +143,17 @@ export function WizardPage({
   })
 
   if (reference.isPending) {
+    // اسکلتِ همان چیزی که می‌آید، نه اسپینر: اسپینر می‌گوید «صبر کن»، اسکلت
+    // می‌گوید «این‌جا قرار است چه شکلی شود» — و پرش چیدمان هم ندارد.
     return (
-      <Stack spacing={2} sx={{ py: 8, alignItems: 'center' }}>
-        <CircularProgress />
-        <Typography color="text.secondary">در حال گرفتن شهرها و قیمت‌ها…</Typography>
+      <Stack spacing={3}>
+        <Skeleton variant="rounded" height={118} sx={{ borderRadius: 4 }} />
+        <Stack direction="row" spacing={2} sx={{ justifyContent: 'center' }}>
+          {STEP_ICONS.map((_, index) => (
+            <Skeleton key={index} variant="rounded" width={38} height={38} sx={{ borderRadius: '12px' }} />
+          ))}
+        </Stack>
+        <Skeleton variant="rounded" height={280} sx={{ borderRadius: 4 }} />
       </Stack>
     )
   }
@@ -124,10 +178,50 @@ export function WizardPage({
   return (
     <FormProvider {...form}>
       <Stack spacing={3} component="form" onSubmit={submit} noValidate>
-        <Stepper activeStep={activeStep} alternativeLabel>
+        {/* سرصفحهٔ قهرمان: گرادیان برند + نقش گرهٔ هشت‌پر — همان زبان لوگو. */}
+        <Box
+          sx={{
+            borderRadius: 4,
+            p: { xs: 2.5, sm: 3.5 },
+            color: '#fff',
+            background: heroGradient,
+            backgroundBlendMode: 'normal',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: girihPattern(0.13),
+              pointerEvents: 'none',
+            },
+          }}
+        >
+          <Typography variant="h2" component="h2" sx={{ position: 'relative' }}>
+            برنامهٔ سفرت را بساز
+          </Typography>
+          <Typography variant="body2" sx={{ position: 'relative', opacity: 0.9, mt: 0.5, maxWidth: 460 }}>
+            مسیر، هزینهٔ قابل‌ردیابی و برنامهٔ ساعت‌به‌ساعت — متناسب با خودرو،
+            همسفرها و بودجه‌ات.
+          </Typography>
+        </Box>
+
+        <Stepper
+          activeStep={activeStep}
+          alternativeLabel
+          sx={{
+            // نشان‌گرِ بزرگ‌تر یعنی خط اتصال باید پایین‌تر بنشیند، وگرنه از
+            // بالای کاشی‌ها رد می‌شود.
+            '& .MuiStepConnector-root': { top: 19 },
+            '& .MuiStepConnector-line': { borderColor: 'divider' },
+            '& .Mui-active .MuiStepConnector-line, & .Mui-completed .MuiStepConnector-line': {
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.5),
+            },
+          }}
+        >
           {STEPS.map((step) => (
             <Step key={step.label}>
-              <StepLabel>{step.label}</StepLabel>
+              <StepLabel slots={{ stepIcon: BrandStepIcon }}>{step.label}</StepLabel>
             </Step>
           ))}
         </Stepper>

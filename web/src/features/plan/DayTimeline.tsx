@@ -4,39 +4,33 @@ import Divider from '@mui/material/Divider'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import BedIcon from '@mui/icons-material/BedOutlined'
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCarOutlined'
-import LocalGasStationIcon from '@mui/icons-material/LocalGasStationOutlined'
-import PlaceIcon from '@mui/icons-material/PlaceOutlined'
-import RestaurantIcon from '@mui/icons-material/RestaurantOutlined'
-import SelfImprovementIcon from '@mui/icons-material/SelfImprovementOutlined'
 import ArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import ArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
-import RemoveIcon from '@mui/icons-material/DoDisturbOnOutlined'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
+import { alpha, useTheme } from '@mui/material/styles'
+
+import { BanIcon, CarIcon, FuelIcon, LodgingIcon, MealIcon, TeaIcon, VisitPinIcon } from '../../components/icons'
 
 import type { DayPlan, PlanBlock } from '../../api/schemas'
 import { duration, faNum, toFa, toman } from '../../lib/format'
 import { formatJalaliFromIso } from '../../lib/jalaliDisplay'
 import { DayWeatherChip } from './DayWeatherChip'
 
-const BLOCK_ICON: Record<PlanBlock['kind'], typeof PlaceIcon> = {
-  Drive: DirectionsCarIcon,
-  Visit: PlaceIcon,
-  Meal: RestaurantIcon,
-  Rest: SelfImprovementIcon,
-  Lodging: BedIcon,
-  Refuel: LocalGasStationIcon,
-}
-
-const BLOCK_COLOR: Record<PlanBlock['kind'], string> = {
-  Drive: 'text.secondary',
-  Visit: 'primary.main',
-  Meal: 'secondary.main',
-  Rest: 'text.secondary',
-  Lodging: 'text.secondary',
-  Refuel: 'text.secondary',
+/**
+ * آیکون و رنگ هر نوع بلوک — از پالت معنایی برند.
+ *
+ * <p>بازدید فیروزه است (خودِ سفر)، وعده زعفران، استراحت سبزِ چای (آیکونش هم
+ * استکان است)، اقامت لاجوردِ شب، سوخت اُخرا. رانندگی خاکستری می‌ماند: بین راه
+ * است، نه مقصد — چشم باید اول توقف‌ها را بگیرد.</p>
+ */
+const BLOCK_ICON: Record<PlanBlock['kind'], typeof CarIcon> = {
+  Drive: CarIcon,
+  Visit: VisitPinIcon,
+  Meal: MealIcon,
+  Rest: TeaIcon,
+  Lodging: LodgingIcon,
+  Refuel: FuelIcon,
 }
 
 export interface DayEditActions {
@@ -106,8 +100,19 @@ function BlockRow({
   day: number
   actions?: DayEditActions
 }) {
+  const theme = useTheme()
   const Icon = BLOCK_ICON[block.kind]
   const editable = actions !== undefined && block.kind === 'Visit' && block.poiId != null
+
+  const kindColor: Record<PlanBlock['kind'], string> = {
+    Drive: theme.palette.text.secondary,
+    Visit: theme.palette.primary.main,
+    Meal: theme.palette.secondary.main,
+    Rest: theme.palette.success.main,
+    Lodging: theme.palette.info.main,
+    Refuel: theme.palette.warning.main,
+  }
+  const color = kindColor[block.kind]
 
   return (
     <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start', py: 1 }}>
@@ -121,8 +126,22 @@ function BlockRow({
         {toFa(block.startsAt)}
       </Typography>
 
-      <Box sx={{ color: BLOCK_COLOR[block.kind], pt: 0.25 }}>
-        <Icon fontSize="small" />
+      {/* حباب رنگی: ستون آیکون‌ها خودش خط زمان می‌شود و نوع هر توقف بی‌خواندن
+          متن معلوم است. */}
+      <Box
+        sx={{
+          width: 34,
+          height: 34,
+          borderRadius: '11px',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color,
+          bgcolor: alpha(color, block.kind === 'Drive' ? 0.08 : 0.13),
+        }}
+      >
+        <Icon sx={{ fontSize: 19 }} />
       </Box>
 
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -187,7 +206,7 @@ function BlockRow({
                 onClick={() => actions.onRemove(block.poiId!)}
                 aria-label={`حذف ${block.title}`}
               >
-                <RemoveIcon fontSize="small" />
+                <BanIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
           </Stack>

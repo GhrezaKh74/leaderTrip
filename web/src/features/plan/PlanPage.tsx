@@ -9,10 +9,23 @@ import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
 import Typography from '@mui/material/Typography'
-import DownloadIcon from '@mui/icons-material/FileDownloadOutlined'
-import EditIcon from '@mui/icons-material/EditOutlined'
-import PrintIcon from '@mui/icons-material/PrintOutlined'
-import ShareIcon from '@mui/icons-material/ShareOutlined'
+import { alpha } from '@mui/material/styles'
+
+import {
+  CarIcon,
+  ChecklistIcon,
+  CostIcon,
+  DownloadIcon,
+  EditIcon,
+  FlagIcon,
+  MapIcon,
+  PrintIcon,
+  RouteIcon,
+  SavingsIcon,
+  ShareIcon,
+  ShieldIcon,
+  VisitPinIcon,
+} from '../../components/icons'
 
 import { usePois, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
@@ -30,7 +43,19 @@ import { downloadTrip, shareUrl } from './sharing'
 import { LivePanel } from '../live/LivePanel'
 import { learnedTaste, loadJournal, saveJournal, type Journal } from '../live/journal'
 
-const TABS = ['برنامه', 'هزینه', 'کاهش هزینه', 'هشدارها', 'چک‌لیست', 'نقشه', 'حین سفر'] as const
+/**
+ * تب‌ها با آیکون اختصاصی — آیکون پیش از خواندن برچسب می‌گوید داخل تب چیست، و
+ * در عرض موبایل که برچسب‌ها کوچک می‌شوند، همان آیکون لنگر بازشناسی است.
+ */
+const TABS = [
+  { label: 'برنامه', icon: RouteIcon },
+  { label: 'هزینه', icon: CostIcon },
+  { label: 'کاهش هزینه', icon: SavingsIcon },
+  { label: 'هشدارها', icon: ShieldIcon },
+  { label: 'چک‌لیست', icon: ChecklistIcon },
+  { label: 'نقشه', icon: MapIcon },
+  { label: 'حین سفر', icon: FlagIcon },
+] as const
 
 const ADVICE_TAB = 3
 const MAP_TAB = 5
@@ -125,11 +150,11 @@ export function PlanPage({
               برنامهٔ {faNum(plan.days.length)} روزه
             </Typography>
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mt: 1 }}>
-              <Chip size="small" label={`${faNum(plan.visitCount)} بازدید`} />
-              <Chip size="small" label={`${faNum(Math.round(plan.totalKilometers))} کیلومتر`} />
-              <Chip size="small" label={`${duration(plan.totalDrivingMinutes)} رانندگی`} />
-              <Chip size="small" color="secondary" label={tomanShort(plan.cost.total)} />
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mt: 1.25 }}>
+              <StatPill icon={VisitPinIcon} label={`${faNum(plan.visitCount)} بازدید`} />
+              <StatPill icon={RouteIcon} label={`${faNum(Math.round(plan.totalKilometers))} کیلومتر`} />
+              <StatPill icon={CarIcon} label={`${duration(plan.totalDrivingMinutes)} رانندگی`} />
+              <StatPill icon={CostIcon} label={tomanShort(plan.cost.total)} accent />
               {/*
                 مبدأ مسافت روی صفحه می‌آید، نه در لاگ: عددی که حدس است نباید
                 شبیه اندازه‌گیری به نظر برسد.
@@ -181,23 +206,38 @@ export function PlanPage({
           </Alert>
         ) : null}
 
-        <Tabs
-          value={tab}
-          onChange={(_, next: number) => setTab(next)}
-          variant="scrollable"
-          scrollButtons="auto"
+        {/* تب‌ها چسبان می‌مانند: در برنامهٔ چندروزهٔ بلند، کاربر وسط روز سوم
+            نباید برای عوض‌کردن تب تا بالای صفحه برگردد. */}
+        <Box
+          sx={{
+            position: 'sticky',
+            top: { xs: 56, sm: 64 },
+            zIndex: 2,
+            bgcolor: 'background.default',
+            mx: -1,
+            px: 1,
+          }}
         >
-          {TABS.map((label, index) => (
-            <Tab
-              key={label}
-              label={
-                index === ADVICE_TAB && plan.advice.length > 0
-                  ? `${label} (${faNum(plan.advice.length)})`
-                  : label
-              }
-            />
-          ))}
-        </Tabs>
+          <Tabs
+            value={tab}
+            onChange={(_, next: number) => setTab(next)}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            {TABS.map(({ label, icon: Icon }, index) => (
+              <Tab
+                key={label}
+                icon={<Icon sx={{ fontSize: 19 }} />}
+                iconPosition="start"
+                label={
+                  index === ADVICE_TAB && plan.advice.length > 0
+                    ? `${label} (${faNum(plan.advice.length)})`
+                    : label
+                }
+              />
+            ))}
+          </Tabs>
+        </Box>
 
         <Box hidden={tab !== 0}>
           <Stack spacing={2}>
@@ -269,6 +309,37 @@ export function PlanPage({
         onClose={() => setToast(null)}
         message={toast ?? ''}
       />
+    </Box>
+  )
+}
+
+/** پیل آمار با آیکون — خلاصهٔ سفر در یک نگاه. */
+function StatPill({
+  icon: Icon,
+  label,
+  accent = false,
+}: {
+  icon: typeof RouteIcon
+  label: string
+  accent?: boolean
+}) {
+  return (
+    <Box
+      sx={(theme) => ({
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.75,
+        px: 1.25,
+        py: 0.5,
+        borderRadius: 2,
+        fontSize: '0.8rem',
+        fontWeight: 600,
+        color: accent ? theme.palette.secondary.dark : theme.palette.text.primary,
+        bgcolor: alpha(accent ? theme.palette.secondary.main : theme.palette.primary.main, 0.1),
+      })}
+    >
+      <Icon sx={{ fontSize: 16, color: accent ? 'secondary.main' : 'primary.main' }} />
+      {label}
     </Box>
   )
 }

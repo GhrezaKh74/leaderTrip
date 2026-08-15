@@ -10,10 +10,11 @@ import Stack from '@mui/material/Stack'
 import Toolbar from '@mui/material/Toolbar'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import CloudOffIcon from '@mui/icons-material/CloudOffOutlined'
-import DarkModeIcon from '@mui/icons-material/DarkModeOutlined'
-import ExploreIcon from '@mui/icons-material/ExploreOutlined'
-import LightModeIcon from '@mui/icons-material/LightModeOutlined'
+import Box from '@mui/material/Box'
+
+import { LogoIcon, MoonIcon, OfflineIcon, SunIcon } from './components/icons'
+import { IconGallery } from './components/IconGallery'
+import { heroGradient } from './theme/tokens'
 
 import { RtlProvider } from './theme/RtlProvider'
 import { useThemeControl } from './theme/useThemeControl'
@@ -50,6 +51,11 @@ export function App() {
   })
 
   const rebuild = useGeneratePlan()
+
+  // گالری کنترل کیفیت آیکون‌ها — «/?icons». سطح کاربری نیست؛ جایی است که هر
+  // آیکون تازه باید یک‌بار با چشم دیده شود.
+  const showIconGallery =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('icons')
 
   useEffect(() => {
     if (shared !== null) {
@@ -91,15 +97,40 @@ export function App() {
         className="no-print"
       >
         <Toolbar>
-          <ExploreIcon color="primary" sx={{ ml: 1 }} />
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            لیدرتریپ
-          </Typography>
+          {/* لوگو در کاشی گرادیان — همان گرهٔ هشت‌پرِ فاوآیکون، همان گرادیان. */}
+          <Box
+            sx={{
+              width: 36,
+              height: 36,
+              borderRadius: '10px',
+              background: heroGradient,
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              ml: 1.25,
+            }}
+          >
+            <LogoIcon sx={{ fontSize: 24 }} />
+          </Box>
+
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" component="h1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+              لیدرتریپ
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: { xs: 'none', sm: 'block' }, lineHeight: 1.2 }}
+            >
+              دستیار لیدر سفر
+            </Typography>
+          </Box>
 
           {online ? null : (
             <Chip
               size="small"
-              icon={<CloudOffIcon />}
+              icon={<OfflineIcon />}
               label="آفلاین"
               sx={{ ml: 1 }}
               title="برنامهٔ ذخیره‌شده در دسترس است؛ ساخت برنامهٔ تازه به اینترنت نیاز دارد."
@@ -108,14 +139,16 @@ export function App() {
 
           <Tooltip title={resolved === 'dark' ? 'حالت روشن' : 'حالت تاریک'}>
             <IconButton onClick={() => setMode(resolved === 'dark' ? 'light' : 'dark')}>
-              {resolved === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+              {resolved === 'dark' ? <SunIcon /> : <MoonIcon />}
             </IconButton>
           </Tooltip>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="md" sx={{ py: 4 }}>
-        {generated === null ? (
+        {showIconGallery ? (
+          <IconGallery />
+        ) : generated === null ? (
           <WizardPage initial={shared} onPlanReady={accept} />
         ) : (
           <PlanPage

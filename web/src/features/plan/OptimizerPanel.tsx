@@ -4,7 +4,8 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import TrendingDownIcon from '@mui/icons-material/TrendingDownOutlined'
+
+import { SavingsIcon } from '../../components/icons'
 
 import { useBudgetLevers } from '../../api/queries'
 import type { BudgetLever } from '../../api/schemas'
@@ -47,7 +48,7 @@ export function OptimizerPanel({
           variant="contained"
           onClick={() => levers.mutate(input)}
           disabled={levers.isPending}
-          startIcon={levers.isPending ? <CircularProgress size={18} color="inherit" /> : <TrendingDownIcon />}
+          startIcon={levers.isPending ? <CircularProgress size={18} color="inherit" /> : <SavingsIcon />}
         >
           {levers.isPending ? 'در حال محاسبه…' : 'محاسبهٔ راه‌های کاهش'}
         </Button>

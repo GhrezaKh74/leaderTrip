@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import { useTheme } from '@mui/material/styles'
 
 import { RtlProvider } from './RtlProvider'
+import { surfaces } from './tokens'
 
 function ShowDirection() {
   return <span data-testid="dir">{useTheme().direction}</span>
@@ -54,6 +55,8 @@ describe('تم راست‌به‌چپ', () => {
       </RtlProvider>,
     )
 
-    expect(screen.getByTestId('bg')).toHaveTextContent('#0b1220')
+    // از توکن می‌خواند، نه literal تکراری: تست باید بگوید «پس‌زمینه از توکن
+    // تاریک می‌آید»، نه اینکه مقدار توکن را جای دومی کپی کند.
+    expect(screen.getByTestId('bg')).toHaveTextContent(surfaces.dark.background)
   })
 })

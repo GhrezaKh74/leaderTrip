@@ -11,10 +11,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import BlockIcon from '@mui/icons-material/DoDisturbOnOutlined'
-import PushPinIcon from '@mui/icons-material/PushPinOutlined'
-import SearchIcon from '@mui/icons-material/SearchOutlined'
-import TravelExploreIcon from '@mui/icons-material/TravelExploreOutlined'
+import { BanIcon, CompassIcon, PinIcon, SearchIcon } from '../../../components/icons'
 
 import { useDiscoverPlaces, usePois } from '../../../api/queries'
 import type { City, Poi } from '../../../api/schemas'
@@ -167,7 +164,7 @@ function PoiRow({
             onClick={onPin}
             aria-label={`سنجاق ${poi.name}`}
           >
-            <PushPinIcon fontSize="small" />
+            <PinIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>
 
@@ -178,7 +175,7 @@ function PoiRow({
             onClick={onExclude}
             aria-label={`حذف ${poi.name}`}
           >
-            <BlockIcon fontSize="small" />
+            <BanIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Tooltip>
       </Stack>
@@ -200,7 +197,7 @@ function DiscoverySection({ origin }: { origin: City }) {
     <Stack spacing={1}>
       <Button
         variant="outlined"
-        startIcon={discover.isPending ? <CircularProgress size={16} /> : <TravelExploreIcon />}
+        startIcon={discover.isPending ? <CircularProgress size={16} /> : <CompassIcon />}
         onClick={() => discover.mutate({ lat: origin.lat, lng: origin.lng, radiusKm: 20 })}
         disabled={discover.isPending}
         sx={{ alignSelf: 'flex-start' }}
