@@ -64,6 +64,18 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
         MuiCssBaseline: {
           styleOverrides: {
             body: { WebkitFontSmoothing: 'antialiased' },
+
+            // چاپ باید همان چیزی را بدهد که انتظار می‌رود، نه اسکرین‌شاتی از
+            // رابط کاربری با منو و دکمه. `PrintSheet` فقط هنگام چاپ دیده
+            // می‌شود و بقیهٔ صفحه پنهان می‌شود.
+            '@media print': {
+              '.no-print, header, nav, .MuiTabs-root, .MuiAlert-root': { display: 'none !important' },
+              '.print-only': { display: 'block !important' },
+              '#root > *:not(.print-root)': { display: 'none' },
+              body: { background: '#fff', color: '#000' },
+              '.MuiPaper-root': { border: 'none', boxShadow: 'none' },
+              a: { textDecoration: 'none', color: '#000' },
+            },
           },
         },
         MuiButton: {

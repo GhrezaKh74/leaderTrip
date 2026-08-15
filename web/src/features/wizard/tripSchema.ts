@@ -51,6 +51,22 @@ export const tripFormSchema = z
     subsidizedFuelShare: z.number().min(0).max(1),
     pinnedPoiIds: z.array(z.string()),
     excludedPoiIds: z.array(z.string()),
+
+    /**
+     * جاذبه‌هایی که کاربر دستی به روز مشخصی برده است.
+     *
+     * ویرایش دستی این‌جا ثبت می‌شود، نه در خروجی: برنامه با همین قید از نو
+     * ساخته می‌شود تا مسافت و ساعت و هزینه با آنچه روی صفحه است بخواند.
+     */
+    dayAssignments: z.record(z.string(), z.number().int().min(1)),
+
+    /**
+     * سلیقهٔ آموخته‌شده از امتیازهای سفرهای گذشته، ‎−۱ تا ۱.
+     *
+     * کلید رشته است نه دستهٔ محدود: فقط دسته‌هایی که کاربر امتیاز داده در آن
+     * هستند، و اجبارِ داشتنِ هر ۱۶ دسته یعنی پرکردن جدول با صفرهای بی‌معنا.
+     */
+    learnedTaste: z.record(z.string(), z.number().min(-1).max(1)),
   })
   .refine((v) => v.dayEndHour > v.dayStartHour + 4, {
     message: 'روز باید دست‌کم پنج ساعت باشد.',
@@ -90,6 +106,8 @@ export const DEFAULT_TRIP: TripForm = {
   subsidizedFuelShare: 0.6,
   pinnedPoiIds: [],
   excludedPoiIds: [],
+  dayAssignments: {},
+  learnedTaste: {},
 }
 
 function isoToday(): string {

@@ -13,6 +13,7 @@ import Stepper from '@mui/material/Stepper'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import UploadIcon from '@mui/icons-material/UploadFileOutlined'
 
 import { useGeneratePlan, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
@@ -21,6 +22,8 @@ import { OriginStep } from './steps/OriginStep'
 import { TravelersStep } from './steps/TravelersStep'
 import { VehicleStep } from './steps/VehicleStep'
 import { StyleStep } from './steps/StyleStep'
+import { PoiStep } from './steps/PoiStep'
+import { readTripFile } from '../plan/sharing'
 
 /**
  * فیلدهای هر گام — برای اعتبارسنجی جزئی هنگام «بعدی».
@@ -34,6 +37,7 @@ const STEPS: { label: string; fields: (keyof TripForm)[] }[] = [
   { label: 'همسفران', fields: ['travelers'] },
   { label: 'خودرو', fields: ['vehicleId', 'vehicleCount', 'maxDrivingHoursPerDay', 'dayStartHour', 'dayEndHour'] },
   { label: 'سبک سفر', fields: ['style', 'lodging', 'interests', 'roundTrip'] },
+  { label: 'جاذبه‌ها', fields: ['pinnedPoiIds', 'excludedPoiIds'] },
 ]
 
 const STORAGE_KEY = 'leadertrip.trip.v2'
@@ -52,13 +56,21 @@ function readSavedTrip(): TripForm {
   return parsed.success ? parsed.data : DEFAULT_TRIP
 }
 
-export function WizardPage({ onPlanReady }: { onPlanReady: (plan: TripPlan, input: TripForm) => void }) {
+export function WizardPage({
+  initial,
+  onPlanReady,
+}: {
+  /** ورودی آمده از لینک اشتراکی، اگر بود. */
+  initial?: TripForm | null
+  onPlanReady: (plan: TripPlan, input: TripForm) => void
+}) {
   const [activeStep, setActiveStep] = useState(0)
+  const [importError, setImportError] = useState<string | null>(null)
   const reference = useReferenceData()
 
   const form = useForm<TripForm>({
     resolver: zodResolver(tripFormSchema),
-    defaultValues: readSavedTrip(),
+    defaultValues: initial ?? readSavedTrip(),
     mode: 'onBlur',
   })
 
@@ -133,9 +145,13 @@ export function WizardPage({ onPlanReady }: { onPlanReady: (plan: TripPlan, inpu
           <Box hidden={activeStep !== 3}>
             <StyleStep />
           </Box>
+          <Box hidden={activeStep !== 4}>
+            <PoiStep cities={cities} />
+          </Box>
         </Paper>
 
         {generate.isError ? <Alert severity="error">{generate.error.message}</Alert> : null}
+        {importError ? <Alert severity="warning">{importError}</Alert> : null}
 
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
           {/*
@@ -188,9 +204,43 @@ export function WizardPage({ onPlanReady }: { onPlanReady: (plan: TripPlan, inpu
           )}
         </Stack>
 
-        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-          قیمت‌های پایه: به‌روزرسانی {prices.updatedAt} — همهٔ ارقام تخمینی‌اند.
-        </Typography>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}
+        >
+          <Button component="label" size="small" startIcon={<UploadIcon />}>
+            بارگذاری سفر از فایل
+            <input
+              type="file"
+              accept="application/json"
+              hidden
+              onChange={async (event) => {
+                const file = event.target.files?.[0]
+
+                if (file === undefined) return
+
+                const imported = await readTripFile(file)
+
+                // فایل خراب یا از نسخهٔ ناسازگار، بی‌صدا رد نمی‌شود: کاربری که
+                // فایل داده و هیچ اتفاقی نیفتاده، فکر می‌کند اپ خراب است.
+                if (imported === null) {
+                  setImportError('فایل خوانده نشد یا با نسخهٔ فعلی سازگار نیست.')
+                } else {
+                  setImportError(null)
+                  form.reset(imported)
+                  setActiveStep(0)
+                }
+
+                event.target.value = ''
+              }}
+            />
+          </Button>
+
+          <Typography variant="caption" color="text.secondary">
+            قیمت‌های پایه: به‌روزرسانی {prices.updatedAt} — همهٔ ارقام تخمینی‌اند.
+          </Typography>
+        </Stack>
       </Stack>
     </FormProvider>
   )

@@ -2,6 +2,8 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { api, ApiError } from './client'
 import {
+  budgetLeversSchema,
+  discoveredPlacesSchema,
   poiListSchema,
   referenceDataSchema,
   tripPlanSchema,
@@ -32,6 +34,30 @@ export function usePois(cityId?: string) {
     queryFn: ({ signal }) =>
       api.get(cityId ? `/pois?cityId=${encodeURIComponent(cityId)}` : '/pois', poiListSchema, signal),
     staleTime: 10 * 60 * 1000,
+  })
+}
+
+/**
+ * اهرم‌های کاهش هزینه.
+ *
+ * جهش است نه کوئری: گران‌ترین اندپوینت است (چند بار اجرای کامل موتور) و
+ * اجرای خودکارش با هر تغییر فرم، هم سرور را می‌سوزاند هم بی‌فایده است —
+ * کاربر وقتی می‌خواهدش که برنامه‌ای ساخته و از هزینه‌اش ناراضی است.
+ */
+export function useBudgetLevers() {
+  return useMutation({
+    mutationFn: (request: TripRequest) => api.post('/trips/optimize', request, budgetLeversSchema),
+  })
+}
+
+/** کشف مکان از OpenStreetMap — دستی، چون سهمیهٔ سرور عمومی محدود است. */
+export function useDiscoverPlaces() {
+  return useMutation({
+    mutationFn: ({ lat, lng, radiusKm }: { lat: number; lng: number; radiusKm: number }) =>
+      api.get(
+        `/pois/discover?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
+        discoveredPlacesSchema,
+      ),
   })
 }
 

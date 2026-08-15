@@ -31,7 +31,7 @@ public sealed class DayScheduler
     /// <returns>روزها و جاذبه‌هایی که جا نشدند.</returns>
     public ScheduleResult Schedule(IReadOnlyList<PointOfInterest> route, ScheduleRequest request)
     {
-        var pending = new Queue<PointOfInterest>(route);
+        var pending = new LinkedList<PointOfInterest>(route);
         var days = new List<DayPlan>(request.Days);
         var current = request.Origin;
         var currentCity = request.OriginCity;
@@ -65,7 +65,18 @@ public sealed class DayScheduler
 
             while (pending.Count > 0)
             {
-                var next = pending.Peek();
+                // جابه‌جایی دستی به‌صورت قید ورودی اعمال می‌شود، نه دستکاری خروجی:
+                // اگر کاربر گفته این جاذبه روز سوم باشد، در روزهای دیگر رد می‌شود
+                // و برنامه از نو و سازگار ساخته می‌شود. دستکاری مستقیم خروجی یعنی
+                // مسافت و ساعت و هزینه با آنچه نمایش داده می‌شود نخواند.
+                var node = FirstAllowed(pending, request, dayIndex + 1);
+
+                if (node is null)
+                {
+                    break;
+                }
+
+                var next = node.Value;
                 var terrain = TravelPlanner.InferTerrain(
                     currentCity.Climate, request.ClimateOf(next), current.StraightLineTo(next.Location));
 
@@ -92,6 +103,8 @@ public sealed class DayScheduler
                 {
                     break;
                 }
+
+                pending.Remove(node);
 
                 if (needsRest)
                 {
@@ -153,7 +166,6 @@ public sealed class DayScheduler
                 clock += visit;
                 continuous = TimeSpan.Zero;
                 visited.Add(next);
-                pending.Dequeue();
                 current = next.Location;
                 currentCity = request.CityOf(next);
             }
@@ -244,6 +256,32 @@ public sealed class DayScheduler
     }
 
     private static TimeSpan Max(TimeSpan left, TimeSpan right) => left > right ? left : right;
+
+    /// <summary>
+    /// نخستین جاذبه‌ای که اجازهٔ نشستن در این روز را دارد.
+    /// </summary>
+    /// <remarks>
+    /// ترتیب کلی مسیر حفظ می‌شود؛ فقط جاذبه‌هایی که کاربر به روز دیگری سنجاق
+    /// کرده رد می‌شوند. یعنی جابه‌جایی دستی یک قید است، نه بازچینش خروجی — و
+    /// همهٔ عددها (مسافت، ساعت، هزینه) با همان چیزی می‌خوانند که دیده می‌شود.
+    /// </remarks>
+    private static LinkedListNode<PointOfInterest>? FirstAllowed(
+        LinkedList<PointOfInterest> pending,
+        ScheduleRequest request,
+        int dayNumber)
+    {
+        for (var node = pending.First; node is not null; node = node.Next)
+        {
+            if (request.DayAssignments.TryGetValue(node.Value.Id, out int assigned) && assigned != dayNumber)
+            {
+                continue;
+            }
+
+            return node;
+        }
+
+        return null;
+    }
 }
 
 /// <summary>خروجی زمان‌بندی.</summary>
@@ -280,6 +318,10 @@ public sealed record ScheduleRequest
     public required IReadOnlyDictionary<string, City> Cities { get; init; }
 
     public required IReadOnlyList<City> StayCities { get; init; }
+
+    /// <summary>جاذبه‌هایی که کاربر دستی به روز مشخصی سنجاق کرده (شمارهٔ روز از ۱).</summary>
+    public IReadOnlyDictionary<string, int> DayAssignments { get; init; } =
+        new Dictionary<string, int>(StringComparer.Ordinal);
 
     public Coordinate Origin => OriginCity.Location;
 

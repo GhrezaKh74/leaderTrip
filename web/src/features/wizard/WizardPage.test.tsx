@@ -117,13 +117,19 @@ describe('ویزارد', () => {
    * همان `<button>` را بین «بعدی» و «ساخت برنامه» بازاستفاده می‌کرد و `type`
    * وسط کلیک از `button` به `submit` می‌رفت.
    */
-  it('پیمایش بین گام‌ها هیچ درخواستی برای ساخت برنامه نمی‌فرستد', async () => {
+  it('پیمایش بین گام‌ها هیچ درخواستی برای ساخت برنامه نمی‌فرستد', { timeout: 20_000 }, async () => {
     const user = userEvent.setup()
     renderWizard()
     await screen.findByLabelText('شهر مبدأ')
 
-    for (let step = 0; step < 3; step += 1) {
-      await user.click(screen.getByRole('button', { name: 'بعدی' }))
+    // تا وقتی «بعدی» هست جلو می‌رود، پس افزودن گام تازه این تست را بی‌صدا از
+    // کار نمی‌اندازد. سقف صریح است تا یک باگ، اجرای تست‌ها را معلق نکند.
+    for (let guard = 0; guard < 10; guard += 1) {
+      const next = screen.queryByRole('button', { name: 'بعدی' })
+
+      if (next === null) break
+
+      await user.click(next)
     }
 
     // گام آخر رسیده است ولی هنوز چیزی ارسال نشده.

@@ -113,6 +113,15 @@ export const planBlockSchema = z.object({
   note: z.string().nullable().optional(),
 })
 
+export const dayWeatherSchema = z.object({
+  maxTemperature: z.number(),
+  minTemperature: z.number(),
+  precipitationProbability: z.number(),
+  hasSnow: z.boolean(),
+  // «انتظار فصلی» پیش‌بینی نیست و نباید مثل پیش‌بینی نمایش داده شود.
+  isForecast: z.boolean(),
+})
+
 export const dayPlanSchema = z.object({
   index: z.number().int(),
   date: z.string(),
@@ -121,6 +130,7 @@ export const dayPlanSchema = z.object({
   kilometers: z.number(),
   drivingMinutes: z.number(),
   cost: z.number(),
+  weather: dayWeatherSchema.nullable().optional(),
 })
 
 export const costLineSchema = z.object({
@@ -184,3 +194,43 @@ export type PlanBlock = z.infer<typeof planBlockSchema>
 export type CostBreakdown = z.infer<typeof costBreakdownSchema>
 export type Advice = z.infer<typeof adviceSchema>
 export type PackingItem = z.infer<typeof packingItemSchema>
+export type DayWeather = z.infer<typeof dayWeatherSchema>
+
+export const budgetLeverSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  detail: z.string(),
+  saving: z.number(),
+  patch: z.object({
+    style: travelStyleSchema.nullable().optional(),
+    lodging: lodgingKindSchema.nullable().optional(),
+    days: z.number().nullable().optional(),
+    radiusKm: z.number().nullable().optional(),
+    vehicleCount: z.number().nullable().optional(),
+    subsidizedFuelShare: z.number().nullable().optional(),
+    excludedPoiIds: z.array(z.string()).nullable().optional(),
+  }),
+})
+
+export const budgetLeversSchema = z.object({
+  baseline: z.number(),
+  levers: z.array(budgetLeverSchema),
+})
+
+export const discoveredPlaceSchema = z.object({
+  osmId: z.string(),
+  name: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  category: poiCategorySchema,
+  rawTag: z.string(),
+})
+
+export const discoveredPlacesSchema = z.object({
+  items: z.array(discoveredPlaceSchema),
+  note: z.string(),
+})
+
+export type BudgetLever = z.infer<typeof budgetLeverSchema>
+export type BudgetLevers = z.infer<typeof budgetLeversSchema>
+export type DiscoveredPlace = z.infer<typeof discoveredPlaceSchema>

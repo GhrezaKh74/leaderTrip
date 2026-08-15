@@ -199,6 +199,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             VisitStretch = group.VisitDurationFactor,
             Cities = cityById,
             StayCities = cities.Where(c => c.CanStayOvernight).ToList(),
+            DayAssignments = query.DayAssignments,
         });
 
         // ─── هزینه ───

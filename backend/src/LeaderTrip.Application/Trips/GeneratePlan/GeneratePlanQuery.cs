@@ -52,6 +52,17 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
     /// </remarks>
     public IReadOnlyDictionary<PoiCategory, double> LearnedTaste { get; init; } =
         new Dictionary<PoiCategory, double>();
+
+    /// <summary>
+    /// جاذبه‌هایی که کاربر دستی به روز مشخصی برده است (شمارهٔ روز از ۱).
+    /// </summary>
+    /// <remarks>
+    /// ویرایش دستی این‌جا ثبت می‌شود، نه در خروجی. اگر خروجی مستقیم دستکاری
+    /// می‌شد، مسافت و ساعت و هزینه با آنچه روی صفحه است نمی‌خواند — و کل ادعای
+    /// «قابل ردیابی تا آخرین ریال» از بین می‌رفت.
+    /// </remarks>
+    public IReadOnlyDictionary<string, int> DayAssignments { get; init; } =
+        new Dictionary<string, int>(StringComparer.Ordinal);
 }
 
 public sealed record TravelerDto(string Id, string Name, int Age, MobilityLevel Mobility, bool IsDriver);

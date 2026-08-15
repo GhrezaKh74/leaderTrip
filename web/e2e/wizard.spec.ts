@@ -87,6 +87,23 @@ async function stubApi(page: Page): Promise<{ planCalls: () => number }> {
 
   await page.route('**/api/pois*', (route) => route.fulfill({ json: POIS }))
 
+  await page.route('**/api/trips/optimize', (route) =>
+    route.fulfill({
+      json: {
+        baseline: 600_000,
+        levers: [
+          {
+            id: 'camp',
+            title: 'اقامت: کمپینگ به‌جای اقامتگاه',
+            detail: 'هزینهٔ اقامت تقریباً حذف می‌شود.',
+            saving: 120_000,
+            patch: { lodging: 'Camp' },
+          },
+        ],
+      },
+    }),
+  )
+
   await page.route('**/api/trips/plan', (route) => {
     planCalls += 1
 
@@ -122,12 +139,15 @@ test('پیمایش تا گام آخر هیچ برنامه‌ای نمی‌ساز
   await page.goto('/')
   await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
 
-  for (let step = 0; step < 3; step += 1) {
+  // تا وقتی «بعدی» هست کلیک می‌شود: افزودن گام تازه نباید تست را بی‌صدا
+  // از کار بیندازد.
+  while ((await page.getByRole('button', { name: 'بعدی' }).count()) > 0) {
     await page.getByRole('button', { name: 'بعدی' }).click()
   }
 
   await expect(page.getByRole('button', { name: 'ساخت برنامه' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'تاریخی' })).toBeVisible()
+  // گام آخر «جاذبه‌ها» است — رسیدن به آن یعنی هیچ گامی دور زده نشده.
+  await expect(page.getByLabel('جست‌وجوی جاذبه')).toBeVisible()
   expect(planCalls()).toBe(0)
 })
 
@@ -139,51 +159,62 @@ test('ویرایش عدد و ساخت برنامه تا انتها کار می�
   await page.getByLabel('بودجهٔ کل', { exact: true }).fill('75000000')
   await expect(page.getByText('۷۵.۰ میلیون تومان')).toBeVisible()
 
-  for (let step = 0; step < 3; step += 1) {
+  // تا وقتی «بعدی» هست کلیک می‌شود: افزودن گام تازه نباید تست را بی‌صدا
+  // از کار بیندازد.
+  while ((await page.getByRole('button', { name: 'بعدی' }).count()) > 0) {
     await page.getByRole('button', { name: 'بعدی' }).click()
   }
 
-  await page.getByRole('button', { name: 'تاریخی' }).click()
   await page.getByRole('button', { name: 'ساخت برنامه' }).click()
 
-  await expect(page.getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
+  await expect(shown(page).getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
   expect(planCalls()).toBe(1)
 })
+
+/**
+ * بخش تعاملی صفحه.
+ *
+ * نسخهٔ چاپی همان متن‌ها را در DOM دارد (پنهان، تا هنگام چاپ ظاهر شود)، پس
+ * ادعاها باید به بخش دیده‌شده محدود شوند وگرنه به عنصر پنهان می‌رسند.
+ */
+const shown = (page: Page) => page.locator('.no-print')
 
 /** رفتن تا برنامهٔ ساخته‌شده — پایهٔ تست‌های نمایش برنامه. */
 async function generatePlan(page: Page): Promise<void> {
   await page.goto('/')
   await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
 
-  for (let step = 0; step < 3; step += 1) {
+  // تا وقتی «بعدی» هست کلیک می‌شود: افزودن گام تازه نباید تست را بی‌صدا
+  // از کار بیندازد.
+  while ((await page.getByRole('button', { name: 'بعدی' }).count()) > 0) {
     await page.getByRole('button', { name: 'بعدی' }).click()
   }
 
   await page.getByRole('button', { name: 'ساخت برنامه' }).click()
-  await expect(page.getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
+  await expect(shown(page).getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
 }
 
 test('برنامهٔ روزانه با ساعت و هزینهٔ هر بلوک نشان داده می‌شود', async ({ page }) => {
   await stubApi(page)
   await generatePlan(page)
 
-  await expect(page.getByText('کاخ گلستان', { exact: true })).toBeVisible()
-  await expect(page.getByText('۰۹:۵۶')).toBeVisible()
+  await expect(shown(page).getByText('کاخ گلستان', { exact: true }).first()).toBeVisible()
+  await expect(shown(page).getByText('۰۹:۵۶').first()).toBeVisible()
 
   // هزینهٔ روز باید واقعی باشد. «۰ تومان» روی صفحه یعنی «رایگان» — دقیقاً همان
   // چیزی که پیش از پخش هزینه روی روزها نمایش داده می‌شد.
-  await expect(page.getByText(/۴۸۶٬۶۰۸ تومان/)).toBeVisible()
+  await expect(shown(page).getByText(/۴۸۶٬۶۰۸ تومان/).first()).toBeVisible()
 })
 
 test('تفکیک هزینه فرمول هر قلم را با ارقام فارسی نشان می‌دهد', async ({ page }) => {
   await stubApi(page)
   await generatePlan(page)
 
-  await page.getByRole('tab', { name: 'هزینه' }).click()
+  await page.getByRole('tab', { name: 'هزینه', exact: true }).click()
 
-  await expect(page.getByText('سوخت', { exact: true })).toBeVisible()
+  await expect(shown(page).getByText('سوخت', { exact: true }).first()).toBeVisible()
   // فرمول از بک‌اند با ارقام لاتین می‌آید؛ شکل‌دادنش کار لایهٔ نمایش است.
-  await expect(page.getByText(/۲۱۰ کیلومتر × ۷.۲ لیتر × ۲٬۱۰۰ تومان/)).toBeVisible()
+  await expect(shown(page).getByText(/۲۱۰ کیلومتر × ۷.۲ لیتر × ۲٬۱۰۰ تومان/).first()).toBeVisible()
   await expect(page.getByText(/باقی می‌ماند/)).toBeVisible()
 })
 
@@ -222,13 +253,13 @@ test('برنامهٔ ساخته‌شده پس از قطع اینترنت هم ب
 
   // ویزارد نباید برگردد: کسی که در جاده اپ را باز می‌کند، برنامهٔ دیروزش را
   // می‌خواهد ببیند، نه فرم خالی.
-  await expect(page.getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
-  await expect(page.getByText('کاخ گلستان', { exact: true })).toBeVisible()
+  await expect(shown(page).getByRole('heading', { name: /برنامهٔ/ })).toBeVisible()
+  await expect(shown(page).getByText('کاخ گلستان', { exact: true }).first()).toBeVisible()
   await expect(page.getByText(/آفلاین هستید/)).toBeVisible()
 
   // تفکیک هزینه هم باید کامل باشد، نه فقط عنوان.
-  await page.getByRole('tab', { name: 'هزینه' }).click()
-  await expect(page.getByText('سوخت', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'هزینه', exact: true }).click()
+  await expect(shown(page).getByText('سوخت', { exact: true }).first()).toBeVisible()
 
   await context.setOffline(false)
 })
@@ -238,12 +269,41 @@ test('هشدارها و چک‌لیست با دلیل هرکدام نشان دا
   await generatePlan(page)
 
   await page.getByRole('tab', { name: /هشدارها/ }).click()
-  await expect(page.getByText('رانندگی طولانی')).toBeVisible()
+  await expect(shown(page).getByText('رانندگی طولانی').first()).toBeVisible()
 
   await page.getByRole('tab', { name: 'چک‌لیست' }).click()
-  await expect(page.getByText('زنجیر چرخ')).toBeVisible()
+  await expect(shown(page).getByText('زنجیر چرخ').first()).toBeVisible()
   // ستون «چرا» همان چیزی است که چک‌لیست را از فهرست عمومی جدا می‌کند.
-  await expect(page.getByText(/جادهٔ کوهستانی در زمستان/)).toBeVisible()
+  await expect(shown(page).getByText(/جادهٔ کوهستانی در زمستان/).first()).toBeVisible()
+})
+
+test('راه‌های کاهش هزینه با عدد صرفه‌جویی نشان داده می‌شوند', async ({ page }) => {
+  await stubApi(page)
+  await generatePlan(page)
+
+  await page.getByRole('tab', { name: 'کاهش هزینه' }).click()
+  await page.getByRole('button', { name: /محاسبهٔ راه‌های کاهش/ }).click()
+
+  await expect(page.getByText(/کمپینگ به‌جای اقامتگاه/)).toBeVisible()
+  await expect(page.getByText('−۱۲۰٬۰۰۰ تومان')).toBeVisible()
+})
+
+test('حین سفر: چک‌این، هزینهٔ واقعی و تسویه‌حساب', async ({ page }) => {
+  await stubApi(page)
+  await generatePlan(page)
+
+  await page.getByRole('tab', { name: 'حین سفر' }).click()
+
+  // ساعت واقعی رسیدن، اختلاف با برنامه را نشان می‌دهد.
+  await page.getByLabel('ساعت واقعی').first().fill('10:30')
+  await expect(page.getByText(/دیرتر/)).toBeVisible()
+
+  await page.getByLabel('بابت').fill('شام')
+  await page.getByLabel('مبلغ', { exact: true }).fill('300000')
+  await page.getByRole('button', { name: 'افزودن' }).click()
+
+  await expect(page.getByText(/شام — ۳۰۰٬۰۰۰ تومان/)).toBeVisible()
+  await expect(page.getByText(/کمترین تعداد جابه‌جایی پول/)).toBeVisible()
 })
 
 test('حالت تاریک بین بارگذاری‌ها می‌ماند', async ({ page }) => {
