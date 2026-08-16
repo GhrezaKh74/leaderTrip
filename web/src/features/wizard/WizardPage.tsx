@@ -50,7 +50,13 @@ const STEPS: { label: string; fields: (keyof TripForm)[] }[] = [
   { label: 'مبدأ و مقصد', fields: ['originCityId', 'destinationCityId', 'destinationMode', 'startDate', 'days', 'radiusKm', 'budgetToman'] },
   { label: 'همسفران', fields: ['travelers'] },
   { label: 'خودرو', fields: ['vehicleId', 'vehicleCount', 'maxDrivingHoursPerDay', 'dayStartHour', 'dayEndHour'] },
-  { label: 'سبک سفر', fields: ['style', 'lodging', 'interests', 'roundTrip'] },
+  {
+    label: 'سبک سفر',
+    fields: [
+      'style', 'lodging', 'interests', 'roundTrip',
+      'dayPace', 'checkInFirst', 'middayRest', 'eveningProgram', 'lunchStyle', 'firstDayStartHour',
+    ],
+  },
   { label: 'جاذبه‌ها', fields: ['pinnedPoiIds', 'excludedPoiIds'] },
 ]
 

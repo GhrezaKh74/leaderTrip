@@ -48,6 +48,29 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
 
     public bool RoundTrip { get; init; } = true;
 
+    // ─── ترجیحات روز — سلیقه‌های واقعی سفر که پیش‌فرضشان رفتار همیشگی است ───
+
+    /// <summary>اول تحویل اقامتگاه و کمی استراحت، بعد گشتِ شهرِ اقامت.</summary>
+    public bool CheckInFirst { get; init; }
+
+    /// <summary>استراحت کوتاه بعد از هر ناهار (قیلوله).</summary>
+    public bool MiddayRest { get; init; }
+
+    /// <summary>برنامهٔ شب: گشت بعد از شام و بازدیدهای آخر شب. خاموش یعنی شبْ استراحت است.</summary>
+    public bool EveningProgram { get; init; } = true;
+
+    /// <summary>ریتم بازدید روزانه — سقف توقف‌های هر روز.</summary>
+    public DayPace DayPace { get; init; } = DayPace.Packed;
+
+    /// <summary>ناهار رستوران بین‌راهی یا همراه‌بردن.</summary>
+    public LunchStyle LunchStyle { get; init; } = LunchStyle.Restaurant;
+
+    /// <summary>
+    /// ساعت حرکت روز اول اگر با بقیهٔ روزها فرق دارد — جمع‌کردن وسایل و تحویل
+    /// خانه، صبحِ روز اول را دیرتر می‌کند. <see langword="null"/> یعنی مثل بقیه.
+    /// </summary>
+    public int? FirstDayStartHour { get; init; }
+
     public int VehicleCount { get; init; } = 1;
 
     public decimal SubsidizedFuelShare { get; init; } = 0.6m;

@@ -66,3 +66,26 @@ public enum DestinationMode
     /// <summary>ترکیبی: اقامت دور مقصد + گشتِ سرِ راه — پیش‌فرض، چون سفر واقعی همین است.</summary>
     Mixed,
 }
+
+/// <summary>ریتم بازدیدهای روزانه — چند توقف در روز، سلیقهٔ گروه است نه موتور.</summary>
+public enum DayPace
+{
+    /// <summary>آرام: حداکثر ۳ بازدید در روز، با حاشیهٔ نفس‌کشیدن — خانواده با بچه یا سالمند.</summary>
+    Relaxed,
+
+    /// <summary>متعادل: حداکثر ۵ بازدید در روز.</summary>
+    Balanced,
+
+    /// <summary>پرگشت: هرچه جا شود — پیش‌فرض، همان رفتار همیشگی موتور.</summary>
+    Packed,
+}
+
+/// <summary>سبک ناهار در سفر.</summary>
+public enum LunchStyle
+{
+    /// <summary>رستوران بین‌راهی — توقف کامل، هزینهٔ وعده در تفکیک.</summary>
+    Restaurant,
+
+    /// <summary>همراه‌بردن/پیک‌نیک — توقف کوتاه‌تر و بدون هزینهٔ رستوران.</summary>
+    Picnic,
+}

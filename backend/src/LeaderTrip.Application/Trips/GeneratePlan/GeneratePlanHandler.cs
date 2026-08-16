@@ -220,7 +220,17 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
 
         // ─── انتخاب مسیر ───
         var climates = cities.ToDictionary(c => c.Id, c => c.Climate, StringComparer.Ordinal);
-        var usable = TimeSpan.FromHours(query.DayEndHour - query.DayStartHour) - TimeSpan.FromMinutes(150);
+        // ریتم آرام یعنی از همان اول کمتر انتخاب کن، نه اینکه انتخابِ زیاد را
+        // زمان‌بند بیندازد دور — «جا نشد»ِ مصنوعی گزارشِ دروغ است.
+        double paceShare = query.DayPace switch
+        {
+            DayPace.Relaxed => 0.7,
+            DayPace.Balanced => 0.9,
+            _ => 1,
+        };
+
+        var usable = (TimeSpan.FromHours(query.DayEndHour - query.DayStartHour) - TimeSpan.FromMinutes(150))
+            * paceShare;
 
         var route = _selector.Select(candidates, new SelectionRequest
         {
@@ -263,6 +273,17 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
                 .Where(c => c.Poi.IsNightSuitable && !excluded.Contains(c.Poi.Id))
                 .Select(c => c.Poi)
                 .ToList(),
+            CheckInFirst = query.CheckInFirst,
+            MiddayRest = query.MiddayRest,
+            EveningProgram = query.EveningProgram,
+            PicnicLunch = query.LunchStyle == LunchStyle.Picnic,
+            FirstDayStart = query.FirstDayStartHour is { } firstHour ? TimeSpan.FromHours(firstHour) : null,
+            MaxVisitsPerDay = query.DayPace switch
+            {
+                DayPace.Relaxed => 3,
+                DayPace.Balanced => 5,
+                _ => null,
+            },
         };
 
         var schedule = _scheduler.Schedule(route, scheduleRequest);
@@ -308,6 +329,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             VisitedPois = visitedPois,
             Days = query.Days,
             Month = query.StartDate.Month,
+            PicnicLunch = query.LunchStyle == LunchStyle.Picnic,
         });
 
         // ─── نشاندن هزینه روی روزها ───

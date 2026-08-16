@@ -56,6 +56,18 @@ export const tripFormSchema = z
     dayStartHour: z.number().int().min(0).max(12),
     dayEndHour: z.number().int().min(12).max(24),
     roundTrip: z.boolean(),
+
+    /**
+     * ترجیحات روز — سلیقه‌های واقعی سفر؛ پیش‌فرض همه، رفتار همیشگی موتور است.
+     */
+    checkInFirst: z.boolean(),
+    middayRest: z.boolean(),
+    eveningProgram: z.boolean(),
+    dayPace: z.enum(['Relaxed', 'Balanced', 'Packed']),
+    lunchStyle: z.enum(['Restaurant', 'Picnic']),
+    /** ساعت حرکت روز اول اگر با بقیه فرق دارد؛ null یعنی مثل بقیهٔ روزها. */
+    firstDayStartHour: z.number().int().min(0).max(20).nullable(),
+
     subsidizedFuelShare: z.number().min(0).max(1),
     pinnedPoiIds: z.array(z.string()),
     excludedPoiIds: z.array(z.string()),
@@ -107,7 +119,17 @@ export type TripRequest = TripForm
 export function parseTripForm(value: unknown): TripForm | null {
   if (typeof value !== 'object' || value === null) return null
 
-  const withDefaults = { destinationCityId: null, destinationMode: 'Mixed', ...value }
+  const withDefaults = {
+    destinationCityId: null,
+    destinationMode: 'Mixed',
+    checkInFirst: false,
+    middayRest: false,
+    eveningProgram: true,
+    dayPace: 'Packed',
+    lunchStyle: 'Restaurant',
+    firstDayStartHour: null,
+    ...value,
+  }
   const parsed = tripFormSchema.safeParse(withDefaults)
 
   return parsed.success ? parsed.data : null
@@ -134,6 +156,12 @@ export const DEFAULT_TRIP: TripForm = {
   dayStartHour: 8,
   dayEndHour: 21,
   roundTrip: true,
+  checkInFirst: false,
+  middayRest: false,
+  eveningProgram: true,
+  dayPace: 'Packed',
+  lunchStyle: 'Restaurant',
+  firstDayStartHour: null,
   subsidizedFuelShare: 0.6,
   pinnedPoiIds: [],
   excludedPoiIds: [],

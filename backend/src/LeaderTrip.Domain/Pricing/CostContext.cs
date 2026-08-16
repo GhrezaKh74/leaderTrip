@@ -34,6 +34,9 @@ public sealed record CostContext
 
     public required int Days { get; init; }
 
+    /// <summary>ناهار همراه‌بردنی است — از خانه، نه رستوران بین‌راهی.</summary>
+    public bool PicnicLunch { get; init; }
+
     /// <summary>ماه میلادی شروع سفر — بر ضریب فصلی اقامت اثر دارد.</summary>
     public required int Month { get; init; }
 

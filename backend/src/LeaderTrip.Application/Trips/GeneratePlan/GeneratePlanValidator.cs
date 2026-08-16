@@ -46,5 +46,9 @@ public sealed class GeneratePlanValidator : AbstractValidator<GeneratePlanQuery>
         RuleFor(q => q.DayEndHour)
             .GreaterThan(q => q.DayStartHour)
             .WithMessage("پایان روز باید بعد از شروع روز باشد.");
+
+        RuleFor(q => q.FirstDayStartHour)
+            .Must((query, hour) => hour is null || (hour >= 0 && hour < query.DayEndHour - 2))
+            .WithMessage("ساعت حرکت روز اول باید دست‌کم دو ساعت پیش از پایان روز باشد.");
     }
 }

@@ -126,16 +126,20 @@ public sealed class MealsCost : ICostComponent
         var prices = context.Prices.Meals[context.Style];
         decimal cityIndex = AverageCityIndex(context);
 
-        // صبحانه در محل اقامت (به تعداد شب‌ها)، ناهار هر روز، شام هر شب
+        // صبحانه در محل اقامت (به تعداد شب‌ها)، ناهار هر روز، شام هر شب.
+        // ناهارِ همراه از خانه می‌آید و در این تفکیک هزینه‌ای ندارد.
+        decimal lunchTotal = context.PicnicLunch ? 0m : context.Days * prices.Lunch.Amount;
+
         var amount = Money.FromToman(
             ((context.Nights * prices.Breakfast.Amount)
-             + (context.Days * prices.Lunch.Amount)
+             + lunchTotal
              + (context.Nights * prices.Dinner.Amount))
             * eaters * cityIndex);
 
+        string lunchText = context.PicnicLunch ? "ناهار همراه (بی‌هزینه)" : $"{context.Days} ناهار";
         string formula = string.Create(
             CultureInfo.InvariantCulture,
-            $"{context.Nights} صبحانه + {context.Days} ناهار + {context.Nights} شام × {eaters:0.#} نفر معادل (کودکان سهم کمتری دارند)");
+            $"{context.Nights} صبحانه + {lunchText} + {context.Nights} شام × {eaters:0.#} نفر معادل (کودکان سهم کمتری دارند)");
 
         return new CostLine("meals", "وعده‌های غذایی", amount, formula);
     }
