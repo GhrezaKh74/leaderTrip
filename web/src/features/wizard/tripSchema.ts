@@ -31,6 +31,8 @@ export const travelerFormSchema = z.object({
 export const tripFormSchema = z
   .object({
     originCityId: z.string().min(1, 'شهر مبدأ را انتخاب کنید.'),
+    /** مقصد — خالی (null) یعنی سفر حلقه‌ای دور مبدأ؛ پر یعنی سفر یک‌سویه تا مقصد. */
+    destinationCityId: z.string().nullable(),
     startDate: z.string().min(1, 'تاریخ حرکت را انتخاب کنید.'),
     days: z.number().int().min(1, 'حداقل یک روز.').max(30, 'حداکثر ۳۰ روز.'),
     radiusKm: z.number().min(20, 'شعاع خیلی کم است.').max(1500, 'شعاع خیلی زیاد است.'),
@@ -68,6 +70,10 @@ export const tripFormSchema = z
      */
     learnedTaste: z.record(z.string(), z.number().min(-1).max(1)),
   })
+  .refine((v) => v.destinationCityId === null || v.destinationCityId !== v.originCityId, {
+    message: 'مقصد نمی‌تواند همان مبدأ باشد؛ برای سفر حلقه‌ای، مقصد را خالی بگذارید.',
+    path: ['destinationCityId'],
+  })
   .refine((v) => v.dayEndHour > v.dayStartHour + 4, {
     message: 'روز باید دست‌کم پنج ساعت باشد.',
     path: ['dayEndHour'],
@@ -84,8 +90,26 @@ export type TripForm = z.infer<typeof tripFormSchema>
 /** بدنهٔ درخواستی که بک‌اند انتظار دارد. */
 export type TripRequest = TripForm
 
+/**
+ * خواندن ورودی سفر از هر منبع بیرونی — لینک اشتراکی، فایل، حافظهٔ دستگاه، حساب.
+ *
+ * <p>یک کار اضافه نسبت به <code>safeParse</code> خام دارد: فیلدهایی که بعد از
+ * انتشار اضافه شده‌اند (مثل مقصد) را برای دادهٔ قدیمی پیش‌فرض می‌گذارد. بدون
+ * این، هر ویژگی تازه یعنی همهٔ لینک‌های اشتراکی و سفرهای ذخیره‌شدهٔ قبلی
+ * بی‌صدا «ناسازگار» شوند.</p>
+ */
+export function parseTripForm(value: unknown): TripForm | null {
+  if (typeof value !== 'object' || value === null) return null
+
+  const withDefaults = { destinationCityId: null, ...value }
+  const parsed = tripFormSchema.safeParse(withDefaults)
+
+  return parsed.success ? parsed.data : null
+}
+
 export const DEFAULT_TRIP: TripForm = {
   originCityId: 'tehran',
+  destinationCityId: null,
   startDate: isoToday(),
   days: 3,
   radiusKm: 400,

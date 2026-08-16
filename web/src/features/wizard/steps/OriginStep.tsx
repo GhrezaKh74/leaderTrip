@@ -16,8 +16,11 @@ import { faNum, tomanShort } from '../../../lib/format'
 import { formatJalaliFromIso } from '../../../lib/jalaliDisplay'
 
 export function OriginStep({ cities }: { cities: City[] }) {
-  const { control, formState } = useFormContext<TripForm>()
+  const { control, formState, watch } = useFormContext<TripForm>()
   const errors = formState.errors
+
+  const destinationCityId = watch('destinationCityId')
+  const hasDestination = destinationCityId !== null && destinationCityId !== ''
 
   return (
     <Stack spacing={3}>
@@ -39,7 +42,42 @@ export function OriginStep({ cities }: { cities: City[] }) {
                     {...params}
                     label="شهر مبدأ"
                     error={Boolean(errors.originCityId)}
-                    helperText={errors.originCityId?.message ?? 'سفر از این‌جا شروع و تمام می‌شود.'}
+                    helperText={
+                      errors.originCityId?.message ??
+                      (hasDestination ? 'سفر از این‌جا شروع می‌شود.' : 'سفر از این‌جا شروع و تمام می‌شود.')
+                    }
+                  />
+                )}
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Controller
+            name="destinationCityId"
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                options={cities.filter((city) => city.id !== watch('originCityId'))}
+                value={cities.find((c) => c.id === field.value) ?? null}
+                onChange={(_, city) => field.onChange(city?.id ?? null)}
+                getOptionLabel={(city) => `${city.name} — ${city.province}`}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                noOptionsText="شهری پیدا نشد"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="مقصد (اختیاری)"
+                    error={Boolean(errors.destinationCityId)}
+                    // مقصدِ خالی رفتار همیشگی است؛ مقصدِ پر، سفر را یک‌سویه و
+                    // مسیرمحور می‌کند — این تفاوت باید پیش از انتخاب معلوم باشد.
+                    helperText={
+                      errors.destinationCityId?.message ??
+                      (hasDestination
+                        ? 'سفر یک‌سویه: جاذبه‌ها در راهروی مبدأ تا مقصد چیده می‌شوند و روز آخر به مقصد می‌رسید.'
+                        : 'خالی یعنی سفر حلقه‌ای دور مبدأ.')
+                    }
                   />
                 )}
               />
@@ -91,8 +129,11 @@ export function OriginStep({ cities }: { cities: City[] }) {
           render={({ field }) => (
             <>
               <Typography variant="body2" color="text.secondary">
-                شعاع جست‌وجو: تا {faNum(field.value)} کیلومتر از {' '}
-                {cities.find((c) => c.id === control._formValues.originCityId)?.name ?? 'مبدأ'}
+                {hasDestination
+                  ? `پهنای راهرو: جاذبه‌ها تا ${faNum(field.value)} کیلومتر دو طرف مسیر`
+                  : `شعاع جست‌وجو: تا ${faNum(field.value)} کیلومتر از ${
+                      cities.find((c) => c.id === control._formValues.originCityId)?.name ?? 'مبدأ'
+                    }`}
               </Typography>
               <Slider
                 value={field.value}

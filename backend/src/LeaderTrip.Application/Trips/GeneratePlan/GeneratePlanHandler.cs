@@ -73,6 +73,23 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
                 DomainError.NotFound("city.notFound", $"شهر «{query.OriginCityId}» پیدا نشد."));
         }
 
+        City? destination = null;
+
+        if (query.DestinationCityId is { } destinationId)
+        {
+            destination = await _cities.FindAsync(destinationId, cancellationToken).ConfigureAwait(false);
+
+            if (destination is null)
+            {
+                return Result.Failure<TripPlanResponse>(
+                    DomainError.NotFound("city.notFound", $"شهر مقصد «{destinationId}» پیدا نشد."));
+            }
+        }
+
+        // سفر مقصددار یک‌سویه است: برگشت، خودش سفری است با توقف‌های خودش، نه
+        // پیوستِ همین سفر. پرچم رفت‌وبرگشت فقط در سفر حلقه‌ای معنا دارد.
+        bool returnsToOrigin = destination is null && query.RoundTrip;
+
         var vehicle = await _vehicles.FindAsync(query.VehicleId, cancellationToken).ConfigureAwait(false);
         if (vehicle is null)
         {
@@ -105,6 +122,12 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         var pinned = query.PinnedPoiIds.ToHashSet(StringComparer.Ordinal);
 
         // ─── قیدهای سخت، به‌صورت ترکیبی ───
+        // محدودهٔ جغرافیایی به نوع سفر بستگی دارد: حلقه‌ای یعنی دایره دور مبدأ؛
+        // مقصددار یعنی راهروی مبدأ تا مقصد با همان شعاع در دو طرف.
+        Specification<PointOfInterest> geography = destination is null
+            ? new WithinRadiusSpecification(origin.Location, radius)
+            : new WithinCorridorSpecification(origin.Location, destination.Location, radius);
+
         var eligibility = Spec.All(
             new NotExcludedSpecification(excluded),
             new NotInHomeCitySpecification(origin.Id, query.Days),
@@ -112,7 +135,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             new GroupCanHandleDifficultySpecification(group),
             new MinimumAgeSpecification(group),
             new InSeasonSpecification(query.StartDate.Month),
-            new WithinRadiusSpecification(origin.Location, radius));
+            geography);
 
         var rejections = new Dictionary<string, string>(StringComparer.Ordinal);
         var candidates = new List<ScoredPoi>();
@@ -140,7 +163,9 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             if (!verdict.IsSatisfied && !isPinned)
             {
                 // فقط چیزهایی که داخل محدودهٔ سفرند ارزش گزارش دارند
-                if (verdict.Reason is { } reason && !reason.Contains("شعاع", StringComparison.Ordinal))
+                if (verdict.Reason is { } reason
+                    && !reason.Contains("شعاع", StringComparison.Ordinal)
+                    && !reason.Contains("راهرو", StringComparison.Ordinal))
                 {
                     rejections[poi.Id] = reason;
                 }
@@ -157,10 +182,15 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         // هرگز به مسیر نمی‌رسند. سقف صریح است، نه بی‌صدا.
         var warmupPoints = candidates
             .OrderByDescending(c => c.Score)
-            .Take(RouteWarmupLimit - 1)
+            .Take(RouteWarmupLimit - 2)
             .Select(c => c.Poi.Location)
             .Prepend(origin.Location)
             .ToList();
+
+        if (destination is not null)
+        {
+            warmupPoints.Add(destination.Location);
+        }
 
         await _roadNetwork.WarmAsync(warmupPoints, cancellationToken).ConfigureAwait(false);
 
@@ -172,11 +202,13 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         {
             Origin = origin.Location,
             OriginClimate = origin.Climate,
+            Destination = destination?.Location,
+            DestinationClimate = destination?.Climate ?? Climate.Plain,
             Vehicle = vehicle,
             Days = query.Days,
             DailyDrivingCap = TimeSpan.FromHours(query.MaxDrivingHoursPerDay),
             UsableHoursPerDay = usable,
-            ReturnsToOrigin = query.RoundTrip,
+            ReturnsToOrigin = returnsToOrigin,
             Pace = group.PaceFactor,
             VisitStretch = group.VisitDurationFactor,
             PinnedPoiIds = pinned,
@@ -189,12 +221,13 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             StartDate = query.StartDate,
             Days = query.Days,
             OriginCity = origin,
+            DestinationCity = destination,
             Vehicle = vehicle,
             Style = query.Style,
             DayStart = TimeSpan.FromHours(query.DayStartHour),
             DayEnd = TimeSpan.FromHours(query.DayEndHour),
             DailyDrivingCap = TimeSpan.FromHours(query.MaxDrivingHoursPerDay),
-            ReturnsToOrigin = query.RoundTrip,
+            ReturnsToOrigin = returnsToOrigin,
             Pace = group.PaceFactor,
             VisitStretch = group.VisitDurationFactor,
             Cities = cityById,

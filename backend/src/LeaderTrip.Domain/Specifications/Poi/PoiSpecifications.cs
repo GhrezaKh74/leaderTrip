@@ -66,6 +66,31 @@ public sealed class InSeasonSpecification : Specification<PointOfInterest>
             : SpecificationResult.NotSatisfied("خارج از فصل مناسب بازدید");
 }
 
+/// <summary>در سفر مقصددار، جاذبه باید نزدیک راهروی مبدأ تا مقصد باشد.</summary>
+/// <remarks>
+/// جایگزین شعاعِ دورِ مبدأ در سفرهای مقصددار: دایره دور مبدأ برای سفر
+/// تهران–شیراز نیمهٔ دوم راه را کور می‌کند و جاذبهٔ پشتِ سرِ مبدأ را — که
+/// خلاف جهت است — مجاز. «نزدیکیِ به پاره‌خط مسیر» هر دو را درست می‌کند.
+/// </remarks>
+public sealed class WithinCorridorSpecification : Specification<PointOfInterest>
+{
+    private readonly Coordinate _origin;
+    private readonly Coordinate _destination;
+    private readonly Distance _radius;
+
+    public WithinCorridorSpecification(Coordinate origin, Coordinate destination, Distance radius)
+    {
+        _origin = origin;
+        _destination = destination;
+        _radius = radius;
+    }
+
+    public override SpecificationResult Evaluate(PointOfInterest candidate) =>
+        candidate.Location.StraightLineToSegment(_origin, _destination) <= _radius
+            ? SpecificationResult.Satisfied
+            : SpecificationResult.NotSatisfied("دور از راهروی مبدأ تا مقصد");
+}
+
 /// <summary>جاذبه باید در شعاع جست‌وجو باشد.</summary>
 public sealed class WithinRadiusSpecification : Specification<PointOfInterest>
 {

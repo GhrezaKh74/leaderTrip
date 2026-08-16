@@ -54,5 +54,41 @@ public readonly record struct Coordinate
         return Distance.FromKilometers(2 * EarthRadiusKm * Math.Asin(Math.Min(1d, Math.Sqrt(h))));
     }
 
+    /// <summary>فاصلهٔ هوایی تا پاره‌خطِ میان دو نقطه.</summary>
+    /// <remarks>
+    /// برای «آیا این جاذبه نزدیک راهروی مبدأ تا مقصد است؟» به کار می‌رود.
+    /// تصویر مستطیلی (equirectangular) حول نقطهٔ خودِ جاذبه استفاده شده که در
+    /// مقیاس ایران خطایش از چند صدم درصد کمتر است — و این یک فیلترِ شعاع است،
+    /// نه محاسبهٔ صورتحساب.
+    /// </remarks>
+    public Distance StraightLineToSegment(Coordinate a, Coordinate b)
+    {
+        double latRad = ToRadians(Latitude);
+        double latitude = Latitude;
+        double longitude = Longitude;
+
+        // تصویر تخت: x شرقی، y شمالی، برحسب کیلومتر نسبت به همین نقطه
+        (double X, double Y) Project(Coordinate p) => (
+            ToRadians(p.Longitude - longitude) * Math.Cos(latRad) * EarthRadiusKm,
+            ToRadians(p.Latitude - latitude) * EarthRadiusKm);
+
+        var (ax, ay) = Project(a);
+        var (bx, by) = Project(b);
+
+        double dx = bx - ax;
+        double dy = by - ay;
+        double lengthSquared = (dx * dx) + (dy * dy);
+
+        // پاره‌خطِ صفرطول همان فاصله تا نقطه است
+        double t = lengthSquared < 1e-9
+            ? 0d
+            : Math.Clamp(((0 - ax) * dx + (0 - ay) * dy) / lengthSquared, 0d, 1d);
+
+        double closestX = ax + (t * dx);
+        double closestY = ay + (t * dy);
+
+        return Distance.FromKilometers(Math.Sqrt((closestX * closestX) + (closestY * closestY)));
+    }
+
     private static double ToRadians(double degrees) => degrees * Math.PI / 180d;
 }

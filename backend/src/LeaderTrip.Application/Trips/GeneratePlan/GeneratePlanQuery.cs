@@ -8,6 +8,14 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
 {
     public required string OriginCityId { get; init; }
 
+    /// <summary>
+    /// مقصد سفر — اختیاری. خالی یعنی سفر حلقه‌ای دور مبدأ (رفتار همیشگی)؛
+    /// پرشده یعنی سفر یک‌سویه در راهروی مبدأ تا مقصد که روز آخرش به مقصد
+    /// می‌رسد. سفر مقصددار <see cref="RoundTrip"/> را نادیده می‌گیرد — برگشت،
+    /// خودش یک سفر است با توقف‌های خودش.
+    /// </summary>
+    public string? DestinationCityId { get; init; }
+
     public required DateOnly StartDate { get; init; }
 
     public required int Days { get; init; }

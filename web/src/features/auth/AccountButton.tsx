@@ -24,7 +24,7 @@ import DeleteIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import { UserIcon } from '../../components/icons'
 import { heroGradient } from '../../theme/tokens'
 import { ApiError } from '../../api/client'
-import { tripFormSchema, type TripForm } from '../wizard/tripSchema'
+import { parseTripForm, type TripForm } from '../wizard/tripSchema'
 import { formatJalali } from '../../lib/jalali'
 import { faNum } from '../../lib/format'
 import {
@@ -265,16 +265,16 @@ function TripsDialog({
 
   const load = (payload: string) => {
     try {
-      const parsed = tripFormSchema.safeParse(JSON.parse(payload))
+      const parsed = parseTripForm(JSON.parse(payload))
 
-      if (!parsed.success) {
+      if (parsed === null) {
         setLoadError('این سفر با نسخهٔ فعلی اپ سازگار نیست.')
 
         return
       }
 
       setLoadError(null)
-      onLoadTrip(parsed.data)
+      onLoadTrip(parsed)
     } catch {
       setLoadError('محتوای این سفر خوانا نیست.')
     }

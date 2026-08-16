@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_TRIP, tripFormSchema } from './tripSchema'
+import { DEFAULT_TRIP, parseTripForm, tripFormSchema } from './tripSchema'
 
 describe('اعتبارسنجی ورودی سفر', () => {
   it('پیش‌فرض معتبر است', () => {
@@ -45,5 +45,26 @@ describe('اعتبارسنجی ورودی سفر', () => {
     const legacy = { ...DEFAULT_TRIP, style: 'balanced', budgetToman: '50000000' }
 
     expect(tripFormSchema.safeParse(legacy).success).toBe(false)
+  })
+})
+
+describe('مبدأ و مقصد', () => {
+  it('مقصد برابر مبدأ رد می‌شود', () => {
+    const result = tripFormSchema.safeParse({ ...DEFAULT_TRIP, destinationCityId: DEFAULT_TRIP.originCityId })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('ورودیِ پیش از ویژگی مقصد (بدون فیلد) با parseTripForm باز می‌شود', () => {
+    const { destinationCityId: _dropped, ...legacy } = DEFAULT_TRIP
+
+    expect(tripFormSchema.safeParse(legacy).success).toBe(false)
+    expect(parseTripForm(legacy)?.destinationCityId).toBeNull()
+  })
+
+  it('مقصد معتبر عبور می‌کند و یک‌سویه است', () => {
+    const result = tripFormSchema.safeParse({ ...DEFAULT_TRIP, destinationCityId: 'isfahan' })
+
+    expect(result.success).toBe(true)
   })
 })

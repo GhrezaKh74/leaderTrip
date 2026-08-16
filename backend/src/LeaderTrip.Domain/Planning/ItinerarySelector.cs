@@ -124,6 +124,16 @@ public sealed class ItinerarySelector
             currentClimate = request.ClimateOf(poi);
         }
 
+        // پای پایانی تا مقصد جزو هزینهٔ هر گزینه است. همین یک جمع، درج حریصانه
+        // را مقصدآگاه می‌کند: جاذبهٔ خارج از راهرو کل مسیر را گران می‌کند و
+        // خودبه‌خود می‌بازد — بدون هیچ قاعدهٔ جداگانه‌ای.
+        if (request.Destination is { } destination)
+        {
+            total += LegTime(current, currentClimate, destination, request.DestinationClimate, request);
+            current = destination;
+            currentClimate = request.DestinationClimate;
+        }
+
         if (request.ReturnsToOrigin)
         {
             total += LegTime(current, currentClimate, request.Origin, request.OriginClimate, request);
@@ -151,6 +161,11 @@ public sealed record SelectionRequest
     public required Coordinate Origin { get; init; }
 
     public required Climate OriginClimate { get; init; }
+
+    /// <summary>مقصد سفر؛ <see langword="null"/> یعنی سفر حلقه‌ای دور مبدأ.</summary>
+    public Coordinate? Destination { get; init; }
+
+    public Climate DestinationClimate { get; init; } = Climate.Plain;
 
     public required Vehicle Vehicle { get; init; }
 

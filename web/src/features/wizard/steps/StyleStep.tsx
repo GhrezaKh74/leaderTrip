@@ -13,7 +13,10 @@ import { CATEGORY_LABEL, CATEGORY_ORDER, LODGING_LABEL, STYLE_HINT, STYLE_LABEL 
 import type { TripForm } from '../tripSchema'
 
 export function StyleStep() {
-  const { control } = useFormContext<TripForm>()
+  const { control, watch } = useFormContext<TripForm>()
+
+  const destinationCityId = watch('destinationCityId')
+  const hasDestination = destinationCityId !== null && destinationCityId !== ''
 
   return (
     <Stack spacing={3}>
@@ -89,10 +92,20 @@ export function StyleStep() {
         name="roundTrip"
         control={control}
         render={({ field }) => (
-          <FormControlLabel
-            control={<Switch checked={field.value} onChange={field.onChange} />}
-            label="برگشت به شهر مبدأ"
-          />
+          <Stack spacing={0}>
+            <FormControlLabel
+              control={
+                <Switch checked={field.value && !hasDestination} onChange={field.onChange} disabled={hasDestination} />
+              }
+              label="برگشت به شهر مبدأ"
+            />
+            {hasDestination ? (
+              <Typography variant="caption" color="text.secondary">
+                سفر مقصددار یک‌سویه برنامه‌ریزی می‌شود؛ برگشت، خودش سفری است با
+                توقف‌های خودش. برای رفت‌وبرگشت، مقصد را خالی بگذارید.
+              </Typography>
+            ) : null}
+          </Stack>
         )}
       />
     </Stack>

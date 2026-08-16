@@ -83,8 +83,8 @@ public sealed class DayScheduler
                 var leg = _travelPlanner.Plan(current, next.Location, terrain, request.Vehicle, request.Pace);
                 var visit = TimeSpan.FromMinutes(next.VisitDuration.TotalMinutes * request.VisitStretch);
 
-                var endCity = isLastDay && request.ReturnsToOrigin
-                    ? request.OriginCity
+                var endCity = isLastDay
+                    ? request.FinalCity(fallbackNear: next.Location)
                     : request.NearestStayCity(next.Location);
 
                 var back = _travelPlanner.Plan(
@@ -170,8 +170,8 @@ public sealed class DayScheduler
                 currentCity = request.CityOf(next);
             }
 
-            var stayCity = isLastDay && request.ReturnsToOrigin
-                ? request.OriginCity
+            var stayCity = isLastDay
+                ? request.FinalCity(fallbackNear: visited.Count > 0 ? visited[^1].Location : current)
                 : visited.Count > 0
                     ? request.NearestStayCity(visited[^1].Location)
                     : currentCity;
@@ -189,7 +189,9 @@ public sealed class DayScheduler
                     Duration = leg.Duration,
                     Title = isLastDay && request.ReturnsToOrigin
                         ? $"بازگشت به {stayCity.Name}"
-                        : $"حرکت به {stayCity.Name}",
+                        : isLastDay && request.DestinationCity is not null
+                            ? $"رسیدن به مقصد: {stayCity.Name}"
+                            : $"حرکت به {stayCity.Name}",
                     Cost = Money.Zero,
                     DistanceCovered = leg.Road,
                 });
@@ -299,6 +301,9 @@ public sealed record ScheduleRequest
 
     public required City OriginCity { get; init; }
 
+    /// <summary>مقصد سفر؛ <see langword="null"/> یعنی سفر حلقه‌ای دور مبدأ.</summary>
+    public City? DestinationCity { get; init; }
+
     public required Vehicle Vehicle { get; init; }
 
     public required TravelStyle Style { get; init; }
@@ -335,4 +340,13 @@ public sealed record ScheduleRequest
         StayCities.Count == 0
             ? OriginCity
             : StayCities.MinBy(c => near.StraightLineTo(c.Location).Kilometers) ?? OriginCity;
+
+    /// <summary>
+    /// شهرِ پایان سفر: مبدأ اگر برگشتی است، مقصد اگر مقصددار است، وگرنه
+    /// نزدیک‌ترین شهرِ ماندنی به نقطهٔ داده‌شده.
+    /// </summary>
+    internal City FinalCity(Coordinate fallbackNear) =>
+        ReturnsToOrigin
+            ? OriginCity
+            : DestinationCity ?? NearestStayCity(fallbackNear);
 }

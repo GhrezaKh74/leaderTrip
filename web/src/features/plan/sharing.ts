@@ -1,4 +1,4 @@
-import { tripFormSchema, type TripForm } from '../wizard/tripSchema'
+import { parseTripForm, type TripForm } from '../wizard/tripSchema'
 
 /**
  * اشتراک‌گذاری و خروجی سفر.
@@ -30,11 +30,10 @@ export function decodeTrip(encoded: string): TripForm | null {
     const base64 = encoded.replaceAll('-', '+').replaceAll('_', '/')
     const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
-    const parsed = tripFormSchema.safeParse(JSON.parse(new TextDecoder().decode(bytes)))
-
-    // لینک خراب یا از نسخهٔ قدیمی، بی‌صدا رد می‌شود و کاربر ویزارد خالی
-    // می‌بیند — بهتر از فرمی که با مقادیر نیمه‌معتبر پر شده باشد.
-    return parsed.success ? parsed.data : null
+    // لینک خراب بی‌صدا رد می‌شود و کاربر ویزارد خالی می‌بیند — بهتر از فرمی
+    // که با مقادیر نیمه‌معتبر پر شده باشد. لینکِ نسخه‌های قبل (بدون مقصد) اما
+    // باز می‌شود: parseTripForm فیلدهای تازه را پیش‌فرض می‌گذارد.
+    return parseTripForm(JSON.parse(new TextDecoder().decode(bytes)))
   } catch {
     return null
   }
@@ -85,9 +84,7 @@ export function downloadTrip(input: TripForm, fileName = 'leadertrip.json'): voi
 /** خواندن ورودی سفر از فایل انتخاب‌شده. */
 export async function readTripFile(file: File): Promise<TripForm | null> {
   try {
-    const parsed = tripFormSchema.safeParse(JSON.parse(await file.text()))
-
-    return parsed.success ? parsed.data : null
+    return parseTripForm(JSON.parse(await file.text()))
   } catch {
     return null
   }

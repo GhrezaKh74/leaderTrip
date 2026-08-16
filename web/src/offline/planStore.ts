@@ -1,5 +1,5 @@
 import { tripPlanSchema, type TripPlan } from '../api/schemas'
-import { tripFormSchema, type TripForm } from '../features/wizard/tripSchema'
+import { parseTripForm, type TripForm } from '../features/wizard/tripSchema'
 
 const STORAGE_KEY = 'leadertrip.lastPlan.v1'
 
@@ -27,13 +27,13 @@ const cachedPlanSchema = {
 
     const record = raw as Record<string, unknown>
     const plan = tripPlanSchema.safeParse(record['plan'])
-    const input = tripFormSchema.safeParse(record['input'])
+    const input = parseTripForm(record['input'])
 
-    if (!plan.success || !input.success) return null
+    if (!plan.success || input === null) return null
 
     return {
       plan: plan.data,
-      input: input.data,
+      input,
       generatedAt: typeof record['generatedAt'] === 'string' ? record['generatedAt'] : '',
     }
   },

@@ -31,7 +31,7 @@ import { drawPath, riseIn } from '../../lib/motion'
 
 import { useGeneratePlan, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
-import { DEFAULT_TRIP, tripFormSchema, type TripForm } from './tripSchema'
+import { DEFAULT_TRIP, parseTripForm, tripFormSchema, type TripForm } from './tripSchema'
 import { OriginStep } from './steps/OriginStep'
 import { TravelersStep } from './steps/TravelersStep'
 import { VehicleStep } from './steps/VehicleStep'
@@ -47,7 +47,7 @@ import { readTripFile } from '../plan/sharing'
  * فیلدهایی خطا می‌دهد که هنوز ندیده است).
  */
 const STEPS: { label: string; fields: (keyof TripForm)[] }[] = [
-  { label: 'مبدأ و زمان', fields: ['originCityId', 'startDate', 'days', 'radiusKm', 'budgetToman'] },
+  { label: 'مبدأ و مقصد', fields: ['originCityId', 'destinationCityId', 'startDate', 'days', 'radiusKm', 'budgetToman'] },
   { label: 'همسفران', fields: ['travelers'] },
   { label: 'خودرو', fields: ['vehicleId', 'vehicleCount', 'maxDrivingHoursPerDay', 'dayStartHour', 'dayEndHour'] },
   { label: 'سبک سفر', fields: ['style', 'lodging', 'interests', 'roundTrip'] },
@@ -148,9 +148,7 @@ function readSavedTrip(): TripForm {
   // ورودی ذخیره‌شده از نسخهٔ قدیمی‌تر اپ می‌تواند شکل دیگری داشته باشد. اعتماد
   // به آن یعنی فرمی که با یک خطای عجیب سفید می‌شود؛ اعتبارسنجی یعنی برگشت آرام
   // به پیش‌فرض.
-  const parsed = tripFormSchema.safeParse(JSON.parse(raw))
-
-  return parsed.success ? parsed.data : DEFAULT_TRIP
+  return parseTripForm(JSON.parse(raw)) ?? DEFAULT_TRIP
 }
 
 export function WizardPage({

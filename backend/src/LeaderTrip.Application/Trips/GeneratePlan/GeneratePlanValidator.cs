@@ -9,6 +9,11 @@ public sealed class GeneratePlanValidator : AbstractValidator<GeneratePlanQuery>
     {
         RuleFor(q => q.OriginCityId).NotEmpty().WithMessage("شهر مبدأ لازم است.");
 
+        RuleFor(q => q.DestinationCityId)
+            .Must((query, destination) => destination is null
+                || !string.Equals(destination, query.OriginCityId, StringComparison.Ordinal))
+            .WithMessage("مقصد نمی‌تواند همان شهر مبدأ باشد؛ برای سفر حلقه‌ای، مقصد را خالی بگذارید.");
+
         RuleFor(q => q.VehicleId).NotEmpty().WithMessage("انتخاب خودرو لازم است.");
 
         RuleFor(q => q.Days)
