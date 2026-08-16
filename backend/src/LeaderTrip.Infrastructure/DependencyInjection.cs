@@ -100,6 +100,13 @@ public static class DependencyInjection
         services.AddScoped<IPriceBookProvider, EfPriceBookProvider>();
         services.AddScoped<IPriceBookWriter, EfPriceBookWriter>();
 
+        // با پایگاه داده، حساب‌ها هم آن‌جا می‌مانند؛ ثبتِ متأخر بر پیش‌فرض
+        // حافظه‌ایِ لایهٔ Application برنده می‌شود.
+        services.AddScoped<EfAuthStore>();
+        services.AddScoped<Application.Auth.IUserStore>(sp => sp.GetRequiredService<EfAuthStore>());
+        services.AddScoped<Application.Auth.ISessionStore>(sp => sp.GetRequiredService<EfAuthStore>());
+        services.AddScoped<Application.Auth.ISavedTripStore>(sp => sp.GetRequiredService<EfAuthStore>());
+
         services.AddSingleton<DatabaseInitializer>();
     }
 

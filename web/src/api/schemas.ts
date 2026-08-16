@@ -273,9 +273,35 @@ export const priceVersionSchema = z.object({
   updatedAt: z.string(),
 })
 
+/** کاربر واردشده. */
+export const authUserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  displayName: z.string(),
+})
+
+/** پاسخ ورود/ثبت‌نام: توکن فقط همین یک‌بار دیده می‌شود. */
+export const authResponseSchema = z.object({
+  token: z.string(),
+  user: authUserSchema,
+})
+
+/** سفر ذخیره‌شده روی حساب — payload همان JSON ورودی سفر است. */
+export const savedTripSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  payload: z.string(),
+  updatedAt: z.string(),
+})
+
+export const savedTripListSchema = z.array(savedTripSchema)
+
 export type BudgetLever = z.infer<typeof budgetLeverSchema>
 export type BudgetLevers = z.infer<typeof budgetLeversSchema>
 export type DiscoveredPlace = z.infer<typeof discoveredPlaceSchema>
 export type PhotoUpload = z.infer<typeof photoUploadSchema>
 export type AdminOverview = z.infer<typeof adminOverviewSchema>
 export type PhotoInventory = z.infer<typeof photoInventorySchema>
+export type AuthUser = z.infer<typeof authUserSchema>
+export type AuthResponse = z.infer<typeof authResponseSchema>
+export type SavedTrip = z.infer<typeof savedTripSchema>

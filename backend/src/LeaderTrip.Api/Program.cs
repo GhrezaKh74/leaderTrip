@@ -78,6 +78,7 @@ app.UseOutputCache();
 
 app.MapTripEndpoints();
 app.MapPhotoEndpoints();
+app.MapAuthEndpoints();
 app.MapAdminIfConfigured();
 
 app.MapHealthChecks("/health").AllowAnonymous();

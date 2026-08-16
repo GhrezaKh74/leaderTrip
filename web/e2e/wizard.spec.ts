@@ -155,6 +155,37 @@ async function stubApi(page: Page): Promise<{ planCalls: () => number }> {
     }),
   )
 
+  // حساب کاربری: ثبت‌نام/ورود توکن می‌دهد؛ سفرهای ذخیره‌شده حالت‌دارند تا
+  // «ذخیره» و «فهرست» با هم بخوانند.
+  const authUser = { id: 'u1', email: 'reza@example.com', displayName: 'رضا' }
+  let savedTrips: { id: string; title: string; payload: string; updatedAt: string }[] = []
+
+  await page.route('**/api/auth/register', (route) =>
+    route.fulfill({ json: { token: 'test-token', user: authUser } }),
+  )
+
+  await page.route('**/api/auth/login', (route) =>
+    route.fulfill({ json: { token: 'test-token', user: authUser } }),
+  )
+
+  await page.route('**/api/me/trips', (route) => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON() as { title: string; payload: string }
+      const trip = {
+        id: 'b'.repeat(32),
+        title: body.title,
+        payload: body.payload,
+        updatedAt: '2026-08-16T10:00:00Z',
+      }
+
+      savedTrips = [trip]
+
+      return route.fulfill({ json: trip })
+    }
+
+    return route.fulfill({ json: savedTrips })
+  })
+
   await page.route('**/api/trips/plan', (route) => {
     planCalls += 1
 
@@ -381,7 +412,7 @@ test('پنل مدیریت: ورود با کلید، نمای کلی، قیمت�
 
   // بدون کلید، فقط فرم ورود
   await page.getByLabel('کلید مدیریتی').fill('test-admin-key')
-  await page.getByRole('button', { name: 'ورود' }).click()
+  await page.getByRole('button', { name: 'ورود', exact: true }).click()
 
   // نمای کلی از پاسخ سرور پر می‌شود
   await expect(page.getByText('دادهٔ همراه برنامه')).toBeVisible()
@@ -396,4 +427,31 @@ test('پنل مدیریت: ورود با کلید، نمای کلی، قیمت�
   // عکس ذخیره‌شده با حجمش فهرست می‌شود
   await expect(page.locator('img[alt^="عکس"]')).toBeVisible()
   await expect(page.getByText(/کیلوبایت/).first()).toBeVisible()
+})
+
+test('حساب کاربری: ثبت‌نام، ذخیرهٔ سفر روی حساب و بارگذاری دوباره', async ({ page }) => {
+  await stubApi(page)
+  await generatePlan(page)
+
+  // ثبت‌نام از سرصفحه
+  await page.getByRole('button', { name: 'ورود به حساب' }).click()
+  await page.getByRole('tab', { name: 'ثبت‌نام' }).click()
+  await page.getByLabel('نام نمایشی').fill('رضا')
+  await page.getByLabel('ایمیل').fill('reza@example.com')
+  await page.getByLabel('گذرواژه').fill('12345678')
+  await page.getByRole('button', { name: 'ساخت حساب' }).click()
+
+  // پس از ورود، منوی حساب با نام کاربر باز می‌شود
+  await page.getByRole('button', { name: 'حساب کاربری' }).click()
+  await expect(page.getByText('reza@example.com')).toBeVisible()
+  await page.getByRole('menuitem', { name: 'سفرهای من' }).click()
+
+  // ذخیرهٔ سفر فعلی و دیدنش در فهرست
+  await page.getByRole('button', { name: 'ذخیرهٔ سفر فعلی' }).click()
+  await expect(page.getByText(/سفر ۳ روزه/)).toBeVisible()
+
+  // بارگذاری، کاربر را با همان ورودی به ویزارد برمی‌گرداند
+  await page.getByRole('button', { name: 'بارگذاری' }).click()
+  await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
+  await expect(page.getByText('سفر از حساب بارگذاری شد', { exact: false })).toBeVisible()
 })

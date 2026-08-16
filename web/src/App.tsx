@@ -15,6 +15,7 @@ import Box from '@mui/material/Box'
 import { LogoIcon, MoonIcon, OfflineIcon, SunIcon } from './components/icons'
 import { IconGallery } from './components/IconGallery'
 import { AdminPage } from './features/admin/AdminPage'
+import { AccountButton } from './features/auth/AccountButton'
 import { glass, heroGradient } from './theme/tokens'
 
 import { RtlProvider } from './theme/RtlProvider'
@@ -50,6 +51,10 @@ export function App() {
 
     return cached === null ? null : { plan: cached.plan, input: cached.input }
   })
+
+  // سفر بارگذاری‌شده از حساب. `key` ویزارد از شمارنده می‌آید تا هر بارگذاری،
+  // فرم را با مقدارهای تازه از نو بسازد — reset دستی فرمِ نیمه‌پرشده خطاخیز است.
+  const [loaded, setLoaded] = useState<{ trip: TripForm; sequence: number } | null>(null)
 
   const rebuild = useGeneratePlan()
 
@@ -145,6 +150,15 @@ export function App() {
             />
           )}
 
+          <AccountButton
+            currentInput={generated?.input ?? null}
+            onLoadTrip={(trip) => {
+              setLoaded((current) => ({ trip, sequence: (current?.sequence ?? 0) + 1 }))
+              setGenerated(null)
+              setToast('سفر از حساب بارگذاری شد. برای دیدن برنامه، آن را بسازید.')
+            }}
+          />
+
           <Tooltip title={resolved === 'dark' ? 'حالت روشن' : 'حالت تاریک'}>
             <IconButton onClick={() => setMode(resolved === 'dark' ? 'light' : 'dark')}>
               {resolved === 'dark' ? <SunIcon /> : <MoonIcon />}
@@ -159,7 +173,11 @@ export function App() {
         ) : showIconGallery ? (
           <IconGallery />
         ) : generated === null ? (
-          <WizardPage initial={shared} onPlanReady={accept} />
+          <WizardPage
+            key={loaded?.sequence ?? 0}
+            initial={loaded?.trip ?? shared}
+            onPlanReady={accept}
+          />
         ) : (
           <PlanPage
             plan={generated.plan}

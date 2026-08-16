@@ -1,5 +1,6 @@
 using FluentValidation;
 using LeaderTrip.Application.Abstractions;
+using LeaderTrip.Application.Auth;
 using LeaderTrip.Application.Behaviors;
 using LeaderTrip.Application.Prices.UpdatePriceBook;
 using LeaderTrip.Application.Reference.DiscoverPlaces;
@@ -107,6 +108,32 @@ public static class DependencyInjection
                 sp.GetService<IValidator<UpdatePriceBookCommand>>()));
 
         services.AddScoped<IValidator<UpdatePriceBookCommand>, UpdatePriceBookValidator>();
+
+        // ─── احراز هویت ───
+        services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+
+        // پیش‌فرضِ بدون پایگاه داده: انبار حافظه‌ای. `TryAdd` یعنی وقتی
+        // Infrastructure نسخهٔ EF را ثبت کند، این‌ها کنار می‌روند.
+        services.TryAddSingleton<InMemoryAuthStore>();
+        services.TryAddSingleton<IUserStore>(sp => sp.GetRequiredService<InMemoryAuthStore>());
+        services.TryAddSingleton<ISessionStore>(sp => sp.GetRequiredService<InMemoryAuthStore>());
+        services.TryAddSingleton<ISavedTripStore>(sp => sp.GetRequiredService<InMemoryAuthStore>());
+
+        services.AddScoped<RegisterHandler>();
+        services.AddScoped<ICommandHandler<RegisterCommand, AuthResponse>>(sp =>
+            new CommandValidationDecorator<RegisterCommand, AuthResponse>(
+                sp.GetRequiredService<RegisterHandler>(),
+                sp.GetService<IValidator<RegisterCommand>>()));
+
+        services.AddScoped<IValidator<RegisterCommand>, RegisterValidator>();
+
+        services.AddScoped<LoginHandler>();
+        services.AddScoped<ICommandHandler<LoginCommand, AuthResponse>>(sp =>
+            new CommandValidationDecorator<LoginCommand, AuthResponse>(
+                sp.GetRequiredService<LoginHandler>(),
+                sp.GetService<IValidator<LoginCommand>>()));
+
+        services.AddScoped<IValidator<LoginCommand>, LoginValidator>();
 
         return services;
     }

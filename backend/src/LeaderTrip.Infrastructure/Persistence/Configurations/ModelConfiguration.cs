@@ -118,3 +118,43 @@ internal sealed class PriceBookConfiguration : IEntityTypeConfiguration<PriceBoo
         builder.HasIndex(p => p.EffectiveFrom);
     }
 }
+
+internal sealed class UserConfiguration : IEntityTypeConfiguration<UserRow>
+{
+    public void Configure(EntityTypeBuilder<UserRow> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+        builder.Property(u => u.Email).HasMaxLength(254);
+        builder.Property(u => u.DisplayName).HasMaxLength(60);
+        builder.Property(u => u.PasswordHash).HasMaxLength(512);
+
+        // یکتایی ایمیل را پایگاه داده تضمین می‌کند، نه فقط کد: دو ثبت‌نام
+        // هم‌زمان با یک ایمیل، یکی‌شان به این ایندکس می‌خورد.
+        builder.HasIndex(u => u.Email).IsUnique();
+    }
+}
+
+internal sealed class SessionConfiguration : IEntityTypeConfiguration<SessionRow>
+{
+    public void Configure(EntityTypeBuilder<SessionRow> builder)
+    {
+        builder.ToTable("auth_sessions");
+        builder.HasKey(s => s.TokenHash);
+        builder.Property(s => s.TokenHash).HasMaxLength(64);
+        builder.HasIndex(s => s.UserId);
+        builder.HasIndex(s => s.ExpiresAt);
+    }
+}
+
+internal sealed class SavedTripConfiguration : IEntityTypeConfiguration<SavedTripRow>
+{
+    public void Configure(EntityTypeBuilder<SavedTripRow> builder)
+    {
+        builder.ToTable("saved_trips");
+        builder.HasKey(t => t.Id);
+        builder.Property(t => t.Title).HasMaxLength(120);
+        builder.Property(t => t.Payload).HasColumnType("jsonb");
+        builder.HasIndex(t => t.UserId);
+    }
+}

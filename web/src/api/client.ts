@@ -136,5 +136,53 @@ export const api = {
 
 const ADMIN_KEY_HEADER = 'X-Admin-Key'
 
+/** نسخه‌های با توکن کاربر — Bearer در سرآیند، نه کوکی و نه URL. */
+export const authApi = {
+  get: <T>(path: string, schema: z.ZodType<T>, token: string) =>
+    request(path, schema, { headers: { Authorization: `Bearer ${token}` } }),
+
+  post: <T>(path: string, body: unknown, schema: z.ZodType<T>, token: string) =>
+    request(path, schema, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  /** POST بدون بدنه و بدون پاسخ — مثل خروج. */
+  send: async (path: string, token: string): Promise<void> => {
+    let response: Response
+
+    try {
+      response = await fetch(`${BASE}${path}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {
+      throw new ApiError(0, 'network.unreachable', 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.')
+    }
+
+    if (!response.ok) {
+      throw await toApiError(response)
+    }
+  },
+
+  delete: async (path: string, token: string): Promise<void> => {
+    let response: Response
+
+    try {
+      response = await fetch(`${BASE}${path}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    } catch {
+      throw new ApiError(0, 'network.unreachable', 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.')
+    }
+
+    if (!response.ok) {
+      throw await toApiError(response)
+    }
+  },
+}
+
 /** نشانی نمایش یک عکس ذخیره‌شده — از همان مبدأ API. */
 export const photoUrl = (id: string): string => `${BASE}/photos/${id}`

@@ -30,6 +30,12 @@ public sealed class LeaderTripDbContext : DbContext
 
     internal DbSet<PriceBookRow> PriceBooks => Set<PriceBookRow>();
 
+    internal DbSet<UserRow> Users => Set<UserRow>();
+
+    internal DbSet<SessionRow> Sessions => Set<SessionRow>();
+
+    internal DbSet<SavedTripRow> SavedTrips => Set<SavedTripRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

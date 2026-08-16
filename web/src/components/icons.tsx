@@ -312,6 +312,15 @@ export const UploadIcon = make(
   </>,
 )
 
+/** کاربر — سر و شانه؛ بی‌نقطهٔ پُر، چون خودِ چهره کانون است. */
+export const UserIcon = make(
+  'UserIcon',
+  <>
+    <circle cx="12" cy="8.4" r="3.6" />
+    <path d="M4.9 19.6 C5.7 16 8.5 14.1 12 14.1 C15.5 14.1 18.3 16 19.1 19.6" />
+  </>,
+)
+
 /** دوربین — بدنه، برجستگی نمایاب و عدسی؛ نقطهٔ کانونی مرکز عدسی است. */
 export const CameraIcon = make(
   'CameraIcon',
