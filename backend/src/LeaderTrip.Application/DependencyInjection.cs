@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.TryAddScoped<IRoadNetworkWarmup, NoRoadNetworkWarmup>();
         services.TryAddScoped<IElevationProvider, NoElevationProvider>();
         services.TryAddScoped<IPlaceDiscovery, NoPlaceDiscovery>();
+        services.TryAddScoped<IRouteGeometryProvider, NoRouteGeometryProvider>();
         services.TryAddSingleton<IRoadDistanceProvider>(NoRoadDistanceProvider.Instance);
 
         // ─── قاعده‌های امتیازدهی ───

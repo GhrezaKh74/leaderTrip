@@ -312,6 +312,15 @@ export const UploadIcon = make(
   </>,
 )
 
+/** ناوبری — پیکان قطب‌نمای در حرکت؛ نیمهٔ پُر جهت را قاطع می‌کند. */
+export const NavigateIcon = make(
+  'NavigateIcon',
+  <>
+    <path d="M12 3.6 L19.6 20 L12 15.8 L4.4 20 Z" />
+    <path d="M12 3.6 L19.6 20 L12 15.8 Z" {...fill} />
+  </>,
+)
+
 /** کاربر — سر و شانه؛ بی‌نقطهٔ پُر، چون خودِ چهره کانون است. */
 export const UserIcon = make(
   'UserIcon',

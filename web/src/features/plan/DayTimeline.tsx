@@ -15,8 +15,10 @@ import { BanIcon, CarIcon, FuelIcon, LodgingIcon, MealIcon, TeaIcon, VisitPinIco
 import type { DayPlan, PlanBlock } from '../../api/schemas'
 import { duration, faNum, toFa, toman } from '../../lib/format'
 import { formatJalaliFromIso } from '../../lib/jalaliDisplay'
+import type { NavPoint } from '../../lib/navigation'
 import { heroGradient } from '../../theme/tokens'
 import { DayWeatherChip } from './DayWeatherChip'
+import { NavigateButton } from './NavigateButton'
 
 /**
  * آیکون و رنگ هر نوع بلوک — از پالت معنایی برند.
@@ -44,10 +46,13 @@ export function DayTimeline({
   day,
   cityName,
   actions,
+  locate,
 }: {
   day: DayPlan
   cityName: string
   actions?: DayEditActions
+  /** مختصات جاذبه از روی شناسه — برای دکمهٔ «برو با مسیریاب». */
+  locate?: (poiId: string) => { lat: number; lng: number } | undefined
 }) {
   return (
     <Paper
@@ -120,14 +125,30 @@ export function DayTimeline({
             },
           })}
         >
-          {day.blocks.map((block, index) => (
-            <BlockRow
-              key={`${block.startsAt}-${index}`}
-              block={block}
-              day={day.index}
-              {...(actions ? { actions } : {})}
-            />
-          ))}
+          {day.blocks.map((block, index) => {
+            // مقصدِ ناوبری: خود توقف اگر مختصات دارد؛ برای بلوک رانندگی،
+            // نخستین توقفِ مختصات‌دارِ بعدی — همان جایی که واقعاً می‌رانید.
+            const destinationBlock =
+              block.poiId != null
+                ? block
+                : block.kind === 'Drive'
+                  ? day.blocks.slice(index + 1).find((next) => next.poiId != null)
+                  : undefined
+            const located =
+              destinationBlock?.poiId != null ? locate?.(destinationBlock.poiId) : undefined
+            const navTarget: NavPoint | undefined =
+              located === undefined ? undefined : { ...located, name: destinationBlock?.title ?? '' }
+
+            return (
+              <BlockRow
+                key={`${block.startsAt}-${index}`}
+                block={block}
+                day={day.index}
+                {...(navTarget ? { navTarget } : {})}
+                {...(actions ? { actions } : {})}
+              />
+            )
+          })}
         </Stack>
       )}
     </Paper>
@@ -137,10 +158,12 @@ export function DayTimeline({
 function BlockRow({
   block,
   day,
+  navTarget,
   actions,
 }: {
   block: PlanBlock
   day: number
+  navTarget?: NavPoint
   actions?: DayEditActions
 }) {
   const theme = useTheme()
@@ -208,6 +231,12 @@ function BlockRow({
 
           {block.cost > 0 ? (
             <Chip size="small" variant="outlined" color="secondary" label={toman(block.cost)} />
+          ) : null}
+
+          {navTarget !== undefined ? (
+            <Box component="span" className="no-print" sx={{ my: -0.5 }}>
+              <NavigateButton destination={navTarget} />
+            </Box>
           ) : null}
         </Stack>
 

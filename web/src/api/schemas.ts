@@ -273,6 +273,13 @@ export const priceVersionSchema = z.object({
   updatedAt: z.string(),
 })
 
+/** هندسهٔ مسیر واقعی جاده برای نقشه. */
+export const routePathSchema = z.object({
+  points: z.array(z.object({ lat: z.number(), lng: z.number() })),
+  /** «Routed» از شبکهٔ جاده؛ «Straight» یعنی خط مستقیم بکش و همان را بگو. */
+  source: z.enum(['Routed', 'Straight']),
+})
+
 /** کاربر واردشده. */
 export const authUserSchema = z.object({
   id: z.string(),

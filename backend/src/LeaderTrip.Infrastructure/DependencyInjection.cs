@@ -136,6 +136,17 @@ public static class DependencyInjection
             sp.GetRequiredService<OsrmRoadDistanceProvider>(),
             sp.GetRequiredService<IMemoryCache>(),
             sp.GetRequiredService<IOptions<RoutingOptions>>()));
+
+        // هندسهٔ مسیر برای نقشه — همان سرور، سرویس /route به‌جای /table.
+        services.AddHttpClient<OsrmRouteGeometryProvider>((provider, client) =>
+        {
+            var options = GetOptions<RoutingOptions>(provider);
+            client.BaseAddress = options.BaseAddress;
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+        });
+
+        services.RemoveAll<IRouteGeometryProvider>();
+        services.AddScoped<IRouteGeometryProvider>(sp => sp.GetRequiredService<OsrmRouteGeometryProvider>());
     }
 
     private static void AddWeather(IServiceCollection services)

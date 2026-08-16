@@ -93,6 +93,12 @@ export function PlanPage({
     return (id: string) => byId.get(id) ?? id
   }, [reference.data])
 
+  const locatePoi = useMemo(() => {
+    const byId = new Map((pois.data?.items ?? []).map((poi) => [poi.id, { lat: poi.lat, lng: poi.lng }]))
+
+    return (id: string) => byId.get(id)
+  }, [pois.data])
+
   const stops = useMemo(() => {
     const ordered = plan.days.flatMap((day) =>
       day.blocks.filter((block) => block.kind === 'Visit' && block.poiId).map((block) => block.poiId!),
@@ -249,6 +255,7 @@ export function PlanPage({
                 day={day}
                 cityName={cityName(day.baseCityId)}
                 actions={editActions}
+                locate={locatePoi}
               />
             ))}
           </Stack>

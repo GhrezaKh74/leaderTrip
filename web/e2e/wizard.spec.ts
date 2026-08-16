@@ -38,6 +38,10 @@ const PLAN = {
           kind: 'Visit', startsAt: '09:56', durationMinutes: 108, title: 'کاخ گلستان',
           cost: 300_000, poiId: 'golestan', kilometers: null, note: null,
         },
+        {
+          kind: 'Visit', startsAt: '12:30', durationMinutes: 90, title: 'کاروانسرای سعدالسلطنه',
+          cost: 0, poiId: 'sadolsaltaneh', kilometers: null, note: null,
+        },
       ],
       kilometers: 210, drivingMinutes: 150, cost: 486_608,
     },
@@ -65,7 +69,7 @@ const PLAN = {
 }
 
 const POIS = {
-  total: 1,
+  total: 2,
   items: [
     {
       id: 'golestan', name: 'کاخ گلستان', cityId: 'tehran', lat: 35.6797, lng: 51.42,
@@ -73,6 +77,13 @@ const POIS = {
       bestMonths: [1, 2, 3], indoor: true, difficulty: 'Light', minAge: 0,
       kidFriendly: true, seniorFriendly: true, requiredVehicle: 'Paved',
       nightSuitable: false, tags: ['یونسکو'], description: 'کاخ قاجاری.',
+    },
+    {
+      id: 'sadolsaltaneh', name: 'کاروانسرای سعدالسلطنه', cityId: 'tehran', lat: 36.2688, lng: 50.0041,
+      category: 'Historical', rating: 4.5, visitMinutes: 90, ticket: 0,
+      bestMonths: [1, 2, 3], indoor: true, difficulty: 'Light', minAge: 0,
+      kidFriendly: true, seniorFriendly: true, requiredVehicle: 'Paved',
+      nightSuitable: false, tags: [], description: 'کاروانسرای قاجاری قزوین.',
     },
   ],
 }
@@ -185,6 +196,20 @@ async function stubApi(page: Page): Promise<{ planCalls: () => number }> {
 
     return route.fulfill({ json: savedTrips })
   })
+
+  // هندسهٔ مسیر واقعی جاده برای نقشه
+  await page.route('**/api/trips/route-path', (route) =>
+    route.fulfill({
+      json: {
+        points: [
+          { lat: 35.6892, lng: 51.389 },
+          { lat: 35.7, lng: 51.41 },
+          { lat: 35.6797, lng: 51.42 },
+        ],
+        source: 'Routed',
+      },
+    }),
+  )
 
   await page.route('**/api/trips/plan', (route) => {
     planCalls += 1
@@ -314,6 +339,9 @@ test('نبودِ کاشی نقشه، فهرست توقف‌ها را از بین
   await expect(page.getByText('ترتیب توقف‌ها', { exact: true })).toBeVisible()
   await expect(page.getByRole('listitem').filter({ hasText: 'کاخ گلستان' })).toBeVisible()
   await expect(page.getByText(/کاشی‌های نقشه بارگذاری نشدند/)).toBeVisible({ timeout: 15_000 })
+
+  // هندسهٔ جاده جدا از کاشی‌هاست: حتی بی‌کاشی، خط مسیرِ واقعی برچسب می‌خورد.
+  await expect(page.getByText('مسیر واقعی جاده', { exact: true })).toBeVisible()
 })
 
 /**

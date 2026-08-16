@@ -234,6 +234,29 @@ public sealed class NoPlaceDiscovery : IPlaceDiscovery
         Task.FromResult<IReadOnlyList<DiscoveredPlace>>([]);
 }
 
+/// <summary>هندسهٔ مسیر واقعی جاده از میان نقاط، به ترتیب.</summary>
+/// <remarks>
+/// جدا از <see cref="Domain.Routing.IRoadDistanceProvider"/> است چون مصرفش
+/// فرق دارد: آن یکی «عدد» می‌دهد و در دل حلقهٔ انتخاب صدا زده می‌شود؛ این یکی
+/// «شکل» می‌دهد و فقط برای نمایش نقشه است. فهرست خالی یعنی سرویس در دسترس
+/// نبود — و لایهٔ نمایش صادقانه خط مستقیم می‌کشد و همان را برچسب می‌زند.
+/// </remarks>
+public interface IRouteGeometryProvider
+{
+    Task<IReadOnlyList<Coordinate>> GetPathAsync(
+        IReadOnlyList<Coordinate> waypoints,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>وقتی سرویس مسیریابی پیکربندی نشده است.</summary>
+public sealed class NoRouteGeometryProvider : IRouteGeometryProvider
+{
+    public Task<IReadOnlyList<Coordinate>> GetPathAsync(
+        IReadOnlyList<Coordinate> waypoints,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Coordinate>>([]);
+}
+
 /// <summary>عکس ذخیره‌شده — فقط شناسه؛ نشانی را لایهٔ وب می‌سازد.</summary>
 public sealed record StoredPhoto(string Id);
 

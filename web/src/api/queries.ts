@@ -5,6 +5,7 @@ import {
   budgetLeversSchema,
   discoveredPlacesSchema,
   photoUploadSchema,
+  routePathSchema,
   poiListSchema,
   referenceDataSchema,
   tripPlanSchema,
@@ -94,5 +95,29 @@ export function useUploadPhoto() {
 
       return api.postForm('/photos', form, photoUploadSchema)
     },
+  })
+}
+
+/**
+ * هندسهٔ مسیر واقعی جاده برای نقشه.
+ *
+ * کلید کوئری از مختصات گردشده ساخته می‌شود و `staleTime` بی‌نهایت است:
+ * شکل جاده بین دو نقطه عوض نمی‌شود و سهمیهٔ سرویس مسیریابی محدود است.
+ */
+export function useRoutePath(stops: { lat: number; lng: number }[], enabled: boolean) {
+  return useQuery({
+    queryKey: [
+      'route-path',
+      stops.map((stop) => `${stop.lat.toFixed(4)},${stop.lng.toFixed(4)}`).join(';'),
+    ],
+    queryFn: () =>
+      api.post(
+        '/trips/route-path',
+        { points: stops.map(({ lat, lng }) => ({ lat, lng })) },
+        routePathSchema,
+      ),
+    enabled: enabled && stops.length >= 2,
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: 1,
   })
 }

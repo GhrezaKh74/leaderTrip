@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
+import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -8,7 +9,9 @@ import { useTheme } from '@mui/material/styles'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+import { useRoutePath } from '../../api/queries'
 import { faNum } from '../../lib/format'
+import { googleMapsDirections, wazeNavigation } from '../../lib/navigation'
 
 /** مهلت انتظار برای اولین کاشی، پیش از اعلام شکست. */
 const TileTimeoutMs = 6000
@@ -32,11 +35,21 @@ export interface MapStop {
  * <p>اگر کاشی‌ها بارگذاری نشوند — بی‌اینترنت، فیلتر، یا سهمیهٔ سرور — نقشه
  * جای خالی خاکستری نمی‌ماند: پیام صریح می‌دهد و فهرست توقف‌ها را نشان می‌دهد،
  * چون همان فهرست کار اصلی را در جاده انجام می‌دهد.</p>
+ *
+ * <p><b>خط مسیر:</b> اگر هندسهٔ واقعی جاده از بک‌اند برسد، همان کشیده می‌شود
+ * (خط پیوسته)؛ وگرنه خط مستقیمِ نقطه‌چین — و برچسب بالای نقشه صادقانه می‌گوید
+ * کدام است. خطی که حدس است نباید شبیه جاده به نظر برسد.</p>
  */
 export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expectTiles?: boolean }) {
   const container = useRef<HTMLDivElement | null>(null)
   const [tilesFailed, setTilesFailed] = useState(!expectTiles)
   const theme = useTheme()
+
+  const routePath = useRoutePath(stops, expectTiles)
+  const roadPoints =
+    routePath.data !== undefined && routePath.data.source === 'Routed'
+      ? routePath.data.points
+      : null
 
   useEffect(() => {
     if (container.current === null || stops.length === 0) return
@@ -74,12 +87,31 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
 
     tiles.addTo(map)
 
-    L.polyline(points, { color: theme.palette.primary.main, weight: 3, opacity: 0.8 }).addTo(map)
+    if (roadPoints !== null) {
+      // جادهٔ واقعی: خط پیوسته روی خودِ شبکهٔ راه‌ها.
+      L.polyline(
+        roadPoints.map((point) => [point.lat, point.lng] as [number, number]),
+        { color: theme.palette.primary.main, weight: 4, opacity: 0.85 },
+      ).addTo(map)
+    } else {
+      // خط مستقیم: نقطه‌چین، تا حدس شبیه جاده به نظر نرسد.
+      L.polyline(points, {
+        color: theme.palette.primary.main,
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '8 8',
+      }).addTo(map)
+    }
 
     stops.forEach((stop) => {
+      // نام‌ها از دیتاست خودمان می‌آیند؛ HTML پاپ‌آپ فقط لینک مسیریابی است.
       L.marker([stop.lat, stop.lng], { icon: numberedIcon(stop.order, theme.palette.primary.dark) })
         .addTo(map)
-        .bindPopup(`${stop.name}`)
+        .bindPopup(
+          `<b>${stop.name}</b><br/>` +
+            `<a href="${googleMapsDirections(stop)}" target="_blank" rel="noopener">مسیریابی گوگل‌مپس</a> · ` +
+            `<a href="${wazeNavigation(stop)}" target="_blank" rel="noopener">ویز</a>`,
+        )
     })
 
     map.fitBounds(L.latLngBounds(points), { padding: [40, 40] })
@@ -88,7 +120,7 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
       clearTimeout(silenceTimer)
       map.remove()
     }
-  }, [stops, theme.palette.primary.main, theme.palette.primary.dark])
+  }, [stops, roadPoints, theme.palette.primary.main, theme.palette.primary.dark])
 
   if (stops.length === 0) {
     return <Alert severity="info">این برنامه توقف قابل نمایشی روی نقشه ندارد.</Alert>
@@ -102,6 +134,20 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
             ? 'کاشی‌های نقشه بارگذاری نشدند. ترتیب توقف‌ها زیر همین کادر هست و برنامه بدون نقشه هم کامل است.'
             : 'آفلاین هستید و کاشی‌های نقشه در دسترس نیستند. ترتیب توقف‌ها زیر همین کادر هست.'}
         </Alert>
+      ) : null}
+
+      {/* برچسب صادق: عددِ حدسی نباید شبیه اندازه‌گیری باشد، خط حدسی هم نباید
+          شبیه جاده. با کمتر از دو توقف خطی در کار نیست که برچسب بخواهد. */}
+      {stops.length >= 2 ? (
+        <Stack direction="row" spacing={1}>
+          {roadPoints !== null ? (
+            <Chip size="small" color="success" label="مسیر واقعی جاده" />
+          ) : routePath.isFetching ? (
+            <Chip size="small" variant="outlined" label="در حال گرفتن مسیر جاده…" />
+          ) : (
+            <Chip size="small" variant="outlined" label="خط مستقیم — مسیر تقریبی" />
+          )}
+        </Stack>
       ) : null}
 
       <Paper sx={{ overflow: 'hidden' }}>

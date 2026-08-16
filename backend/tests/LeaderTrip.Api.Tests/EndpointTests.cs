@@ -186,4 +186,38 @@ public sealed class EndpointTests : IClassFixture<ApiFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    /// <summary>بدون سرویس مسیریابی، پاسخ صادقانه «Straight» است نه خطا.</summary>
+    [Fact]
+    public async Task RoutePath_WithRoutingDisabled_SaysStraight()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            new Uri("/api/trips/route-path", UriKind.Relative),
+            new { points = new[] { new { lat = 35.6892, lng = 51.389 }, new { lat = 36.2688, lng = 50.0041 } } });
+
+        response.EnsureSuccessStatusCode();
+
+        string body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("\"Straight\"", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RoutePath_WithBadCoordinates_IsRejected()
+    {
+        using var client = _factory.CreateClient();
+
+        var tooFew = await client.PostAsJsonAsync(
+            new Uri("/api/trips/route-path", UriKind.Relative),
+            new { points = new[] { new { lat = 35.0, lng = 51.0 } } });
+
+        var invalid = await client.PostAsJsonAsync(
+            new Uri("/api/trips/route-path", UriKind.Relative),
+            new { points = new[] { new { lat = 95.0, lng = 51.0 }, new { lat = 35.0, lng = 51.0 } } });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, tooFew.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
 }
