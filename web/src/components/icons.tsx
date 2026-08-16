@@ -312,6 +312,16 @@ export const UploadIcon = make(
   </>,
 )
 
+/** دوربین — بدنه، برجستگی نمایاب و عدسی؛ نقطهٔ کانونی مرکز عدسی است. */
+export const CameraIcon = make(
+  'CameraIcon',
+  <>
+    <path d="M4.6 8.4 C4.6 7.3 5.5 6.4 6.6 6.4 H8.5 L10 4.6 H14 L15.5 6.4 H17.4 C18.5 6.4 19.4 7.3 19.4 8.4 V17.2 C19.4 18.3 18.5 19.2 17.4 19.2 H6.6 C5.5 19.2 4.6 18.3 4.6 17.2 Z" />
+    <circle cx="12" cy="12.6" r="3.4" />
+    <circle cx="12" cy="12.6" r="1.3" {...fill} />
+  </>,
+)
+
 /** تقویم — قاب با دو گیره و نقطهٔ کانونی روی «روزِ سفر». */
 export const CalendarIcon = make(
   'CalendarIcon',

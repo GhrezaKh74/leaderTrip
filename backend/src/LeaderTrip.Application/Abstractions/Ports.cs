@@ -233,3 +233,34 @@ public sealed class NoPlaceDiscovery : IPlaceDiscovery
         CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<DiscoveredPlace>>([]);
 }
+
+/// <summary>عکس ذخیره‌شده — فقط شناسه؛ نشانی را لایهٔ وب می‌سازد.</summary>
+public sealed record StoredPhoto(string Id);
+
+/// <summary>محتوای یک عکس برای برگرداندن به کلاینت.</summary>
+/// <remarks>بستن <see cref="Content"/> با گیرنده است.</remarks>
+public sealed record PhotoContent(Stream Content, string ContentType, long Length);
+
+/// <summary>ذخیرهٔ عکس‌های چک‌این.</summary>
+/// <remarks>
+/// <para>
+/// عمداً از دفترچهٔ سفر جداست: دفترچه (ساعت‌ها، امتیازها، هزینه‌ها) روی دستگاه
+/// کاربر می‌ماند و سرور فقط بایت‌های عکس را نگه می‌دارد — بدون دانستن اینکه عکس
+/// متعلق به کدام سفر یا کدام توقف است. کم‌دانی سرور یک تصمیم است، نه کمبود.
+/// </para>
+/// <para>
+/// اعتبارسنجی محتوا وظیفهٔ پیاده‌سازی است: نوع واقعی فایل از امضای باینری آن
+/// تشخیص داده می‌شود، نه از هدر HTTP که هر کلاینتی هرچه بخواهد می‌فرستد.
+/// </para>
+/// </remarks>
+public interface IPhotoStore
+{
+    /// <summary>ذخیرهٔ عکس؛ شناسهٔ تولیدشده را برمی‌گرداند یا خطای اعتبارسنجی.</summary>
+    Task<Result<StoredPhoto>> SaveAsync(
+        Stream content,
+        long declaredLength,
+        CancellationToken cancellationToken);
+
+    /// <summary>بازکردن عکس با شناسه؛ <see langword="null"/> یعنی وجود ندارد.</summary>
+    Task<PhotoContent?> OpenAsync(string id, CancellationToken cancellationToken);
+}

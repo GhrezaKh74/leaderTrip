@@ -58,7 +58,10 @@ async function request<T>(
       ...init,
       headers: {
         Accept: 'application/json',
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        // برای FormData هدر دستی ممنوع است: مرورگر باید خودش boundary را بنویسد.
+        ...(init?.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...init?.headers,
       },
     })
@@ -97,4 +100,10 @@ export const api = {
       body: JSON.stringify(body),
       ...(signal ? { signal } : {}),
     }),
+
+  postForm: <T>(path: string, form: FormData, schema: z.ZodType<T>) =>
+    request(path, schema, { method: 'POST', body: form }),
 }
+
+/** نشانی نمایش یک عکس ذخیره‌شده — از همان مبدأ API. */
+export const photoUrl = (id: string): string => `${BASE}/photos/${id}`

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { driftMinutes, learnedTaste, type Journal } from './journal'
+import { driftMinutes, journalSchema, learnedTaste, type Journal } from './journal'
 
 const journal = (checkIns: Journal['checkIns']): Journal => ({
   tripId: 'x',
@@ -64,5 +64,30 @@ describe('اختلاف با برنامه', () => {
 
   it('ساعت نامعتبر، تهی می‌دهد نه عدد بی‌معنا', () => {
     expect(driftMinutes('09:00', '')).toBeNull()
+  })
+})
+
+describe('اسکیمای دفترچه', () => {
+  it('چک‌این با شناسهٔ عکس، از ذخیره‌سازی سالم برمی‌گردد', () => {
+    const stored = JSON.stringify({
+      tripId: 'x',
+      expenses: [],
+      checkIns: [{ poiId: 'p1', arrivedAt: '10:00', photoId: `${'a'.repeat(32)}.jpg` }],
+    })
+
+    const parsed = journalSchema.safeParse(JSON.parse(stored))
+
+    expect(parsed.success).toBe(true)
+    expect(parsed.success && parsed.data.checkIns[0]?.photoId).toBe(`${'a'.repeat(32)}.jpg`)
+  })
+
+  it('چک‌این بدون عکس همچنان معتبر است — عکس اختیاری است', () => {
+    const parsed = journalSchema.safeParse({
+      tripId: 'x',
+      expenses: [],
+      checkIns: [{ poiId: 'p1', arrivedAt: '10:00' }],
+    })
+
+    expect(parsed.success).toBe(true)
   })
 })

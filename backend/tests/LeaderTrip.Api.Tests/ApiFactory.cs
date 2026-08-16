@@ -31,6 +31,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 // و سقف پایین باعث می‌شد ترتیب اجرای تست‌ها روی نتیجه اثر بگذارد.
                 ["Api:RequestsPerMinute"] = "9999",
                 ["Api:PlanRequestsPerMinute"] = "1000",
+
+                // عکس‌ها در پوشهٔ موقت سیستم، نه کنار باینری تست؛ و سقف کوچک تا
+                // تستِ «بزرگ‌تر از سقف» مجبور نباشد چند مگابایت بسازد.
+                ["Photos:RootPath"] = Path.Combine(Path.GetTempPath(), $"leadertrip-api-photos-{Guid.NewGuid():N}"),
+                ["Photos:MaxBytes"] = "60000",
             }));
     }
 }

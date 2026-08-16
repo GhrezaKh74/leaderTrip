@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Grid from '@mui/material/Grid'
 import IconButton from '@mui/material/IconButton'
@@ -10,13 +12,18 @@ import Paper from '@mui/material/Paper'
 import Rating from '@mui/material/Rating'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/DeleteOutlineOutlined'
 
+import { CameraIcon } from '../../components/icons'
 import { NumberField } from '../../components/NumberField'
+import { photoUrl } from '../../api/client'
+import { useUploadPhoto } from '../../api/queries'
 import type { Poi, TripPlan } from '../../api/schemas'
 import type { TripForm } from '../wizard/tripSchema'
+import { downscalePhoto } from '../../lib/image'
 import { faNum, toFa, toman, tomanShort } from '../../lib/format'
 import { driftMinutes, type Expense, type Journal } from './journal'
 import { balances, settle } from './settlement'
@@ -36,12 +43,14 @@ export function LivePanel({
   input,
   pois,
   journal,
+  online = true,
   onChange,
 }: {
   plan: TripPlan
   input: TripForm
   pois: Poi[] | undefined
   journal: Journal
+  online?: boolean
   onChange: (next: Journal) => void
 }) {
   const visits = useMemo(
@@ -62,10 +71,35 @@ export function LivePanel({
 
   const actualTotal = journal.expenses.reduce((sum, expense) => sum + expense.amount, 0)
 
+  const upload = useUploadPhoto()
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+
+  /**
+   * پیوست عکس: کوچک‌سازی سمت کلاینت، بارگذاری، و ثبت فقط شناسه در دفترچه.
+   * خود عکس هرگز وارد localStorage نمی‌شود — هم جا نمی‌شود، هم لازم نیست.
+   */
+  const attachPhoto = async (poiId: string, file: File) => {
+    setPhotoError(null)
+    setUploadingFor(poiId)
+
+    try {
+      const saved = await upload.mutateAsync(await downscalePhoto(file))
+
+      onChange(upsertCheckIn(journal, poiId, { photoId: saved.id, category: categoryOf(poiId) }))
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : 'بارگذاری عکس انجام نشد.')
+    } finally {
+      setUploadingFor(null)
+    }
+  }
+
   return (
     <Stack spacing={3}>
       <Alert severity="info">
-        همهٔ داده‌های این بخش روی همین دستگاه می‌ماند و جایی فرستاده نمی‌شود.
+        داده‌های این بخش روی همین دستگاه می‌ماند — جز عکس‌هایی که خودتان پیوست
+        می‌کنید: آن‌ها روی سرور ذخیره می‌شوند، بدون اینکه سرور بداند مال کدام
+        سفرند.
       </Alert>
 
       <Section title="چک‌این توقف‌ها">
@@ -147,11 +181,31 @@ export function LivePanel({
                         }
                       />
                     </Grid>
+
+                    <Grid size={12}>
+                      <CheckInPhoto
+                        title={visit.title}
+                        photoId={checkIn?.photoId}
+                        uploading={uploadingFor === visit.poiId}
+                        online={online}
+                        onAttach={(file) => void attachPhoto(visit.poiId, file)}
+                        onRemove={() =>
+                          onChange({
+                            ...journal,
+                            checkIns: journal.checkIns.map((c) =>
+                              c.poiId === visit.poiId ? stripPhoto(c) : c,
+                            ),
+                          })
+                        }
+                      />
+                    </Grid>
                   </Grid>
                 </Stack>
               </Paper>
             )
           })}
+
+          {photoError ? <Alert severity="warning">{photoError}</Alert> : null}
         </Stack>
       </Section>
 
@@ -346,6 +400,89 @@ function Settlement({ journal, input }: { journal: Journal; input: TripForm }) {
         </Stack>
       )}
     </Stack>
+  )
+}
+
+/**
+ * برداشتن عکس یعنی برداشتن پیوند از دفترچه؛ خود فایل روی سرور می‌ماند چون سرور
+ * نمی‌داند این شناسه کجا استفاده شده — همان کم‌دانیِ عمدی که حریم را نگه می‌دارد.
+ */
+function stripPhoto(checkIn: Journal['checkIns'][number]): Journal['checkIns'][number] {
+  const { photoId: _photoId, ...rest } = checkIn
+
+  return rest
+}
+
+/** ردیف عکس چک‌این: بندانگشتی اگر هست، دکمهٔ پیوست اگر نیست. */
+function CheckInPhoto({
+  title,
+  photoId,
+  uploading,
+  online,
+  onAttach,
+  onRemove,
+}: {
+  title: string
+  photoId: string | undefined
+  uploading: boolean
+  online: boolean
+  onAttach: (file: File) => void
+  onRemove: () => void
+}) {
+  if (photoId !== undefined) {
+    return (
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+        <Box
+          component="img"
+          src={photoUrl(photoId)}
+          alt={`عکس ${title}`}
+          sx={{
+            height: 88,
+            maxWidth: 160,
+            borderRadius: 2,
+            objectFit: 'cover',
+            border: 1,
+            borderColor: 'divider',
+          }}
+        />
+
+        <Tooltip title="برداشتن عکس از این چک‌این">
+          <IconButton size="small" aria-label={`برداشتن عکس ${title}`} onClick={onRemove}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+    )
+  }
+
+  return (
+    <Tooltip title={online ? '' : 'پیوست عکس به اینترنت نیاز دارد'}>
+      <span>
+        <Button
+          component="label"
+          size="small"
+          variant="outlined"
+          disabled={uploading || !online}
+          startIcon={uploading ? <CircularProgress size={14} /> : <CameraIcon sx={{ fontSize: 18 }} />}
+        >
+          {uploading ? 'در حال بارگذاری…' : 'پیوست عکس'}
+          <input
+            type="file"
+            accept="image/*"
+            // دوربین پشت گوشی، مستقیم — این دکمه وسط سفر زده می‌شود، نه پشت میز.
+            capture="environment"
+            hidden
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+
+              if (file !== undefined) onAttach(file)
+
+              event.target.value = ''
+            }}
+          />
+        </Button>
+      </span>
+    </Tooltip>
   )
 }
 

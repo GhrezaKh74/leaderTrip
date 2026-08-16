@@ -231,6 +231,13 @@ export const discoveredPlacesSchema = z.object({
   note: z.string(),
 })
 
+/** پاسخ بارگذاری عکس چک‌این. */
+export const photoUploadSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+})
+
 export type BudgetLever = z.infer<typeof budgetLeverSchema>
 export type BudgetLevers = z.infer<typeof budgetLeversSchema>
 export type DiscoveredPlace = z.infer<typeof discoveredPlaceSchema>
+export type PhotoUpload = z.infer<typeof photoUploadSchema>

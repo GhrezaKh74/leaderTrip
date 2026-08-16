@@ -4,6 +4,7 @@ import { api, ApiError } from './client'
 import {
   budgetLeversSchema,
   discoveredPlacesSchema,
+  photoUploadSchema,
   poiListSchema,
   referenceDataSchema,
   tripPlanSchema,
@@ -74,5 +75,24 @@ export function useGeneratePlan(onSuccess?: (plan: TripPlan) => void) {
       // خطای اعتبارسنجی با تلاش دوباره درست نمی‌شود؛ فقط خطای گذرای سرور یا
       // شبکه ارزش تکرار دارد.
       failureCount < 2 && error instanceof ApiError && (error.status === 0 || error.status >= 500),
+  })
+}
+
+/**
+ * بارگذاری عکس چک‌این.
+ *
+ * تنها داده‌ای که از بخش «حین سفر» به سرور می‌رود، و فقط با کنشِ صریح کاربر.
+ * پیش از ارسال، لایهٔ نمایش عکس را کوچک می‌کند (`lib/image.ts`) — در جاده،
+ * اینترنت گران‌ترین منبع است.
+ */
+export function useUploadPhoto() {
+  return useMutation({
+    mutationFn: (photo: Blob) => {
+      const form = new FormData()
+
+      form.append('photo', photo, 'checkin.jpg')
+
+      return api.postForm('/photos', form, photoUploadSchema)
+    },
   })
 }

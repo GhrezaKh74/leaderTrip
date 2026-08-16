@@ -7,6 +7,7 @@ using LeaderTrip.Infrastructure.External.Routing;
 using LeaderTrip.Infrastructure.External.Weather;
 using LeaderTrip.Infrastructure.Persistence;
 using LeaderTrip.Infrastructure.Persistence.Repositories;
+using LeaderTrip.Infrastructure.Photos;
 using LeaderTrip.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -47,6 +48,14 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(DiscoveryOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        services.AddOptions<PhotoOptions>()
+            .Bind(configuration.GetSection(PhotoOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Singleton چون بدون حالت است و پوشه را یک‌بار در ساخت می‌سازد.
+        services.AddSingleton<IPhotoStore, FileSystemPhotoStore>();
 
         AddDataAccess(services, configuration);
         AddRouting(services);

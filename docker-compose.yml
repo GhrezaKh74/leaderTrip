@@ -63,6 +63,10 @@ services:
       Api__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8080}
       # خالی‌گذاشتنش یعنی اندپوینت‌های مدیریتی اصلاً ثبت نمی‌شوند.
       Api__AdminApiKey: ${ADMIN_API_KEY:-}
+      # عکس‌های چک‌این روی volume می‌مانند؛ ریشهٔ کانتینر فقط‌خواندنی است.
+      Photos__RootPath: /data/photos
+    volumes:
+      - photo-data:/data/photos
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/health"]
       interval: 30s
@@ -130,3 +134,4 @@ services:
 
 volumes:
   db-data:
+  photo-data:

@@ -104,6 +104,21 @@ async function stubApi(page: Page): Promise<{ planCalls: () => number }> {
     }),
   )
 
+  // عکس چک‌این: بارگذاری شناسه می‌دهد و همان شناسه قابل‌گرفتن است.
+  const photoId = `${'a'.repeat(32)}.jpg`
+  const jpegPixel = Buffer.from(
+    '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVN//2Q==',
+    'base64',
+  )
+
+  await page.route('**/api/photos', (route) =>
+    route.fulfill({ json: { id: photoId, url: `/api/photos/${photoId}` } }),
+  )
+
+  await page.route(`**/api/photos/${photoId}`, (route) =>
+    route.fulfill({ body: jpegPixel, contentType: 'image/jpeg' }),
+  )
+
   await page.route('**/api/trips/plan', (route) => {
     planCalls += 1
 
@@ -297,6 +312,13 @@ test('حین سفر: چک‌این، هزینهٔ واقعی و تسویه‌ح�
   // ساعت واقعی رسیدن، اختلاف با برنامه را نشان می‌دهد.
   await page.getByLabel('ساعت واقعی').first().fill('10:30')
   await expect(page.getByText(/دیرتر/)).toBeVisible()
+
+  // پیوست عکس: بندانگشتی از سرور می‌آید و دکمهٔ پیوست جایش را می‌دهد.
+  await page
+    .locator('input[type="file"][accept="image/*"]')
+    .first()
+    .setInputFiles({ name: 'checkin.jpg', mimeType: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]) })
+  await expect(page.locator('img[alt^="عکس"]').first()).toBeVisible()
 
   await page.getByLabel('بابت').fill('شام')
   await page.getByLabel('مبلغ', { exact: true }).fill('300000')

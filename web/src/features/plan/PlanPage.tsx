@@ -293,6 +293,7 @@ export function PlanPage({
             input={input}
             pois={pois.data?.items}
             journal={journal}
+            online={online}
             onChange={updateJournal}
           />
 
