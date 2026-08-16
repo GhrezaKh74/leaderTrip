@@ -240,7 +240,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         });
 
         // ─── زمان‌بندی روزها ───
-        var schedule = _scheduler.Schedule(route, new ScheduleRequest
+        var scheduleRequest = new ScheduleRequest
         {
             StartDate = query.StartDate,
             Days = query.Days,
@@ -257,7 +257,29 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             Cities = cityById,
             StayCities = cities.Where(c => c.CanStayOvernight).ToList(),
             DayAssignments = query.DayAssignments,
-        });
+            // نامزدهای گشت شبانه از کل واجدها می‌آیند، نه فقط مسیر انتخابی:
+            // بازار شهرِ اقامت شاید در مسیرِ روز نگنجیده باشد ولی شب دقیقاً جای اوست.
+            NightPois = candidates
+                .Where(c => c.Poi.IsNightSuitable && !excluded.Contains(c.Poi.Id))
+                .Select(c => c.Poi)
+                .ToList(),
+        };
+
+        var schedule = _scheduler.Schedule(route, scheduleRequest);
+
+        // حلقه دو جهت پیمایش دارد و هم‌طول‌اند، ولی برای تقسیم به روزها یکی
+        // نیستند: مرز روزها با ترتیب توقف‌ها جفت می‌شود. اگر چیزی جا نماند
+        // جهت دیگر هم سنجیده می‌شود و هرکدام بازدید بیشتری نشاند برنده است —
+        // انتخاب با نتیجهٔ واقعی، نه حدس هندسی.
+        if (schedule.UnscheduledPoiIds.Count > 0 && destination is null && returnsToOrigin && route.Count > 3)
+        {
+            var reversed = _scheduler.Schedule([.. route.Reverse()], scheduleRequest);
+
+            if (reversed.UnscheduledPoiIds.Count < schedule.UnscheduledPoiIds.Count)
+            {
+                schedule = reversed;
+            }
+        }
 
         // ─── هزینه ───
         var scheduledIds = schedule.Days.SelectMany(d => d.VisitedPoiIds).ToHashSet(StringComparer.Ordinal);

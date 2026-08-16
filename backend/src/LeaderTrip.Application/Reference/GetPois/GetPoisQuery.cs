@@ -47,7 +47,10 @@ public sealed record PoiDto(
     OffroadCapability RequiredVehicle,
     bool NightSuitable,
     IReadOnlyList<string> Tags,
-    string Description);
+    string Description,
+    /* «HH:mm»؛ null یعنی بی‌محدودیت (شبانه‌روزی). */
+    string? OpensAt,
+    string? ClosesAt);
 
 internal sealed class GetPoisHandler : IQueryHandler<GetPoisQuery, PoiListResponse>
 {
@@ -111,5 +114,10 @@ internal sealed class GetPoisHandler : IQueryHandler<GetPoisQuery, PoiListRespon
         poi.RequiredVehicle,
         poi.IsNightSuitable,
         poi.Tags,
-        poi.Description);
+        poi.Description,
+        ClockText(poi.OpensAt),
+        ClockText(poi.ClosesAt));
+
+    private static string? ClockText(TimeSpan? value) =>
+        value is { } clock ? $"{(int)clock.TotalHours:00}:{clock.Minutes:00}" : null;
 }

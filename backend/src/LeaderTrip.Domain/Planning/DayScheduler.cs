@@ -8,9 +8,18 @@ namespace LeaderTrip.Domain.Planning;
 
 /// <summary>ترتیب بازدیدها را به برنامهٔ ساعت‌به‌ساعت روزها تبدیل می‌کند.</summary>
 /// <remarks>
+/// <para>
 /// قید سخت: مجموع رانندگی هر روز از سقف تعیین‌شده بیشتر نمی‌شود. جاذبه‌ای که
 /// جا نشود به روز بعد می‌رود؛ اگر تا آخر جا نشد، صریحاً گزارش می‌شود — نه اینکه
 /// بی‌صدا حذف شود.
+/// </para>
+/// <para>
+/// در هر گام، <em>نخستین جاذبهٔ شدنی</em> از صف برداشته می‌شود، نه فقط نفر اول
+/// صف: اگر جاذبهٔ بعدیِ مسیر امروز جا نشود (رانندگی‌اش سقف روز را می‌ترکاند یا
+/// درش بسته است) نوبت به بعدی‌ها می‌رسد. بدون این، روز ساعت سه بعدازظهر تمام
+/// می‌شد در حالی که جاذبهٔ نزدیکِ چند دقیقه‌ای در صف مانده بود — بعدازظهرِ مرده
+/// و «جا نشد» هم‌زمان.
+/// </para>
 /// </remarks>
 public sealed class DayScheduler
 {
@@ -20,6 +29,14 @@ public sealed class DayScheduler
     private static readonly TimeSpan ContinuousDriveLimit = TimeSpan.FromMinutes(120);
     private static readonly TimeSpan LunchWindowStart = TimeSpan.FromHours(12);
     private static readonly TimeSpan LunchWindowEnd = TimeSpan.FromHours(14.5);
+    private static readonly TimeSpan EarlyLunchStart = TimeSpan.FromHours(11);
+    private static readonly TimeSpan DinnerTime = TimeSpan.FromHours(19);
+    private static readonly TimeSpan DinnerWindowEnd = TimeSpan.FromHours(21);
+    private static readonly TimeSpan MaxOpeningWait = TimeSpan.FromMinutes(90);
+    private static readonly TimeSpan VisibleWait = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan FreeTimeThreshold = TimeSpan.FromMinutes(60);
+    private static readonly TimeSpan MinEveningVisit = TimeSpan.FromMinutes(40);
+    private static readonly Distance EveningReach = Distance.FromKilometers(8);
 
     private readonly TravelPlanner _travelPlanner;
 
@@ -33,6 +50,7 @@ public sealed class DayScheduler
     {
         var pending = new LinkedList<PointOfInterest>(route);
         var days = new List<DayPlan>(request.Days);
+        var visitedIds = new HashSet<string>(StringComparer.Ordinal);
         var current = request.Origin;
         var currentCity = request.OriginCity;
         bool anyRouted = false;
@@ -47,6 +65,7 @@ public sealed class DayScheduler
             var continuous = TimeSpan.Zero;
             var dayDistance = Distance.Zero;
             bool lunchDone = false;
+            bool dinnerDone = false;
             var visited = new List<PointOfInterest>();
 
             if (dayIndex > 0)
@@ -69,44 +88,21 @@ public sealed class DayScheduler
                 // اگر کاربر گفته این جاذبه روز سوم باشد، در روزهای دیگر رد می‌شود
                 // و برنامه از نو و سازگار ساخته می‌شود. دستکاری مستقیم خروجی یعنی
                 // مسافت و ساعت و هزینه با آنچه نمایش داده می‌شود نخواند.
-                var node = FirstAllowed(pending, request, dayIndex + 1);
+                var placement = FirstFeasible(
+                    pending, request, dayIndex + 1, isLastDay, current, currentCity, clock, driving, continuous,
+                    lunchDone, dinnerDone);
 
-                if (node is null)
+                if (placement is null)
                 {
                     break;
                 }
 
+                var (node, leg, visit, visitStart, restBefore, restsWithin, meal) = placement;
                 var next = node.Value;
-                var terrain = TravelPlanner.InferTerrain(
-                    currentCity.Climate, request.ClimateOf(next), current.StraightLineTo(next.Location));
-
-                var leg = _travelPlanner.Plan(current, next.Location, terrain, request.Vehicle, request.Pace);
-                var visit = TimeSpan.FromMinutes(next.VisitDuration.TotalMinutes * request.VisitStretch);
-
-                var endCity = isLastDay
-                    ? request.FinalCity(fallbackNear: next.Location)
-                    : request.NearestStayCity(next.Location);
-
-                var back = _travelPlanner.Plan(
-                    next.Location,
-                    endCity.Location,
-                    TravelPlanner.InferTerrain(
-                        request.ClimateOf(next), endCity.Climate, next.Location.StraightLineTo(endCity.Location)),
-                    request.Vehicle,
-                    request.Pace);
-
-                bool needsRest = continuous + leg.Duration > ContinuousDriveLimit;
-                var restTime = needsRest ? RestStop : TimeSpan.Zero;
-
-                if (driving + leg.Duration + back.Duration > request.DailyDrivingCap
-                    || clock + leg.Duration + restTime + visit + back.Duration > request.DayEnd)
-                {
-                    break;
-                }
 
                 pending.Remove(node);
 
-                if (needsRest)
+                if (restBefore)
                 {
                     blocks.Add(new PlanBlock
                     {
@@ -121,37 +117,65 @@ public sealed class DayScheduler
                     continuous = TimeSpan.Zero;
                 }
 
+                // مدت بلوک، زمانِ واقعیِ در راه است — توقف‌های میان‌راهی داخلش؛
+                // آمار «رانندگی» فقط خودِ رانندگی را می‌شمارد.
                 blocks.Add(new PlanBlock
                 {
                     Kind = BlockKind.Drive,
                     StartsAt = clock,
-                    Duration = leg.Duration,
+                    Duration = leg.Duration + RestStop * restsWithin,
                     Title = $"حرکت به {next.Name}",
                     Cost = Money.Zero,
                     DistanceCovered = leg.Road,
-                    Note = leg.Terrain == Terrain.Mountain ? "مسیر کوهستانی" : null,
+                    Note = DriveNote(leg, restsWithin),
                 });
 
-                clock += leg.Duration;
+                clock += leg.Duration + RestStop * restsWithin;
                 driving += leg.Duration;
                 continuous += leg.Duration;
                 dayDistance += leg.Road;
                 TrackSource(leg, ref anyRouted, ref anyEstimated);
 
-                if (!lunchDone && clock >= LunchWindowStart && clock <= LunchWindowEnd)
+                if (meal != MealBefore.None)
                 {
-                    var lunch = TimeSpan.FromMinutes(request.Style == TravelStyle.Budget ? 60 : 75);
+                    var mealTime = meal == MealBefore.Dinner
+                        ? Dinner
+                        : TimeSpan.FromMinutes(request.Style == TravelStyle.Budget ? 60 : 75);
                     blocks.Add(new PlanBlock
                     {
                         Kind = BlockKind.Meal,
                         StartsAt = clock,
-                        Duration = lunch,
-                        Title = "ناهار",
+                        Duration = mealTime,
+                        Title = meal == MealBefore.Dinner ? "شام" : "ناهار",
                         Cost = Money.Zero,
                     });
-                    clock += lunch;
-                    lunchDone = true;
+                    clock += mealTime;
+
+                    if (meal == MealBefore.Dinner)
+                    {
+                        dinnerDone = true;
+                    }
+                    else
+                    {
+                        lunchDone = true;
+                    }
                 }
+
+                // درِ بسته: اگر رسیدیم و هنوز باز نشده، انتظارِ محسوس صریح در
+                // برنامه می‌آید — نه گپ بی‌توضیح، نه بازدید از پشت درِ بسته.
+                if (visitStart - clock >= VisibleWait)
+                {
+                    blocks.Add(new PlanBlock
+                    {
+                        Kind = BlockKind.Rest,
+                        StartsAt = clock,
+                        Duration = visitStart - clock,
+                        Title = $"وقت آزاد تا بازشدن {next.Name}",
+                        Cost = Money.Zero,
+                    });
+                }
+
+                clock = visitStart;
 
                 blocks.Add(new PlanBlock
                 {
@@ -166,6 +190,7 @@ public sealed class DayScheduler
                 clock += visit;
                 continuous = TimeSpan.Zero;
                 visited.Add(next);
+                visitedIds.Add(next.Id);
                 current = next.Location;
                 currentCity = request.CityOf(next);
             }
@@ -182,11 +207,46 @@ public sealed class DayScheduler
                     currentCity.Climate, stayCity.Climate, current.StraightLineTo(stayCity.Location));
                 var leg = _travelPlanner.Plan(current, stayCity.Location, terrain, request.Vehicle, request.Pace);
 
+                // ناهار پیش از پای انتقال: بدون این، گروهی که ظهر راه می‌افتد
+                // (به‌خصوص برگشتِ روز آخر) کل پنجرهٔ ناهار را پشت فرمان می‌گذراند.
+                if (!lunchDone && clock >= EarlyLunchStart && clock <= LunchWindowEnd
+                    && leg.Duration >= TimeSpan.FromMinutes(45))
+                {
+                    var lunch = TimeSpan.FromMinutes(request.Style == TravelStyle.Budget ? 60 : 75);
+                    blocks.Add(new PlanBlock
+                    {
+                        Kind = BlockKind.Meal,
+                        StartsAt = clock,
+                        Duration = lunch,
+                        Title = "ناهار",
+                        Cost = Money.Zero,
+                        Note = currentCity.Name,
+                    });
+                    clock += lunch;
+                    lunchDone = true;
+                }
+
+                var (restBefore, restsWithin) = RestPlan(continuous, leg.Duration);
+
+                if (restBefore)
+                {
+                    blocks.Add(new PlanBlock
+                    {
+                        Kind = BlockKind.Rest,
+                        StartsAt = clock,
+                        Duration = RestStop,
+                        Title = "توقف استراحت",
+                        Cost = Money.Zero,
+                        Note = "دو ساعت رانندگی پیوسته",
+                    });
+                    clock += RestStop;
+                }
+
                 blocks.Add(new PlanBlock
                 {
                     Kind = BlockKind.Drive,
                     StartsAt = clock,
-                    Duration = leg.Duration,
+                    Duration = leg.Duration + RestStop * restsWithin,
                     Title = isLastDay && request.ReturnsToOrigin
                         ? $"بازگشت به {stayCity.Name}"
                         : isLastDay && request.DestinationCity is not null
@@ -194,14 +254,16 @@ public sealed class DayScheduler
                             : $"حرکت به {stayCity.Name}",
                     Cost = Money.Zero,
                     DistanceCovered = leg.Road,
+                    Note = DriveNote(leg, restsWithin),
                 });
 
-                clock += leg.Duration;
+                clock += leg.Duration + RestStop * restsWithin;
                 driving += leg.Duration;
                 dayDistance += leg.Road;
                 TrackSource(leg, ref anyRouted, ref anyEstimated);
                 current = stayCity.Location;
                 currentCity = stayCity;
+                continuous = TimeSpan.Zero;
             }
 
             bool staysOvernight = dayIndex < request.Days - 1
@@ -209,20 +271,64 @@ public sealed class DayScheduler
 
             if (staysOvernight)
             {
-                blocks.Add(new PlanBlock
+                var eveningEnd = clock;
+
+                if (!dinnerDone)
                 {
-                    Kind = BlockKind.Meal,
-                    StartsAt = Max(clock, TimeSpan.FromHours(19)),
-                    Duration = Dinner,
-                    Title = "شام",
-                    Cost = Money.Zero,
-                    Note = stayCity.Name,
-                });
+                    // فاصلهٔ محسوس تا شام، بلوک صریح می‌گیرد: برنامه‌ای که ساعت
+                    // پنج «تمام می‌شود» و ساعت هفت شام دارد، ناقص به نظر می‌رسد
+                    // — در حالی که همان وقتِ آزادِ عصر است و باید همین را بگوید.
+                    if (clock < DinnerTime && DinnerTime - clock >= FreeTimeThreshold)
+                    {
+                        blocks.Add(new PlanBlock
+                        {
+                            Kind = BlockKind.Rest,
+                            StartsAt = clock,
+                            Duration = DinnerTime - clock,
+                            Title = $"وقت آزاد و استراحت در {stayCity.Name}",
+                            Cost = Money.Zero,
+                        });
+                    }
+
+                    var dinnerStart = Max(clock, DinnerTime);
+
+                    blocks.Add(new PlanBlock
+                    {
+                        Kind = BlockKind.Meal,
+                        StartsAt = dinnerStart,
+                        Duration = Dinner,
+                        Title = "شام",
+                        Cost = Money.Zero,
+                        Note = stayCity.Name,
+                    });
+
+                    eveningEnd = dinnerStart + Dinner;
+                }
+                var evening = PickEveningVisit(request, stayCity, visitedIds, eveningEnd);
+
+                if (evening is { } stroll)
+                {
+                    blocks.Add(new PlanBlock
+                    {
+                        Kind = BlockKind.Visit,
+                        StartsAt = eveningEnd,
+                        Duration = stroll.Duration,
+                        Title = stroll.Poi.Name,
+                        Cost = Money.Zero,
+                        PoiId = stroll.Poi.Id,
+                        Note = "گشت شبانه",
+                    });
+
+                    eveningEnd += stroll.Duration;
+                    visitedIds.Add(stroll.Poi.Id);
+                    visited.Add(stroll.Poi);
+                    RemoveById(pending, stroll.Poi.Id);
+                }
 
                 blocks.Add(new PlanBlock
                 {
                     Kind = BlockKind.Lodging,
-                    StartsAt = Max(clock + Dinner, TimeSpan.FromHours(21)),
+                    StartsAt = Max(eveningEnd, TimeSpan.FromHours(21)),
                     Duration = TimeSpan.Zero,
                     Title = $"اقامت شب در {stayCity.Name}",
                     Cost = Money.Zero,
@@ -245,6 +351,65 @@ public sealed class DayScheduler
         return new ScheduleResult(days, pending.Select(p => p.Id).ToList(), source);
     }
 
+    /// <summary>گزینهٔ گشت شبانه بعد از شام.</summary>
+    private sealed record EveningStroll(PointOfInterest Poi, TimeSpan Duration);
+
+    /// <summary>
+    /// جاذبهٔ شب‌مناسبِ شهرِ اقامت برای بعد از شام — اگر باشد و بگنجد.
+    /// </summary>
+    /// <remarks>
+    /// شب در سفر ایرانی وقتِ مرده نیست: بازار، پل‌های اصفهان، میدان نقش جهان.
+    /// فقط جاذبه‌های همان شهر و در دسترسِ پیاده/چنددقیقه‌ای انتخاب می‌شوند تا
+    /// «گشت شبانه» رانندگی شبانه نشود؛ به همین دلیل هم بلوک رانندگی ندارد.
+    /// </remarks>
+    private static EveningStroll? PickEveningVisit(
+        ScheduleRequest request,
+        City stayCity,
+        HashSet<string> visitedIds,
+        TimeSpan start)
+    {
+        var available = request.DayEnd - start;
+
+        if (available < MinEveningVisit)
+        {
+            return null;
+        }
+
+        var pick = request.NightPois
+            .Where(poi => !visitedIds.Contains(poi.Id)
+                && string.Equals(poi.CityId, stayCity.Id, StringComparison.Ordinal)
+                && poi.Location.StraightLineTo(stayCity.Location) <= EveningReach
+                && poi.EarliestVisitStart(start, MinEveningVisit) == start)
+            .OrderByDescending(poi => poi.Rating)
+            .FirstOrDefault();
+
+        if (pick is null)
+        {
+            return null;
+        }
+
+        var stretched = TimeSpan.FromMinutes(pick.VisitDuration.TotalMinutes * request.VisitStretch);
+        var closingLimit = pick.ClosesAt is { } closes ? closes - start : available;
+        var duration = Min(stretched, Min(available, closingLimit));
+
+        return duration < MinEveningVisit ? null : new EveningStroll(pick, duration);
+    }
+
+    private static void RemoveById(LinkedList<PointOfInterest> pending, string id)
+    {
+        for (var node = pending.First; node is not null; node = node.Next)
+        {
+            if (string.Equals(node.Value.Id, id, StringComparison.Ordinal))
+            {
+                pending.Remove(node);
+
+                return;
+            }
+        }
+    }
+
+    private static TimeSpan Min(TimeSpan left, TimeSpan right) => left < right ? left : right;
+
     private static void TrackSource(TravelLeg leg, ref bool anyRouted, ref bool anyEstimated)
     {
         if (leg.Source == DistanceSource.Routed)
@@ -259,27 +424,146 @@ public sealed class DayScheduler
 
     private static TimeSpan Max(TimeSpan left, TimeSpan right) => left > right ? left : right;
 
+    /// <summary>وعده‌ای که پیش از بازدید بعدی باید خورده شود.</summary>
+    private enum MealBefore
+    {
+        None,
+        Lunch,
+        Dinner,
+    }
+
+    /// <summary>نتیجهٔ سنجش یک جاذبه برای جایگاه بعدی روز.</summary>
+    private sealed record Placement(
+        LinkedListNode<PointOfInterest> Node,
+        TravelLeg Leg,
+        TimeSpan Visit,
+        TimeSpan VisitStart,
+        bool RestBefore,
+        int RestsWithin,
+        MealBefore Meal);
+
     /// <summary>
-    /// نخستین جاذبه‌ای که اجازهٔ نشستن در این روز را دارد.
+    /// توقف‌های استراحتِ یک پای رانندگی: پیش از حرکت فقط وقتی که از قبل پشت
+    /// فرمان بوده‌ایم؛ پای بلند، توقف‌هایش را وسط راه دارد نه اول صبح.
+    /// </summary>
+    private static (bool Before, int Within) RestPlan(TimeSpan continuous, TimeSpan leg)
+    {
+        bool before = continuous > TimeSpan.Zero && continuous + leg > ContinuousDriveLimit;
+        var counted = before ? leg : continuous + leg;
+
+        // پای دقیقاً دوساعته توقف نمی‌خواهد؛ فقط عبور از مرز
+        int within = (int)(counted / ContinuousDriveLimit);
+        if (within > 0 && counted == ContinuousDriveLimit * within)
+        {
+            within--;
+        }
+
+        return (before, within);
+    }
+
+    private static string? DriveNote(TravelLeg leg, int restsWithin)
+    {
+        string? mountain = leg.Terrain == Terrain.Mountain ? "مسیر کوهستانی" : null;
+        string? rests = restsWithin switch
+        {
+            0 => null,
+            1 => "با یک توقف استراحت بین راه",
+            _ => $"با {restsWithin} توقف استراحت بین راه",
+        };
+
+        return (mountain, rests) switch
+        {
+            (null, null) => null,
+            (not null, null) => mountain,
+            (null, not null) => rests,
+            _ => $"{mountain}؛ {rests}",
+        };
+    }
+
+    /// <summary>
+    /// نخستین جاذبهٔ صف که واقعاً در ادامهٔ امروز جا می‌شود.
     /// </summary>
     /// <remarks>
-    /// ترتیب کلی مسیر حفظ می‌شود؛ فقط جاذبه‌هایی که کاربر به روز دیگری سنجاق
-    /// کرده رد می‌شوند. یعنی جابه‌جایی دستی یک قید است، نه بازچینش خروجی — و
-    /// همهٔ عددها (مسافت، ساعت، هزینه) با همان چیزی می‌خوانند که دیده می‌شود.
+    /// ترتیب کلی مسیر حفظ می‌شود، ولی «نشدنی» رد می‌شود نه اینکه روز را تمام
+    /// کند: جاذبه‌ای که رانندگی‌اش سقف امروز را می‌ترکاند، درش بسته است، یا به
+    /// روز دیگری سنجاق شده، نوبت را به بعدیِ صف می‌دهد. جاذبهٔ سنجاق‌شده به
+    /// روز دیگر قید کاربر است و همیشه رد می‌شود؛ بقیه فقط برای امروز.
     /// </remarks>
-    private static LinkedListNode<PointOfInterest>? FirstAllowed(
+    private Placement? FirstFeasible(
         LinkedList<PointOfInterest> pending,
         ScheduleRequest request,
-        int dayNumber)
+        int dayNumber,
+        bool isLastDay,
+        Coordinate current,
+        City currentCity,
+        TimeSpan clock,
+        TimeSpan driving,
+        TimeSpan continuous,
+        bool lunchDone,
+        bool dinnerDone)
     {
         for (var node = pending.First; node is not null; node = node.Next)
         {
-            if (request.DayAssignments.TryGetValue(node.Value.Id, out int assigned) && assigned != dayNumber)
+            var next = node.Value;
+
+            if (request.DayAssignments.TryGetValue(next.Id, out int assigned) && assigned != dayNumber)
             {
                 continue;
             }
 
-            return node;
+            var terrain = TravelPlanner.InferTerrain(
+                currentCity.Climate, request.ClimateOf(next), current.StraightLineTo(next.Location));
+            var leg = _travelPlanner.Plan(current, next.Location, terrain, request.Vehicle, request.Pace);
+
+            var (restBefore, restsWithin) = RestPlan(continuous, leg.Duration);
+            var arrive = clock
+                + (restBefore ? RestStop : TimeSpan.Zero)
+                + leg.Duration
+                + RestStop * restsWithin;
+
+            // شام مثل ناهار وسط برنامه پنجره دارد: بدون آن، زنجیرهٔ بازدیدهای
+            // شبانه شام را تا نیمه‌شب هل می‌داد.
+            var meal = !lunchDone && arrive >= LunchWindowStart && arrive <= LunchWindowEnd
+                ? MealBefore.Lunch
+                : !dinnerDone && arrive >= DinnerTime && arrive <= DinnerWindowEnd
+                    ? MealBefore.Dinner
+                    : MealBefore.None;
+
+            var mealTime = meal switch
+            {
+                MealBefore.Lunch => TimeSpan.FromMinutes(request.Style == TravelStyle.Budget ? 60 : 75),
+                MealBefore.Dinner => Dinner,
+                _ => TimeSpan.Zero,
+            };
+
+            var visit = TimeSpan.FromMinutes(next.VisitDuration.TotalMinutes * request.VisitStretch);
+            var visitStart = next.EarliestVisitStart(arrive + mealTime, visit);
+
+            // در بسته است، یا انتظارش آن‌قدر طولانی که روز را حرام می‌کند
+            if (visitStart is null || visitStart.Value - (arrive + mealTime) > MaxOpeningWait)
+            {
+                continue;
+            }
+
+            var endCity = isLastDay
+                ? request.FinalCity(fallbackNear: next.Location)
+                : request.NearestStayCity(next.Location);
+
+            var back = _travelPlanner.Plan(
+                next.Location,
+                endCity.Location,
+                TravelPlanner.InferTerrain(
+                    request.ClimateOf(next), endCity.Climate, next.Location.StraightLineTo(endCity.Location)),
+                request.Vehicle,
+                request.Pace);
+
+            if (driving + leg.Duration + back.Duration > request.DailyDrivingCap
+                || visitStart.Value + visit + back.Duration > request.DayEnd)
+            {
+                continue;
+            }
+
+            return new Placement(node, leg, visit, visitStart.Value, restBefore, restsWithin, meal);
         }
 
         return null;
@@ -327,6 +611,12 @@ public sealed record ScheduleRequest
     /// <summary>جاذبه‌هایی که کاربر دستی به روز مشخصی سنجاق کرده (شمارهٔ روز از ۱).</summary>
     public IReadOnlyDictionary<string, int> DayAssignments { get; init; } =
         new Dictionary<string, int>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// جاذبه‌های شب‌مناسبِ نامزد برای گشتِ بعد از شام — می‌تواند فراتر از
+    /// مسیر انتخاب‌شده باشد؛ بازدیدشدهٔ روز، شب دوباره پیشنهاد نمی‌شود.
+    /// </summary>
+    public IReadOnlyList<PointOfInterest> NightPois { get; init; } = [];
 
     public Coordinate Origin => OriginCity.Location;
 

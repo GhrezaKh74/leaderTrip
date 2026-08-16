@@ -79,6 +79,11 @@ internal sealed class PoiConfiguration : IEntityTypeConfiguration<PoiRow>
             .HasConversion(Converters.StringList, Converters.StringListComparer)
             .HasColumnType("text[]");
 
+        // «HH:mm» متنی، نه time: مقدار خام seed است و null معنای «پیش‌فرض دسته»
+        // را حمل می‌کند — نگاشت به پنجرهٔ واقعی در RowMapper انجام می‌شود.
+        builder.Property(p => p.OpensAt).HasMaxLength(5);
+        builder.Property(p => p.ClosesAt).HasMaxLength(5);
+
         // کلید خارجی بدون خاصیت ناوبری: یکپارچگی را پایگاه داده تضمین می‌کند،
         // ولی ردیف جاذبه مجبور نیست گراف شهر را با خودش حمل کند.
         builder.HasOne<CityRow>()

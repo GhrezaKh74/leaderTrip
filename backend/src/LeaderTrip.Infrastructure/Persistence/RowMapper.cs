@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Globalization;
 using LeaderTrip.Domain.Entities;
+using LeaderTrip.Domain.Enums;
 using LeaderTrip.Domain.Pricing;
 using LeaderTrip.Domain.ValueObjects;
 
@@ -23,25 +24,73 @@ internal static class RowMapper
         row.Amenities,
         row.Climate);
 
-    public static PointOfInterest ToDomain(PoiRow row) => new(
-        row.Id,
-        row.Name,
-        row.CityId,
-        Point(row.Lat, row.Lng, row.Id),
-        row.Category,
-        row.Rating,
-        TimeSpan.FromMinutes(row.VisitMinutes),
-        Money.FromToman(row.Ticket),
-        row.BestMonths.ToFrozenSet(),
-        row.Indoor,
-        row.Difficulty,
-        row.MinAge,
-        row.KidFriendly,
-        row.SeniorFriendly,
-        row.RequiredVehicle,
-        row.Description,
-        row.NightSuitable,
-        row.Tags);
+    public static PointOfInterest ToDomain(PoiRow row)
+    {
+        var (opens, closes) = OpeningWindow(row);
+
+        return new(
+            row.Id,
+            row.Name,
+            row.CityId,
+            Point(row.Lat, row.Lng, row.Id),
+            row.Category,
+            row.Rating,
+            TimeSpan.FromMinutes(row.VisitMinutes),
+            Money.FromToman(row.Ticket),
+            row.BestMonths.ToFrozenSet(),
+            row.Indoor,
+            row.Difficulty,
+            row.MinAge,
+            row.KidFriendly,
+            row.SeniorFriendly,
+            row.RequiredVehicle,
+            row.Description,
+            row.NightSuitable,
+            row.Tags,
+            opens,
+            closes);
+    }
+
+    /// <summary>
+    /// پنجرهٔ بازدید جاذبه: مقدار صریح ردیف، وگرنه پیش‌فرضِ دسته.
+    /// </summary>
+    /// <remarks>
+    /// نگه‌داشتن ساعت برای ۱۴۳ جاذبه دستی و خطاخیز است؛ داده فقط استثناها را
+    /// می‌گوید (مثلاً حرم شبانه‌روزی است) و بقیه از دستهٔ خودشان می‌آیند:
+    /// موزه‌ای که ساعتش را نگفته‌ایم، مثل بقیهٔ موزه‌ها ساعت ۹ باز می‌شود.
+    /// «۰۰:۰۰ تا ۰۰:۰۰» یعنی صریحاً شبانه‌روزی.
+    /// </remarks>
+    private static (TimeSpan? Opens, TimeSpan? Closes) OpeningWindow(PoiRow row)
+    {
+        if (row.OpensAt is { } opensText && row.ClosesAt is { } closesText)
+        {
+            var opens = ParseClock(opensText, row.Id);
+            var closes = ParseClock(closesText, row.Id);
+
+            return opens == closes ? (null, null) : (opens, closes);
+        }
+
+        return row.Category switch
+        {
+            PoiCategory.Historical => (Clock(9), Clock(18)),
+            PoiCategory.Museum => (Clock(9), Clock(17)),
+            PoiCategory.Garden => (Clock(8), Clock(19)),
+            PoiCategory.Religious => (Clock(8), Clock(20)),
+            PoiCategory.Shopping => (Clock(9), Clock(21)),
+            PoiCategory.Entertainment => (Clock(10), Clock(22)),
+            PoiCategory.Cave => (Clock(9), Clock(17)),
+            PoiCategory.Adventure => (Clock(8), Clock(17)),
+            // طبیعت، کوه، دریاچه، آبشار، کویر، روستا، ساحل: درِ بستنی ندارند
+            _ => (null, null),
+        };
+    }
+
+    private static TimeSpan Clock(int hour) => TimeSpan.FromHours(hour);
+
+    private static TimeSpan ParseClock(string text, string poiId) =>
+        TimeSpan.TryParseExact(text, @"hh\:mm", null, out var value)
+            ? value
+            : throw new InvalidOperationException($"ساعت «{text}» برای جاذبهٔ «{poiId}» خوانا نیست؛ قالب HH:mm است.");
 
     public static Vehicle ToDomain(VehicleRow row) => new(
         row.Id,

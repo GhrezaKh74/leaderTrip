@@ -29,7 +29,9 @@ public sealed class PointOfInterest
         OffroadCapability requiredVehicle,
         string description,
         bool isNightSuitable = false,
-        IReadOnlyList<string>? tags = null)
+        IReadOnlyList<string>? tags = null,
+        TimeSpan? opensAt = null,
+        TimeSpan? closesAt = null)
     {
         Id = id;
         Name = name;
@@ -49,6 +51,8 @@ public sealed class PointOfInterest
         Description = description;
         IsNightSuitable = isNightSuitable;
         Tags = tags ?? [];
+        OpensAt = opensAt;
+        ClosesAt = closesAt;
     }
 
     public string Id { get; }
@@ -91,7 +95,28 @@ public sealed class PointOfInterest
     /// <summary>برچسب‌های آزاد («یونسکو»، «رایگان»، …) — برای نمایش و جست‌وجو.</summary>
     public IReadOnlyList<string> Tags { get; }
 
+    /// <summary>ساعت بازشدن (از نیمه‌شب)؛ <see langword="null"/> یعنی بی‌محدودیت.</summary>
+    public TimeSpan? OpensAt { get; }
+
+    /// <summary>ساعت بسته‌شدن (از نیمه‌شب)؛ <see langword="null"/> یعنی بی‌محدودیت.</summary>
+    public TimeSpan? ClosesAt { get; }
+
     public bool IsFree => Ticket == Money.Zero;
 
     public bool IsInSeason(int month) => BestMonths.Contains(month);
+
+    /// <summary>
+    /// زودترین شروع ممکن بازدید اگر ساعت <paramref name="arrival"/> برسیم؛
+    /// <see langword="null"/> اگر بازدید با این مدت، پیش از بسته‌شدن تمام نمی‌شود.
+    /// </summary>
+    /// <remarks>
+    /// بدون این قید، برنامه باغ و موزه را ساعت هفت شب می‌گذاشت — روی کاغذ
+    /// بی‌نقص و جلوی درِ بسته بی‌معنا.
+    /// </remarks>
+    public TimeSpan? EarliestVisitStart(TimeSpan arrival, TimeSpan visitDuration)
+    {
+        var start = OpensAt is { } opens && arrival < opens ? opens : arrival;
+
+        return ClosesAt is { } closes && start + visitDuration > closes ? null : start;
+    }
 }

@@ -28,12 +28,16 @@ internal static class TestData
         Coordinate? location = null,
         IReadOnlySet<int>? bestMonths = null,
         int visitMinutes = 60,
-        string cityId = "tehran") =>
+        string cityId = "tehran",
+        bool nightSuitable = false,
+        TimeSpan? opensAt = null,
+        TimeSpan? closesAt = null) =>
         new(
             id, id, cityId, location ?? Tehran, category, rating,
             TimeSpan.FromMinutes(visitMinutes), Money.FromToman(ticket),
             bestMonths ?? AllMonths, indoor, difficulty, minimumAge,
-            kidFriendly, seniorFriendly, requiredVehicle, "توضیح");
+            kidFriendly, seniorFriendly, requiredVehicle, "توضیح",
+            nightSuitable, tags: null, opensAt: opensAt, closesAt: closesAt);
 
     public static Vehicle Sedan(OffroadCapability offroad = OffroadCapability.Paved) =>
         new("sedan", "سواری", VehicleClass.Sedan, FuelKind.Gasoline, 7.2, 5, offroad, 1.0, 900m, 1m);

@@ -49,7 +49,10 @@ public sealed record PoiRow(
     OffroadCapability RequiredVehicle,
     bool NightSuitable,
     IReadOnlyList<string> Tags,
-    string Description);
+    string Description,
+    /* «HH:mm»؛ null یعنی پیش‌فرض دسته، و «00:00/00:00» یعنی شبانه‌روزی. */
+    string? OpensAt = null,
+    string? ClosesAt = null);
 
 public sealed record VehicleRow(
     string Id,

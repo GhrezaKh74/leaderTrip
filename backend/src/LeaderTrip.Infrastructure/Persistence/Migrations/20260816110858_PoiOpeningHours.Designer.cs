@@ -3,6 +3,7 @@ using System;
 using LeaderTrip.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LeaderTrip.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LeaderTripDbContext))]
-    partial class LeaderTripDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260816110858_PoiOpeningHours")]
+    partial class PoiOpeningHours
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

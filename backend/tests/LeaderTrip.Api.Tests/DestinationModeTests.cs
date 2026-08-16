@@ -75,16 +75,46 @@ public sealed class DestinationModeTests : IClassFixture<ApiFactory>
         Assert.Equal("isfahan", baseCities[^1]);
     }
 
-    /// <summary>ترکیبی: هم گشتِ سرِ راه (شبی بیرون از مقصد در مسیر) هم اقامت مقصد.</summary>
+    /// <summary>ترکیبی: هم گشتِ سرِ راه (بازدید بیرون از مقصد) هم اقامت مقصد.</summary>
     [Fact]
     public async Task MixedMode_ToursOnTheWay_AndStaysAtDestination()
     {
-        var baseCities = await BaseCitiesAsync(Request("Mixed", roundTrip: true));
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            new Uri("/api/trips/plan", UriKind.Relative), Request("Mixed", roundTrip: true));
+
+        response.EnsureSuccessStatusCode();
+
+        using var plan = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var days = plan.RootElement.GetProperty("days").EnumerateArray().ToList();
+        var baseCities = days.Select(d => d.GetProperty("baseCityId").GetString()!).ToList();
 
         Assert.Equal("tehran", baseCities[^1]);
         Assert.Contains("isfahan", baseCities[..^1]);
-        // دست‌کم یک شب/روز در شهری غیر از مبدأ و مقصد — یعنی توقف سرِ راه واقعاً هست
-        Assert.Contains(baseCities[..^1], city => city is not ("isfahan" or "tehran"));
+
+        // دست‌کم یک بازدید در شهری غیر از مبدأ و مقصد — توقفِ سرِ راه واقعاً هست.
+        // (شب‌ماندن وسط راه لازم نیست: برنامه‌ریزِ پرکن ممکن است شب اول هم به
+        // مقصد برسد و همین، سفرِ بهتری است.)
+        var poisResponse = await client.GetAsync(new Uri("/api/pois", UriKind.Relative));
+
+        poisResponse.EnsureSuccessStatusCode();
+
+        using var pois = JsonDocument.Parse(await poisResponse.Content.ReadAsStringAsync());
+        var cityOf = pois.RootElement.GetProperty("items").EnumerateArray()
+            .ToDictionary(
+                p => p.GetProperty("id").GetString()!,
+                p => p.GetProperty("cityId").GetString()!,
+                StringComparer.Ordinal);
+
+        var visitedCities = days
+            .SelectMany(d => d.GetProperty("blocks").EnumerateArray())
+            .Where(b => b.GetProperty("kind").GetString() == "Visit"
+                && b.GetProperty("poiId").GetString() is not null)
+            .Select(b => cityOf.GetValueOrDefault(b.GetProperty("poiId").GetString()!))
+            .ToList();
+
+        Assert.Contains(visitedCities, city => city is not null and not ("isfahan" or "tehran"));
     }
 
     /// <summary>اقامت خالص با شعاع کم: هیچ شبی وسط راه نیست — یک‌راست مقصد.</summary>

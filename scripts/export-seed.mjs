@@ -31,6 +31,29 @@ const cities = CITIES.map((c) => ({
   climate: pascal(c.climate),
 }))
 
+/**
+ * ساعت بازدید — دادهٔ نسخهٔ اول این مفهوم را ندارد، پس استثناها این‌جا
+ * نگه‌داری می‌شوند تا خروجی دوباره‌سازی‌شده همان بماند که بک‌اند می‌خواهد.
+ * «۰۰:۰۰/۰۰:۰۰» یعنی شبانه‌روزی؛ نبودن یعنی پیش‌فرضِ دسته (در RowMapper بک‌اند).
+ */
+const OPENING_HOURS = {
+  'tabiat-bridge': ['00:00', '00:00'],
+  'qom-shrine': ['00:00', '00:00'],
+  'naghsh-jahan': ['00:00', '00:00'],
+  'sio-se-pol': ['00:00', '00:00'],
+  'khaju-bridge': ['00:00', '00:00'],
+  'amir-chakhmaq': ['00:00', '00:00'],
+  'fahadan': ['00:00', '00:00'],
+  'elgoli': ['00:00', '00:00'],
+  'kish-greek-ship': ['00:00', '00:00'],
+  'imam-reza': ['00:00', '00:00'],
+  'tajrish-bazaar': ['09:00', '22:00'],
+  'saad-saltaneh': ['09:00', '22:00'],
+  'vakil-bazaar': ['09:00', '21:00'],
+  'hafezieh': ['08:00', '22:30'],
+  'saadieh': ['08:00', '22:00'],
+}
+
 const pois = POIS.map((p) => ({
   id: p.id,
   name: p.name,
@@ -51,6 +74,9 @@ const pois = POIS.map((p) => ({
   nightSuitable: p.nightSuitable,
   tags: p.tags,
   description: p.desc,
+  ...(OPENING_HOURS[p.id]
+    ? { opensAt: OPENING_HOURS[p.id][0], closesAt: OPENING_HOURS[p.id][1] }
+    : {}),
 }))
 
 const vehicles = VEHICLES.map((v) => ({
