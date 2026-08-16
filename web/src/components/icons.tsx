@@ -312,6 +312,16 @@ export const UploadIcon = make(
   </>,
 )
 
+/** موقعیت فعلی — نشانگرِ وسط با چهار تیک جهت؛ مرکزِ پُر یعنی «همین‌جا». */
+export const LocateIcon = make(
+  'LocateIcon',
+  <>
+    <circle cx="12" cy="12" r="6.2" />
+    <path d="M12 2.6 V5.4 M12 18.6 V21.4 M2.6 12 H5.4 M18.6 12 H21.4" />
+    <circle cx="12" cy="12" r="1.8" {...fill} />
+  </>,
+)
+
 /** ناوبری — پیکان قطب‌نمای در حرکت؛ نیمهٔ پُر جهت را قاطع می‌کند. */
 export const NavigateIcon = make(
   'NavigateIcon',

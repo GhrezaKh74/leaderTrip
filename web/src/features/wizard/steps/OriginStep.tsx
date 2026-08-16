@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { Controller, useFormContext } from 'react-hook-form'
 import Autocomplete from '@mui/material/Autocomplete'
+import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 import Grid from '@mui/material/Grid'
 import InputAdornment from '@mui/material/InputAdornment'
 import Slider from '@mui/material/Slider'
@@ -9,8 +12,10 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 
 import { JalaliDateField } from '../../../components/JalaliDateField'
+import { LocateIcon } from '../../../components/icons'
 import { NumberField } from '../../../components/NumberField'
 import Typography from '@mui/material/Typography'
+import { currentPosition, nearestCity } from '../../../lib/geo'
 
 import type { City } from '../../../api/schemas'
 import type { TripForm } from '../tripSchema'
@@ -18,11 +23,47 @@ import { faNum, tomanShort } from '../../../lib/format'
 import { formatJalaliFromIso } from '../../../lib/jalaliDisplay'
 
 export function OriginStep({ cities }: { cities: City[] }) {
-  const { control, formState, watch } = useFormContext<TripForm>()
+  const { control, formState, watch, setValue } = useFormContext<TripForm>()
   const errors = formState.errors
 
   const destinationCityId = watch('destinationCityId')
   const hasDestination = destinationCityId !== null && destinationCityId !== ''
+
+  const [locating, setLocating] = useState(false)
+  const [locateNote, setLocateNote] = useState<string | null>(null)
+
+  /**
+   * مبدأ از موقعیت فعلی — با کلیک صریح کاربر، نه خودکار هنگام بازشدن صفحه:
+   * پنجرهٔ اجازهٔ موقعیت بی‌مقدمه، اولین تجربهٔ کاربر با اپ را «درخواست
+   * دسترسی» می‌کند. مختصات هم مرورگر می‌ماند؛ فقط شناسهٔ نزدیک‌ترین شهر
+   * وارد فرم می‌شود.
+   */
+  const locateMe = async () => {
+    setLocating(true)
+    setLocateNote(null)
+
+    try {
+      const { lat, lng } = await currentPosition()
+      const found = nearestCity(cities, lat, lng)
+
+      if (found === null) {
+        setLocateNote('شهری در فهرست نیست.')
+
+        return
+      }
+
+      setValue('originCityId', found.city.id, { shouldValidate: true, shouldDirty: true })
+      setLocateNote(
+        found.distanceKm > 80
+          ? `نزدیک‌ترین شهرِ فهرست: ${found.city.name} (حدود ${faNum(Math.round(found.distanceKm))} کیلومتر با شما فاصله دارد)`
+          : `مبدأ شد: ${found.city.name}`,
+      )
+    } catch (error) {
+      setLocateNote(error instanceof Error ? error.message : 'موقعیت پیدا نشد؛ شهر را دستی انتخاب کنید.')
+    } finally {
+      setLocating(false)
+    }
+  }
 
   return (
     <Stack spacing={3}>
@@ -46,6 +87,7 @@ export function OriginStep({ cities }: { cities: City[] }) {
                     error={Boolean(errors.originCityId)}
                     helperText={
                       errors.originCityId?.message ??
+                      locateNote ??
                       (hasDestination ? 'سفر از این‌جا شروع می‌شود.' : 'سفر از این‌جا شروع و تمام می‌شود.')
                     }
                   />
@@ -53,6 +95,16 @@ export function OriginStep({ cities }: { cities: City[] }) {
               />
             )}
           />
+
+          <Button
+            size="small"
+            startIcon={locating ? <CircularProgress size={14} /> : <LocateIcon sx={{ fontSize: 17 }} />}
+            onClick={() => void locateMe()}
+            disabled={locating}
+            sx={{ mt: 0.5, alignSelf: 'flex-start' }}
+          >
+            {locating ? 'در حال یافتن موقعیت…' : 'انتخاب از موقعیت فعلی'}
+          </Button>
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>
