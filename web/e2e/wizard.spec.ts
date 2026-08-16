@@ -483,3 +483,33 @@ test('حساب کاربری: ثبت‌نام، ذخیرهٔ سفر روی حسا
   await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
   await expect(page.getByText('سفر از حساب بارگذاری شد', { exact: false })).toBeVisible()
 })
+
+test('صفحهٔ برنامه: «ذخیرهٔ برنامه» با ورودِ سرِ راه، و «سفر جدید»', async ({ page }) => {
+  await stubApi(page)
+  await generatePlan(page)
+
+  // بی‌حساب: دکمهٔ ذخیره اول پنجرهٔ ورود را می‌آورد — کلیک نباید گم شود
+  await page.getByRole('button', { name: 'ذخیرهٔ برنامه' }).click()
+  await expect(page.getByText('حساب لیدرتریپ')).toBeVisible()
+  await page.getByRole('tab', { name: 'ثبت‌نام' }).click()
+  await page.getByLabel('نام نمایشی').fill('رضا')
+  await page.getByLabel('ایمیل').fill('reza@example.com')
+  await page.getByLabel('گذرواژه').fill('12345678')
+  await page.getByRole('button', { name: 'ساخت حساب' }).click()
+
+  // بعدِ ورود، همان ذخیره ادامه می‌گیرد: عنوان و تأیید
+  await expect(page.getByText('ذخیرهٔ برنامه روی حساب')).toBeVisible()
+  await page.getByLabel('عنوان سفر').fill('تعطیلات شمال')
+  await page.getByRole('button', { name: 'ذخیره', exact: true }).click()
+  await expect(page.getByText('برنامه روی حساب ذخیره شد.')).toBeVisible()
+
+  // و در «سفرهای من» هم با همان عنوان هست
+  await page.getByRole('button', { name: 'حساب کاربری' }).click()
+  await page.getByRole('menuitem', { name: 'سفرهای من' }).click()
+  await expect(page.getByText('تعطیلات شمال')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  // «سفر جدید»: ویزارد از نو با پیش‌فرض‌ها
+  await page.getByRole('button', { name: 'سفر جدید' }).click()
+  await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
+})

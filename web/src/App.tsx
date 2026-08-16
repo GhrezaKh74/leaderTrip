@@ -28,7 +28,7 @@ import { useOnlineStatus } from './offline/useOnlineStatus'
 import { useGeneratePlan } from './api/queries'
 import { learnedTaste, loadJournal } from './features/live/journal'
 import type { TripPlan } from './api/schemas'
-import type { TripForm } from './features/wizard/tripSchema'
+import { DEFAULT_TRIP, type TripForm } from './features/wizard/tripSchema'
 
 interface Generated {
   plan: TripPlan
@@ -184,6 +184,12 @@ export function App() {
             input={generated.input}
             online={online}
             onEdit={() => setGenerated(null)}
+            // «سفر جدید» یعنی ویزارد با پیش‌فرض‌ها، نه فرم نیمه‌پر سفر قبلی —
+            // برای برگشتن به همان مقدارها «ویرایش ورودی‌ها» هست.
+            onNew={() => {
+              setLoaded((current) => ({ trip: DEFAULT_TRIP, sequence: (current?.sequence ?? 0) + 1 }))
+              setGenerated(null)
+            }}
             onRebuild={rebuildWith}
           />
         )}

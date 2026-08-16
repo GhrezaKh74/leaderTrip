@@ -141,7 +141,8 @@ export function AccountButton({
 
 // ─── ورود / ثبت‌نام ──────────────────────────────────────────────────────
 
-function AuthDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** صادرشده چون «ذخیرهٔ برنامه» در صفحهٔ برنامه هم اول ورود می‌خواهد. */
+export function AuthDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

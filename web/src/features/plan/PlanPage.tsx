@@ -27,7 +27,10 @@ import {
   VisitPinIcon,
 } from '../../components/icons'
 
+import AddIcon from '@mui/icons-material/AddOutlined'
+
 import { usePois, useReferenceData } from '../../api/queries'
+import { SaveTripButton } from '../auth/SaveTripButton'
 import type { TripPlan } from '../../api/schemas'
 import type { TripForm } from '../wizard/tripSchema'
 import { duration, faNum, tomanShort } from '../../lib/format'
@@ -68,12 +71,15 @@ export function PlanPage({
   input,
   online,
   onEdit,
+  onNew,
   onRebuild,
 }: {
   plan: TripPlan
   input: TripForm
   online: boolean
   onEdit: () => void
+  /** شروع سفر تازه: ویزارد از نو با پیش‌فرض‌ها، نه با فرم نیمه‌پر قبلی. */
+  onNew: () => void
   /** ورودی عوض شده — برنامه باید از نو ساخته شود، نه دستکاری. */
   onRebuild: (next: TripForm) => void
 }) {
@@ -171,6 +177,12 @@ export function PlanPage({
           </Stack>
 
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Button onClick={onNew} startIcon={<AddIcon sx={{ fontSize: 18 }} />} variant="outlined" size="small">
+              سفر جدید
+            </Button>
+
+            <SaveTripButton input={input} onSaved={setToast} />
+
             <Button onClick={onEdit} startIcon={<EditIcon />} variant="outlined" size="small">
               ویرایش ورودی‌ها
             </Button>
