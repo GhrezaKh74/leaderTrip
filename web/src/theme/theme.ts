@@ -1,7 +1,7 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles'
 import { faIR } from '@mui/material/locale'
 
-import { brand, heroGradient, radii, shadows, surfaces } from './tokens'
+import { ambientBackground, brand, heroGradient, radii, shadows, surfaces } from './tokens'
 
 /**
  * تم لیدرتریپ — پیاده‌سازی توکن‌های `tokens.ts` روی MUI.
@@ -32,6 +32,9 @@ const fontStack = [
   'Segoe UI',
   'sans-serif',
 ].join(', ')
+
+// قلم نمایشی فقط برای تیترها — ایران‌سنس سیاه (fonts.css). بدنه وزیرمتن می‌ماند.
+const displayStack = `'IRANSansWeb FaNum', ${fontStack}`
 
 export function buildTheme(mode: 'light' | 'dark'): Theme {
   const surface = mode === 'light' ? surfaces.light : surfaces.dark
@@ -70,17 +73,41 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
         body1: { lineHeight: 1.9 },
         body2: { lineHeight: 1.8 },
         button: { fontWeight: 700, letterSpacing: 0 },
-        h1: { fontSize: '2rem', fontWeight: 800 },
-        h2: { fontSize: '1.55rem', fontWeight: 800 },
-        h3: { fontSize: '1.25rem', fontWeight: 700 },
-        h4: { fontSize: '1.1rem', fontWeight: 700 },
+        // تیترها با قلم نمایشی و درشت‌تر از پیش‌فرض — «صدای» رابط. فاصلهٔ حرفی
+        // همیشه صفر: خط فارسی پیوسته است و letter-spacing اتصال را زشت می‌کند.
+        h1: { fontFamily: displayStack, fontSize: '2.25rem', fontWeight: 800, lineHeight: 1.5 },
+        h2: { fontFamily: displayStack, fontSize: '1.6rem', fontWeight: 800 },
+        h3: { fontFamily: displayStack, fontSize: '1.25rem', fontWeight: 700 },
+        h4: { fontFamily: displayStack, fontSize: '1.1rem', fontWeight: 700 },
         subtitle1: { fontWeight: 600 },
         caption: { lineHeight: 1.7 },
       },
       components: {
         MuiCssBaseline: {
           styleOverrides: {
-            body: { WebkitFontSmoothing: 'antialiased' },
+            body: {
+              WebkitFontSmoothing: 'antialiased',
+              // هاله‌های محیطی برند، ثابت نسبت به دید — عمقِ صحنه، نه تصویر پس‌زمینه.
+              backgroundImage: ambientBackground(mode),
+              backgroundAttachment: 'fixed',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: 'cover',
+            },
+
+            // ورود نرم برای کارت‌هایی که با CSS خالص می‌آیند (بدون anime.js).
+            '@keyframes lt-rise': {
+              from: { opacity: 0, transform: 'translateY(14px)' },
+              to: { opacity: 1, transform: 'none' },
+            },
+            '.lt-rise': {
+              animation: 'lt-rise .45s cubic-bezier(.2,.7,.3,1) both',
+            },
+
+            // هر که حرکت را خاموش کرده، جدی گرفته می‌شود — همه‌جا، یک‌جا.
+            '@media (prefers-reduced-motion: reduce)': {
+              '.lt-rise': { animation: 'none' },
+              '*': { transitionDuration: '0.01ms !important' },
+            },
 
             '::selection': {
               background: alpha(brand.turquoise.main, 0.25),
@@ -120,6 +147,10 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
                   props: { variant: 'contained', color: 'primary' },
                   style: {
                     background: heroGradient,
+                    // قرصِ گرد: کنش اصلی باید از هر دکمهٔ دیگری «شکل» متفاوت
+                    // داشته باشد، نه فقط رنگ متفاوت.
+                    borderRadius: radii.pill,
+                    paddingInline: 22,
                     transition: 'box-shadow .2s ease, transform .15s ease',
                     '&:hover': { boxShadow: shadows.hover, background: heroGradient },
                     '&:active': { transform: 'translateY(1px)' },

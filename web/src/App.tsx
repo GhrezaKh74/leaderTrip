@@ -14,7 +14,7 @@ import Box from '@mui/material/Box'
 
 import { LogoIcon, MoonIcon, OfflineIcon, SunIcon } from './components/icons'
 import { IconGallery } from './components/IconGallery'
-import { heroGradient } from './theme/tokens'
+import { glass, heroGradient } from './theme/tokens'
 
 import { RtlProvider } from './theme/RtlProvider'
 import { useThemeControl } from './theme/useThemeControl'
@@ -91,9 +91,11 @@ export function App() {
     <RtlProvider mode={resolved}>
       <AppBar
         position="sticky"
-        color="default"
+        color="transparent"
         elevation={0}
-        sx={{ borderBottom: 1, borderColor: 'divider' }}
+        // شیشه‌مات: سرصفحه روی محتوایی که زیرش می‌گذرد شناور است، پس باید
+        // «از جنس شیشه» باشد نه یک نوار کدرِ جدا از صحنه.
+        sx={{ ...glass(resolved), borderBottom: 1, borderColor: 'divider' }}
         className="no-print"
       >
         <Toolbar>

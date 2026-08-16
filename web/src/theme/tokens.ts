@@ -96,3 +96,52 @@ export const shadows = {
   hover: '0 6px 20px -6px rgba(12, 125, 132, 0.35)',
   hero: '0 12px 32px -12px rgba(29, 63, 119, 0.45)',
 } as const
+
+/**
+ * پس‌زمینهٔ محیطی — سه هالهٔ نرمِ رنگی از پالت برند، ثابت زیر همهٔ صفحه.
+ *
+ * <p>سطح تختِ تک‌رنگ «فرم اداری» می‌سازد؛ هالهٔ محیطی همان چیزی است که به
+ * رابط‌های امروزی عمق می‌دهد — و چون از همان سه رنگ برند است، عمقِ بی‌هویت
+ * نیست. شب: جادهٔ شبانه با شفق فیروزه‌ای. روز: آسمان صبحِ کویر.</p>
+ */
+export function ambientBackground(mode: 'light' | 'dark'): string {
+  return mode === 'light'
+    ? [
+        `radial-gradient(640px 420px at 88% -8%, rgba(12,125,132,0.16), transparent 70%)`,
+        `radial-gradient(520px 420px at -6% 24%, rgba(29,63,119,0.12), transparent 70%)`,
+        `radial-gradient(720px 480px at 50% 118%, rgba(217,138,36,0.10), transparent 72%)`,
+      ].join(', ')
+    : [
+        `radial-gradient(700px 460px at 85% -10%, rgba(67,198,192,0.16), transparent 70%)`,
+        `radial-gradient(560px 460px at -8% 28%, rgba(77,107,168,0.20), transparent 72%)`,
+        `radial-gradient(760px 500px at 55% 120%, rgba(240,180,92,0.08), transparent 72%)`,
+      ].join(', ')
+}
+
+/**
+ * شیشه‌مات — سطح‌های شناور (سرصفحه، نوار تب چسبان، کارت آمار).
+ *
+ * روی پس‌زمینهٔ محیطی، سطحِ کاملاً کدر وصله به‌نظر می‌رسد و کاملاً شفاف
+ * ناخوانا؛ شیشه هر دو را حل می‌کند. فقط برای سطح‌های شناور — بلور روی ده‌ها
+ * کارتِ فهرست، هم سنگین است هم بی‌معنا.
+ */
+export function glass(mode: 'light' | 'dark') {
+  return mode === 'light'
+    ? {
+        backgroundColor: 'rgba(255, 253, 248, 0.68)',
+        backdropFilter: 'blur(18px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.5)',
+      }
+    : {
+        backgroundColor: 'rgba(20, 28, 45, 0.62)',
+        backdropFilter: 'blur(18px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+      }
+}
+
+/** متن گرادیانی برای تیترهای نمایشی — در شب با نسخهٔ روشن‌تر تا کنتراست نمیرد. */
+export function textGradient(mode: 'light' | 'dark'): string {
+  return mode === 'light'
+    ? heroGradient
+    : `linear-gradient(135deg, #7d97cf 0%, #43c6c0 60%, #7fdcd7 100%)`
+}

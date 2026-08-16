@@ -133,7 +133,11 @@ function Summary({ title, value, hint }: { title: string; value: string; hint?: 
         <Typography variant="caption" color="text.secondary">
           {title}
         </Typography>
-        <Typography variant="h4" component="p" sx={{ mt: 0.5 }}>
+        <Typography
+          variant="h4"
+          component="p"
+          sx={{ mt: 0.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}
+        >
           {value}
         </Typography>
         {hint ? (

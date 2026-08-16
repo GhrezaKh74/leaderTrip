@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Alert from '@mui/material/Alert'
@@ -27,6 +27,7 @@ import {
   VisitPinIcon,
 } from '../../components/icons'
 import { girihPattern, heroGradient } from '../../theme/tokens'
+import { drawPath, riseIn } from '../../lib/motion'
 
 import { useGeneratePlan, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
@@ -83,6 +84,55 @@ function BrandStepIcon({ active, completed, icon }: StepIconProps) {
       }}
     >
       {completed === true ? <CheckIcon sx={{ fontSize: 19 }} /> : <Icon sx={{ fontSize: 21 }} />}
+    </Box>
+  )
+}
+
+/**
+ * صحنهٔ مسیر در سرصفحهٔ قهرمان — جاده‌ای که جلوی چشم «رانده می‌شود».
+ *
+ * <p>خط از راست (مبدأ، جهت خواندن فارسی) کشیده می‌شود و به سنجاق مقصد در چپ
+ * می‌رسد؛ توقف‌ها در طول راه روشن می‌شوند. این همان قصهٔ خود اپ است: مسیر،
+ * توقف‌ها، مقصد — پیش از آنکه کاربر کلمه‌ای خوانده باشد.</p>
+ *
+ * <p>ترسیم با anime.js است و پشت prefers-reduced-motion گارد شده
+ * (`lib/motion.ts`)؛ بدون حرکت، صحنه ثابت و کامل دیده می‌شود.</p>
+ */
+function HeroRoute() {
+  const routeRef = useRef<SVGPathElement>(null)
+  const stopsRef = useRef<SVGGElement>(null)
+
+  useEffect(() => {
+    if (routeRef.current) drawPath(routeRef.current, { duration: 2200, delay: 250 })
+    if (stopsRef.current) riseIn(Array.from(stopsRef.current.children), { step: 420, start: 650, from: 6 })
+  }, [])
+
+  return (
+    <Box
+      component="svg"
+      viewBox="0 0 600 170"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden
+      sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+    >
+      <path
+        ref={routeRef}
+        d="M 618 34 C 500 148, 430 -12, 310 84 S 150 176, 34 100"
+        fill="none"
+        stroke="rgba(255,255,255,0.38)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <g ref={stopsRef} fill="#fff">
+        {/* توقف‌ها روی پایین‌روی منحنی — دور از سطرهای عنوان و زیرعنوان. */}
+        <circle cx="390" cy="138" r="4" opacity="0.75" />
+        <circle cx="228" cy="112" r="4" opacity="0.75" />
+        {/* مقصد: سنجاقِ ساده — حلقه + مرکز پُر، هم‌خانوادهٔ VisitPinIcon. */}
+        <g opacity="0.95">
+          <circle cx="34" cy="100" r="9" fill="none" stroke="#fff" strokeWidth="2.5" />
+          <circle cx="34" cy="100" r="3.4" />
+        </g>
+      </g>
     </Box>
   )
 }
@@ -178,29 +228,38 @@ export function WizardPage({
   return (
     <FormProvider {...form}>
       <Stack spacing={3} component="form" onSubmit={submit} noValidate>
-        {/* سرصفحهٔ قهرمان: گرادیان برند + نقش گرهٔ هشت‌پر — همان زبان لوگو. */}
+        {/* سرصفحهٔ قهرمان: گرادیان برند + نقش گره + مسیرِ متحرک — زبان لوگو، زنده. */}
         <Box
           sx={{
             borderRadius: 4,
-            p: { xs: 2.5, sm: 3.5 },
+            p: { xs: 3, sm: 4.5 },
+            minHeight: { xs: 150, sm: 185 },
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
             color: '#fff',
             background: heroGradient,
-            backgroundBlendMode: 'normal',
             position: 'relative',
             overflow: 'hidden',
+            boxShadow: '0 16px 44px -18px rgba(29, 63, 119, 0.55)',
             '&::after': {
               content: '""',
               position: 'absolute',
               inset: 0,
-              backgroundImage: girihPattern(0.13),
+              backgroundImage: girihPattern(0.1),
               pointerEvents: 'none',
             },
           }}
         >
-          <Typography variant="h2" component="h2" sx={{ position: 'relative' }}>
+          <HeroRoute />
+          <Typography variant="h1" component="h2" className="lt-rise" sx={{ position: 'relative' }}>
             برنامهٔ سفرت را بساز
           </Typography>
-          <Typography variant="body2" sx={{ position: 'relative', opacity: 0.9, mt: 0.5, maxWidth: 460 }}>
+          <Typography
+            variant="body1"
+            className="lt-rise"
+            sx={{ position: 'relative', opacity: 0.92, mt: 1, maxWidth: 460, animationDelay: '.12s' }}
+          >
             مسیر، هزینهٔ قابل‌ردیابی و برنامهٔ ساعت‌به‌ساعت — متناسب با خودرو،
             همسفرها و بودجه‌ات.
           </Typography>

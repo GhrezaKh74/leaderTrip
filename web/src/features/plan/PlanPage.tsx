@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -31,6 +31,8 @@ import { usePois, useReferenceData } from '../../api/queries'
 import type { TripPlan } from '../../api/schemas'
 import type { TripForm } from '../wizard/tripSchema'
 import { duration, faNum, tomanShort } from '../../lib/format'
+import { countUp, riseIn } from '../../lib/motion'
+import { glass } from '../../theme/tokens'
 import { AdvicePanel } from './AdvicePanel'
 import { CostPanel } from './CostPanel'
 import { DayTimeline } from './DayTimeline'
@@ -143,30 +145,24 @@ export function PlanPage({
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={2}
-          sx={{ justifyContent: 'space-between', alignItems: { sm: 'flex-start' } }}
+          sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
         >
-          <Box>
-            <Typography variant="h2" component="h2">
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <Typography variant="h1" component="h2">
               برنامهٔ {faNum(plan.days.length)} روزه
             </Typography>
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mt: 1.25 }}>
-              <StatPill icon={VisitPinIcon} label={`${faNum(plan.visitCount)} بازدید`} />
-              <StatPill icon={RouteIcon} label={`${faNum(Math.round(plan.totalKilometers))} کیلومتر`} />
-              <StatPill icon={CarIcon} label={`${duration(plan.totalDrivingMinutes)} رانندگی`} />
-              <StatPill icon={CostIcon} label={tomanShort(plan.cost.total)} accent />
-              {/*
-                مبدأ مسافت روی صفحه می‌آید، نه در لاگ: عددی که حدس است نباید
-                شبیه اندازه‌گیری به نظر برسد.
-              */}
-              <Chip
-                size="small"
-                variant="outlined"
-                color={plan.distanceSource === 'Routed' ? 'success' : 'default'}
-                label={plan.distanceSource === 'Routed' ? 'مسافت واقعی جاده' : 'مسافت‌ها تخمینی'}
-              />
-            </Stack>
-          </Box>
+            {/*
+              مبدأ مسافت روی صفحه می‌آید، نه در لاگ: عددی که حدس است نباید
+              شبیه اندازه‌گیری به نظر برسد.
+            */}
+            <Chip
+              size="small"
+              variant="outlined"
+              color={plan.distanceSource === 'Routed' ? 'success' : 'default'}
+              label={plan.distanceSource === 'Routed' ? 'مسافت واقعی جاده' : 'مسافت‌ها تخمینی'}
+            />
+          </Stack>
 
           <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
             <Button onClick={onEdit} startIcon={<EditIcon />} variant="outlined" size="small">
@@ -192,6 +188,9 @@ export function PlanPage({
           </Stack>
         </Stack>
 
+        {/* داشبورد لیدر: چهار عدد کلیدی سفر، درشت و شمارنده — یک نگاه، کل سفر. */}
+        <StatBoard plan={plan} />
+
         {online ? null : (
           <Alert severity="info">
             آفلاین هستید. این برنامه از حافظهٔ دستگاه خوانده شده و کامل است؛
@@ -209,14 +208,17 @@ export function PlanPage({
         {/* تب‌ها چسبان می‌مانند: در برنامهٔ چندروزهٔ بلند، کاربر وسط روز سوم
             نباید برای عوض‌کردن تب تا بالای صفحه برگردد. */}
         <Box
-          sx={{
+          sx={(theme) => ({
             position: 'sticky',
             top: { xs: 56, sm: 64 },
             zIndex: 2,
-            bgcolor: 'background.default',
+            // شیشه، نه سطح کدر: نوار چسبان روی محتوای در حال عبور شناور است.
+            ...glass(theme.palette.mode),
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
             mx: -1,
             px: 1,
-          }}
+          })}
         >
           <Tabs
             value={tab}
@@ -313,33 +315,111 @@ export function PlanPage({
   )
 }
 
-/** پیل آمار با آیکون — خلاصهٔ سفر در یک نگاه. */
-function StatPill({
+// قالب‌بندهای شمارنده در سطح ماژول تا مرجعشان پایدار بماند؛ وگرنه افکت
+// StatCard با هر رندر (مثلاً هر تعویض تب) دوباره از صفر می‌شمارد.
+const formatCount = (value: number) => faNum(Math.round(value))
+const formatKm = (value: number) => faNum(Math.round(value))
+const formatDrive = (value: number) => duration(Math.round(value))
+const formatCost = (value: number) => tomanShort(Math.round(value))
+
+/** داشبورد آمار سفر — چهار کارت شمارنده با ورود پلکانی. */
+function StatBoard({ plan }: { plan: TripPlan }) {
+  const boardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (boardRef.current) riseIn(Array.from(boardRef.current.children), { step: 60 })
+  }, [plan])
+
+  return (
+    <Box
+      ref={boardRef}
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+        gap: 1.5,
+      }}
+    >
+      <StatCard icon={VisitPinIcon} label="بازدید" value={plan.visitCount} format={formatCount} color="primary" />
+      <StatCard icon={RouteIcon} label="کیلومتر" value={Math.round(plan.totalKilometers)} format={formatKm} color="info" />
+      <StatCard icon={CarIcon} label="رانندگی" value={plan.totalDrivingMinutes} format={formatDrive} color="success" />
+      <StatCard icon={CostIcon} label="هزینهٔ کل" value={plan.cost.total} format={formatCost} color="secondary" />
+    </Box>
+  )
+}
+
+/**
+ * کارت آمار — عدد درشتی که از صفر تا مقدارش می‌شمارد.
+ *
+ * <p>شمارش تزئین نیست: می‌گوید «این عدد از جمع سفرت ساخته شد»، و چون از همان
+ * قالب‌بند همیشگی می‌گذرد (`lib/format.ts`)، هر فریمش هم فارسی و درست است.</p>
+ */
+function StatCard({
   icon: Icon,
   label,
-  accent = false,
+  value,
+  format,
+  color,
 }: {
   icon: typeof RouteIcon
   label: string
-  accent?: boolean
+  value: number
+  format: (value: number) => string
+  color: 'primary' | 'secondary' | 'info' | 'success'
 }) {
+  const valueRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (valueRef.current) countUp(valueRef.current, value, format)
+  }, [value, format])
+
   return (
     <Box
       sx={(theme) => ({
-        display: 'inline-flex',
+        ...glass(theme.palette.mode),
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: 3,
+        p: { xs: 1.5, sm: 2 },
+        display: 'flex',
         alignItems: 'center',
-        gap: 0.75,
-        px: 1.25,
-        py: 0.5,
-        borderRadius: 2,
-        fontSize: '0.8rem',
-        fontWeight: 600,
-        color: accent ? theme.palette.secondary.dark : theme.palette.text.primary,
-        bgcolor: alpha(accent ? theme.palette.secondary.main : theme.palette.primary.main, 0.1),
+        gap: 1.5,
+        minWidth: 0,
       })}
     >
-      <Icon sx={{ fontSize: 16, color: accent ? 'secondary.main' : 'primary.main' }} />
-      {label}
+      <Box
+        sx={(theme) => ({
+          width: 40,
+          height: 40,
+          borderRadius: '13px',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: theme.palette[color].main,
+          bgcolor: alpha(theme.palette[color].main, 0.12),
+        })}
+      >
+        <Icon sx={{ fontSize: 21 }} />
+      </Box>
+
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          component="span"
+          ref={valueRef}
+          // بدون nowrap: مقدار بلند («۱۰ ساعت و ۱۶ دقیقه») باید بشکند، نه از کارت بیرون بزند.
+          sx={{
+            display: 'block',
+            fontWeight: 800,
+            fontSize: { xs: '1.05rem', sm: '1.2rem' },
+            lineHeight: 1.5,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {format(value)}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4 }}>
+          {label}
+        </Typography>
+      </Box>
     </Box>
   )
 }

@@ -1,0 +1,19 @@
+/*
+ * قلم نمایشی: ایران‌سنس (وزن سیاه، ارقام فارسی) — فقط برای تیترها.
+ *
+ * متن بدنه با وزیرمتن می‌ماند: ایران‌سنسِ آپلودشده فقط وزن Bold دارد و
+ * ارقامش فارسیِ توکار است — برای تیتر عالی است، برای ورودی‌ها و جدول‌ها
+ * (که باید ارقام لاتینِ هم‌عرض داشته باشند) سم است.
+ *
+ * بازهٔ وزن 700 تا 900 به همین یک فایل نگاشت می‌شود تا تیترهای 800/900
+ * به‌جای Bold مصنوعیِ مرورگر، گلیف واقعی بگیرند.
+ */
+@font-face {
+  font-family: 'IRANSansWeb FaNum';
+  src:
+    url('../assets/fonts/IRANSansWebFaNum-Bold.woff2') format('woff2'),
+    url('../assets/fonts/IRANSansWebFaNum-Bold.woff') format('woff');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}

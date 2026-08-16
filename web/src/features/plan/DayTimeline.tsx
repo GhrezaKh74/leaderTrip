@@ -15,6 +15,7 @@ import { BanIcon, CarIcon, FuelIcon, LodgingIcon, MealIcon, TeaIcon, VisitPinIco
 import type { DayPlan, PlanBlock } from '../../api/schemas'
 import { duration, faNum, toFa, toman } from '../../lib/format'
 import { formatJalaliFromIso } from '../../lib/jalaliDisplay'
+import { heroGradient } from '../../theme/tokens'
 import { DayWeatherChip } from './DayWeatherChip'
 
 /**
@@ -49,15 +50,40 @@ export function DayTimeline({
   actions?: DayEditActions
 }) {
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+    <Paper
+      className="lt-rise"
+      // ورود پلکانی به‌ترتیب روز — برنامه روزبه‌روز است، ورودش هم.
+      sx={{ p: { xs: 2, sm: 3 }, animationDelay: `${(day.index - 1) * 70}ms` }}
+    >
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1}
-        sx={{ justifyContent: 'space-between', alignItems: { sm: 'baseline' }, mb: 2 }}
+        sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, mb: 2 }}
       >
-        <Typography variant="h3" component="h3">
-          روز {faNum(day.index)} — {formatJalaliFromIso(day.date)}
-        </Typography>
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+          {/* نشان روز با گرادیان برند — لنگر چشم هنگام اسکرول برنامهٔ چندروزه. */}
+          <Box
+            sx={{
+              width: 34,
+              height: 34,
+              borderRadius: '12px',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: heroGradient,
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: '0.95rem',
+            }}
+          >
+            {faNum(day.index)}
+          </Box>
+
+          <Typography variant="h3" component="h3">
+            روز {faNum(day.index)} — {formatJalaliFromIso(day.date)}
+          </Typography>
+        </Stack>
 
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           {day.weather ? <DayWeatherChip weather={day.weather} /> : null}
@@ -76,7 +102,23 @@ export function DayTimeline({
       {day.blocks.length === 0 ? (
         <Typography color="text.secondary">برای این روز برنامه‌ای ساخته نشد.</Typography>
       ) : (
-        <Stack spacing={0}>
+        <Stack
+          spacing={0}
+          sx={(theme) => ({
+            position: 'relative',
+            // خط سفرِ روز: نقطه‌چینی که حباب‌های توقف را به هم می‌دوزد.
+            // ‏۸۴ = عرض ستون ساعت (۵۲) + فاصله (۱۶) + نصف حباب (۱۷) − ۱.
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 24,
+              bottom: 24,
+              right: 84,
+              borderRight: `2px dashed ${alpha(theme.palette.primary.main, 0.28)}`,
+              pointerEvents: 'none',
+            },
+          })}
+        >
           {day.blocks.map((block, index) => (
             <BlockRow
               key={`${block.startsAt}-${index}`}
@@ -127,7 +169,8 @@ function BlockRow({
       </Typography>
 
       {/* حباب رنگی: ستون آیکون‌ها خودش خط زمان می‌شود و نوع هر توقف بی‌خواندن
-          متن معلوم است. */}
+          متن معلوم است. پس‌زمینهٔ دولایه (کاغذ + رنگ‌مایه) حباب را کدر می‌کند
+          تا خط سفرِ پشتش از میانش رد نشود. */}
       <Box
         sx={{
           width: 34,
@@ -137,8 +180,14 @@ function BlockRow({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          position: 'relative',
+          zIndex: 1,
           color,
-          bgcolor: alpha(color, block.kind === 'Drive' ? 0.08 : 0.13),
+          backgroundColor: 'background.paper',
+          backgroundImage: `linear-gradient(${alpha(color, block.kind === 'Drive' ? 0.08 : 0.13)}, ${alpha(
+            color,
+            block.kind === 'Drive' ? 0.08 : 0.13,
+          )})`,
         }}
       >
         <Icon sx={{ fontSize: 19 }} />
