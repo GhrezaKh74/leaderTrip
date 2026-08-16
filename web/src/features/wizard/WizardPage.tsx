@@ -47,7 +47,7 @@ import { readTripFile } from '../plan/sharing'
  * فیلدهایی خطا می‌دهد که هنوز ندیده است).
  */
 const STEPS: { label: string; fields: (keyof TripForm)[] }[] = [
-  { label: 'مبدأ و مقصد', fields: ['originCityId', 'destinationCityId', 'startDate', 'days', 'radiusKm', 'budgetToman'] },
+  { label: 'مبدأ و مقصد', fields: ['originCityId', 'destinationCityId', 'destinationMode', 'startDate', 'days', 'radiusKm', 'budgetToman'] },
   { label: 'همسفران', fields: ['travelers'] },
   { label: 'خودرو', fields: ['vehicleId', 'vehicleCount', 'maxDrivingHoursPerDay', 'dayStartHour', 'dayEndHour'] },
   { label: 'سبک سفر', fields: ['style', 'lodging', 'interests', 'roundTrip'] },

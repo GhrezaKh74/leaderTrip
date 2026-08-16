@@ -5,6 +5,8 @@ import InputAdornment from '@mui/material/InputAdornment'
 import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 
 import { JalaliDateField } from '../../../components/JalaliDateField'
 import { NumberField } from '../../../components/NumberField'
@@ -75,7 +77,7 @@ export function OriginStep({ cities }: { cities: City[] }) {
                     helperText={
                       errors.destinationCityId?.message ??
                       (hasDestination
-                        ? 'سفر یک‌سویه: جاذبه‌ها در راهروی مبدأ تا مقصد چیده می‌شوند و روز آخر به مقصد می‌رسید.'
+                        ? 'شهری که سفر برایش برنامه‌ریزی می‌شود.'
                         : 'خالی یعنی سفر حلقه‌ای دور مبدأ.')
                     }
                   />
@@ -84,6 +86,41 @@ export function OriginStep({ cities }: { cities: City[] }) {
             )}
           />
         </Grid>
+
+        {hasDestination ? (
+          <Grid size={12}>
+            <Controller
+              name="destinationMode"
+              control={control}
+              render={({ field }) => (
+                <Stack spacing={0.75}>
+                  <Typography variant="body2" color="text.secondary">
+                    هدف از این مقصد چیست؟
+                  </Typography>
+
+                  <ToggleButtonGroup
+                    exclusive
+                    color="primary"
+                    value={field.value}
+                    onChange={(_, next: 'Stay' | 'Corridor' | null) => {
+                      if (next !== null) field.onChange(next)
+                    }}
+                    size="small"
+                  >
+                    <ToggleButton value="Stay">اقامت در مقصد</ToggleButton>
+                    <ToggleButton value="Corridor">گشت در مسیر</ToggleButton>
+                  </ToggleButtonGroup>
+
+                  <Typography variant="caption" color="text.secondary">
+                    {field.value === 'Stay'
+                      ? 'مقصد پایگاه سفر است: جاذبه‌ها دور مقصد و سرِ راه چیده می‌شوند، شب‌ها آن‌جا می‌مانید، و اگر «برگشت به مبدأ» روشن باشد روز آخر برمی‌گردید.'
+                      : 'خودِ راه هدف است: جاذبه‌ها در طول مسیر چیده می‌شوند و روز آخر به مقصد می‌رسید — برگشت، خودش سفری است جدا.'}
+                  </Typography>
+                </Stack>
+              )}
+            />
+          </Grid>
+        ) : null}
 
         <Grid size={{ xs: 12, sm: 3 }}>
           <Controller
@@ -129,11 +166,13 @@ export function OriginStep({ cities }: { cities: City[] }) {
           render={({ field }) => (
             <>
               <Typography variant="body2" color="text.secondary">
-                {hasDestination
-                  ? `پهنای راهرو: جاذبه‌ها تا ${faNum(field.value)} کیلومتر دو طرف مسیر`
-                  : `شعاع جست‌وجو: تا ${faNum(field.value)} کیلومتر از ${
+                {!hasDestination
+                  ? `شعاع جست‌وجو: تا ${faNum(field.value)} کیلومتر از ${
                       cities.find((c) => c.id === control._formValues.originCityId)?.name ?? 'مبدأ'
-                    }`}
+                    }`
+                  : watch('destinationMode') === 'Stay'
+                    ? `شعاع گشت: تا ${faNum(field.value)} کیلومتر دور مقصد، به‌علاوهٔ توقف‌های سرِ راه`
+                    : `پهنای راهرو: جاذبه‌ها تا ${faNum(field.value)} کیلومتر دو طرف مسیر`}
               </Typography>
               <Slider
                 value={field.value}

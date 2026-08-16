@@ -86,9 +86,15 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             }
         }
 
-        // سفر مقصددار یک‌سویه است: برگشت، خودش سفری است با توقف‌های خودش، نه
-        // پیوستِ همین سفر. پرچم رفت‌وبرگشت فقط در سفر حلقه‌ای معنا دارد.
-        bool returnsToOrigin = destination is null && query.RoundTrip;
+        // «اقامت در مقصد» یعنی مقصد پایگاه است و برگشت معنا دارد؛ «مسیرگردی»
+        // یعنی خودِ راه هدف است و یک‌سویه — برگشتش خودش سفری است با توقف‌های
+        // خودش. بدون مقصد، همان پرچم رفت‌وبرگشتِ حلقه‌ای.
+        bool stayAtDestination = destination is not null && query.DestinationMode == DestinationMode.Stay;
+        bool returnsToOrigin = query.RoundTrip && (destination is null || stayAtDestination);
+
+        // لنگرِ جست‌وجو و آب‌وهوا: در سفر اقامتی، مقصد است — جاذبه‌ها و هوای
+        // اصفهان مهم‌اند، نه تهرانِ مبدأ.
+        var anchor = stayAtDestination ? destination! : origin;
 
         var vehicle = await _vehicles.FindAsync(query.VehicleId, cancellationToken).ConfigureAwait(false);
         if (vehicle is null)
@@ -113,7 +119,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         // آب‌وهوا اختیاری است: اگر سرویس نبود، `null` می‌ماند و قاعدهٔ آب‌وهوا
         // ضریب خنثی برمی‌گرداند. برنامه ساخته می‌شود، فقط کورتر.
         var outlook = await _weather
-            .GetOutlookAsync(origin.Location, query.StartDate, query.Days, cancellationToken)
+            .GetOutlookAsync(anchor.Location, query.StartDate, query.Days, cancellationToken)
             .ConfigureAwait(false);
 
         var cityById = cities.ToDictionary(c => c.Id, StringComparer.Ordinal);
@@ -122,11 +128,20 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         var pinned = query.PinnedPoiIds.ToHashSet(StringComparer.Ordinal);
 
         // ─── قیدهای سخت، به‌صورت ترکیبی ───
-        // محدودهٔ جغرافیایی به نوع سفر بستگی دارد: حلقه‌ای یعنی دایره دور مبدأ؛
-        // مقصددار یعنی راهروی مبدأ تا مقصد با همان شعاع در دو طرف.
+        // محدودهٔ جغرافیایی به نوع سفر بستگی دارد:
+        // حلقه‌ای → دایره دور مبدأ؛ مسیرگردی → راهروی مبدأ تا مقصد؛
+        // اقامتی → دایره دور «مقصد» + راهروی باریکِ سرِ راه، تا هم گشتِ
+        // اطراف مقصد ممکن باشد هم توقف‌های بین راه.
         Specification<PointOfInterest> geography = destination is null
             ? new WithinRadiusSpecification(origin.Location, radius)
-            : new WithinCorridorSpecification(origin.Location, destination.Location, radius);
+            : stayAtDestination
+                ? Spec.Any(
+                    new WithinRadiusSpecification(destination.Location, radius),
+                    new WithinCorridorSpecification(
+                        origin.Location,
+                        destination.Location,
+                        Distance.FromKilometers(Math.Min(query.RadiusKm, 60))))
+                : new WithinCorridorSpecification(origin.Location, destination.Location, radius);
 
         var eligibility = Spec.All(
             new NotExcludedSpecification(excluded),
@@ -143,7 +158,10 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         var scoringContext = new ScoringContext
         {
             Group = group,
-            Origin = origin.Location,
+            // در سفر اقامتی، «فاصله از مسیر» از پایگاه سفر سنجیده می‌شود؛
+            // وگرنه جاذبه‌های دور مقصد — که اصل ماجرایند — جریمهٔ دوری از
+            // مبدأ می‌خوردند.
+            Origin = anchor.Location,
             SearchRadius = radius,
             Month = query.StartDate.Month,
             TripDays = query.Days,
@@ -284,7 +302,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
 
         // ─── هوای روزبه‌روز، برای نمایش ───
         var dailyWeather = await _weather
-            .GetDailyAsync(origin.Location, query.StartDate, query.Days, cancellationToken)
+            .GetDailyAsync(anchor.Location, query.StartDate, query.Days, cancellationToken)
             .ConfigureAwait(false);
 
         // ─── مشاور و چک‌لیست ───

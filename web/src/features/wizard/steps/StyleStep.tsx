@@ -17,6 +17,9 @@ export function StyleStep() {
 
   const destinationCityId = watch('destinationCityId')
   const hasDestination = destinationCityId !== null && destinationCityId !== ''
+  // فقط «گشت در مسیر» یک‌سویهٔ اجباری است؛ سفر اقامتی برگشت دارد و انتخابش
+  // با کاربر است.
+  const corridorTrip = hasDestination && watch('destinationMode') === 'Corridor'
 
   return (
     <Stack spacing={3}>
@@ -95,14 +98,14 @@ export function StyleStep() {
           <Stack spacing={0}>
             <FormControlLabel
               control={
-                <Switch checked={field.value && !hasDestination} onChange={field.onChange} disabled={hasDestination} />
+                <Switch checked={field.value && !corridorTrip} onChange={field.onChange} disabled={corridorTrip} />
               }
-              label="برگشت به شهر مبدأ"
+              label={hasDestination ? 'برگشت به مبدأ در پایان سفر' : 'برگشت به شهر مبدأ'}
             />
-            {hasDestination ? (
+            {corridorTrip ? (
               <Typography variant="caption" color="text.secondary">
-                سفر مقصددار یک‌سویه برنامه‌ریزی می‌شود؛ برگشت، خودش سفری است با
-                توقف‌های خودش. برای رفت‌وبرگشت، مقصد را خالی بگذارید.
+                «گشت در مسیر» یک‌سویه برنامه‌ریزی می‌شود؛ برگشت، خودش سفری است
+                با توقف‌های خودش. برای رفت‌وبرگشت، هدف مقصد را «اقامت» بگذارید.
               </Typography>
             ) : null}
           </Stack>

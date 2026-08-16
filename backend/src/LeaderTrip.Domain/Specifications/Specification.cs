@@ -38,6 +38,37 @@ public static class Spec
         specifications.Length == 0
             ? new AlwaysSatisfiedSpecification<T>()
             : specifications.Aggregate((left, right) => left.And(right));
+
+    /// <summary>برقراری دست‌کم یکی کافی است؛ دلیلِ آخرین قید برگردانده می‌شود.</summary>
+    public static Specification<T> Any<T>(params Specification<T>[] specifications) =>
+        specifications.Length == 0
+            ? new AlwaysSatisfiedSpecification<T>()
+            : new AnySpecification<T>(specifications);
+}
+
+/// <summary>یکی از قیدها کافی است — «یا» منطقی.</summary>
+internal sealed class AnySpecification<T> : Specification<T>
+{
+    private readonly Specification<T>[] _options;
+
+    internal AnySpecification(Specification<T>[] options) => _options = options;
+
+    public override SpecificationResult Evaluate(T candidate)
+    {
+        SpecificationResult last = SpecificationResult.NotSatisfied("هیچ قیدی برقرار نیست");
+
+        foreach (var option in _options)
+        {
+            last = option.Evaluate(candidate);
+
+            if (last.IsSatisfied)
+            {
+                return last;
+            }
+        }
+
+        return last;
+    }
 }
 
 /// <summary>هر دو قید باید برقرار باشند؛ دلیلِ اولین قیدِ نقض‌شده برگردانده می‌شود.</summary>

@@ -10,11 +10,16 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
 
     /// <summary>
     /// مقصد سفر — اختیاری. خالی یعنی سفر حلقه‌ای دور مبدأ (رفتار همیشگی)؛
-    /// پرشده یعنی سفر یک‌سویه در راهروی مبدأ تا مقصد که روز آخرش به مقصد
-    /// می‌رسد. سفر مقصددار <see cref="RoundTrip"/> را نادیده می‌گیرد — برگشت،
-    /// خودش یک سفر است با توقف‌های خودش.
+    /// پرشده، معنایش را <see cref="DestinationMode"/> تعیین می‌کند.
     /// </summary>
     public string? DestinationCityId { get; init; }
+
+    /// <summary>
+    /// هدف از مقصد: «اقامت» (پیش‌فرض — مقصد پایگاه است، جاذبه‌ها دور مقصد و
+    /// سرِ راه، و <see cref="RoundTrip"/> یعنی روز آخر برگشت به مبدأ) یا
+    /// «مسیرگردی» (خودِ راه هدف است؛ یک‌سویه، روز آخر رسیدن به مقصد).
+    /// </summary>
+    public DestinationMode DestinationMode { get; init; } = DestinationMode.Stay;
 
     public required DateOnly StartDate { get; init; }
 
