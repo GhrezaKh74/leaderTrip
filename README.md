@@ -109,10 +109,11 @@ docker compose up -d --build     # ساخت و اجرا در پس‌زمینه
 `ADMIN_API_KEY`).
 
 ```bash
-docker compose logs -f           # دیدن لاگ‌ها
-docker compose down              # توقف
-PORT=3000 docker compose up -d   # روی پورت دلخواه
-docker compose --profile dev up  # حالت توسعه با بارگذاری زنده
+docker compose logs -f             # دیدن لاگ‌ها
+docker compose down                # توقف
+PORT=3000 docker compose up -d     # روی پورت دلخواه
+docker compose --profile dev up    # حالت توسعه با بارگذاری زنده
+docker compose --profile tiles up  # نقشهٔ خودمیزبان ایران (یک‌بار؛ maps/README.md)
 ```
 
 با `restart: unless-stopped` بعد از ریستارت سرور یا کرش، خودکار بالا می‌آید.

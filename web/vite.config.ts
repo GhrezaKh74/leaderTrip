@@ -42,6 +42,16 @@ export default defineConfig({
       output: {
         manualChunks: (id: string) => {
           if (!id.includes('node_modules')) return undefined
+          // نقشهٔ برداری خودمیزبان: سنگین و تنبل‌بار — نباید داخل vendor برود
+          // وگرنه از همان بازدید اول بار می‌شود.
+          if (
+            id.includes('maplibre') ||
+            id.includes('pmtiles') ||
+            id.includes('protomaps') ||
+            id.includes('rtl-text')
+          ) {
+            return 'maplibre'
+          }
           if (id.includes('@mui') || id.includes('@emotion')) return 'mui'
           if (id.includes('react-dom') || id.includes('/react/')) return 'react'
 

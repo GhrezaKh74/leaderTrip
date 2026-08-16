@@ -39,6 +39,9 @@ services:
     # اپ حالتش را یا در مرورگر کاربر نگه می‌دارد یا پشت /api در بک‌اند.
     # nginx فقط به چند مسیر موقت نیاز دارد که به‌صورت tmpfs داده می‌شوند.
     read_only: true
+    volumes:
+      # کاشی‌های نقشهٔ خودمیزبان — خالی باشد، اپ به OSM آنلاین برمی‌گردد.
+      - tiles-data:/tiles:ro
     tmpfs:
       - /tmp:mode=1777
       - /var/cache/nginx:mode=1777
@@ -86,6 +89,37 @@ services:
       - /tmp:mode=1777
     security_opt:
       - no-new-privileges:true
+    logging: *logging
+
+  # ─── نقشهٔ خودمیزبان ایران — یک‌بار اجرا، بعد برای همیشه آفلاین ───
+  #   docker compose --profile tiles up
+  # کاشی‌های برداری ایران (~۱ تا ۲ گیگابایت) + فونت و اسپرایت را در volume
+  # می‌گذارد؛ nginx همان را استاتیک سرو می‌کند و اپ خودکار سوئیچ می‌کند.
+  # جزئیات و به‌روزرسانی: maps/README.md
+  tiles:
+    profiles: ["tiles"]
+    image: protomaps/go-pmtiles:latest
+    container_name: leadertrip-tiles
+    volumes:
+      - tiles-data:/data
+    # بی‌بی‌باکس ایران با حاشیه؛ TILES_BUILD تاریخ ساخت protomaps است.
+    command: >-
+      extract https://build.protomaps.com/${TILES_BUILD:-20260815}.pmtiles
+      /data/iran.pmtiles --bbox=43.9,24.6,63.6,40.1
+    logging: *logging
+
+  tiles-assets:
+    profiles: ["tiles"]
+    image: alpine/git:latest
+    container_name: leadertrip-tiles-assets
+    volumes:
+      - tiles-data:/data
+    entrypoint: >-
+      sh -c "rm -rf /tmp/assets
+      && git clone --depth 1 https://github.com/protomaps/basemaps-assets /tmp/assets
+      && mkdir -p /data/assets
+      && cp -r /tmp/assets/fonts /tmp/assets/sprites /data/assets/
+      && echo 'فونت و اسپرایت نقشه آماده شد'"
     logging: *logging
 
   db:
@@ -143,3 +177,4 @@ services:
 volumes:
   db-data:
   photo-data:
+  tiles-data:

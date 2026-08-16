@@ -65,7 +65,9 @@ describe('ویزارد', () => {
     expect(screen.getByText(/به‌روزرسانی ۱۴۰۴\/۰۵/)).toBeInTheDocument()
   })
 
-  it('با ورودی معتبر به گام بعد می‌رود', async () => {
+  // مهلت بلند: در CI و بیلد داکر، رندر ویزارد کامل کند است و ۵ ثانیهٔ
+  // پیش‌فرض گاهی سر می‌رسد — شکستِ کندی نیست، شکستِ مهلت است.
+  it('با ورودی معتبر به گام بعد می‌رود', { timeout: 20_000 }, async () => {
     const user = userEvent.setup()
     renderWizard()
     await screen.findByLabelText('شهر مبدأ')

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Paper from '@mui/material/Paper'
@@ -12,6 +13,51 @@ import 'leaflet/dist/leaflet.css'
 import { useRoutePath } from '../../api/queries'
 import { faNum } from '../../lib/format'
 import { googleMapsDirections, wazeNavigation } from '../../lib/navigation'
+
+// نقشهٔ برداری خودمیزبان تنبل بار می‌شود: MapLibre سنگین است و فقط وقتی لازم
+// است که کاشی ایران روی سرور خودمان باشد.
+const VectorMap = lazy(() => import('./VectorMap'))
+
+/** آیا کاشی خودمیزبان ایران روی این سرور هست؟ یک درخواست کوچک، یک‌بار در هر بازدید. */
+let selfTilesCache: boolean | null = null
+
+/**
+ * وجودِ فایل با HEAD قابل اعتماد نیست: هر سروری که مسیرهای ناشناخته را به
+ * index.html برمی‌گرداند (رفتار عادی اپ تک‌صفحه‌ای) به آن ۲۰۰ می‌دهد. پس
+ * هفت بایت اول با Range خواسته می‌شود: فقط ۲۰۶ (یعنی Range واقعاً کار
+ * می‌کند — پیش‌نیاز PMTiles) با امضای «PMTiles» قبول است.
+ */
+async function probeSelfTiles(): Promise<boolean> {
+  const response = await fetch('/tiles/iran.pmtiles', {
+    headers: { Range: 'bytes=0-6' },
+  })
+
+  if (response.status !== 206) return false
+
+  return (await response.text()).startsWith('PMTiles')
+}
+
+function useSelfTiles(): boolean | null {
+  const [available, setAvailable] = useState<boolean | null>(selfTilesCache)
+
+  useEffect(() => {
+    if (selfTilesCache !== null) return
+
+    probeSelfTiles()
+      .then((found) => {
+        selfTilesCache = found
+
+        setAvailable(found)
+      })
+      .catch(() => {
+        selfTilesCache = false
+
+        setAvailable(false)
+      })
+  }, [])
+
+  return available
+}
 
 /** مهلت انتظار برای اولین کاشی، پیش از اعلام شکست. */
 const TileTimeoutMs = 6000
@@ -45,13 +91,18 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
   const [tilesFailed, setTilesFailed] = useState(!expectTiles)
   const theme = useTheme()
 
-  const routePath = useRoutePath(stops, expectTiles)
+  // کاشی خودمیزبان به اینترنت نیاز ندارد؛ آنلاین‌بودن فقط برای OSM مهم است.
+  const selfTiles = useSelfTiles()
+
+  const routePath = useRoutePath(stops, expectTiles || selfTiles === true)
   const roadPoints =
     routePath.data !== undefined && routePath.data.source === 'Routed'
       ? routePath.data.points
       : null
 
   useEffect(() => {
+    // نقشهٔ لیفلت فقط وقتی ساخته می‌شود که کاشی خودی «قطعاً» نبود.
+    if (selfTiles !== false) return
     if (container.current === null || stops.length === 0) return
 
     const map = L.map(container.current, { attributionControl: true })
@@ -120,7 +171,7 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
       clearTimeout(silenceTimer)
       map.remove()
     }
-  }, [stops, roadPoints, theme.palette.primary.main, theme.palette.primary.dark])
+  }, [stops, roadPoints, selfTiles, theme.palette.primary.main, theme.palette.primary.dark])
 
   if (stops.length === 0) {
     return <Alert severity="info">این برنامه توقف قابل نمایشی روی نقشه ندارد.</Alert>
@@ -128,7 +179,7 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
 
   return (
     <Stack spacing={2}>
-      {tilesFailed ? (
+      {selfTiles === false && tilesFailed ? (
         <Alert severity="warning">
           {expectTiles
             ? 'کاشی‌های نقشه بارگذاری نشدند. ترتیب توقف‌ها زیر همین کادر هست و برنامه بدون نقشه هم کامل است.'
@@ -150,18 +201,30 @@ export function RouteMap({ stops, expectTiles = true }: { stops: MapStop[]; expe
         </Stack>
       ) : null}
 
-      <Paper sx={{ overflow: 'hidden' }}>
-        <Box
-          ref={container}
-          sx={{
-            height: { xs: 320, sm: 460 },
-            // برچسب‌های Leaflet لاتین‌اند و نباید آینه شوند؛ محتوای نقشه از
-            // جهت راست‌به‌چپ صفحه مستثناست.
-            direction: 'ltr',
-            '& .leaflet-container': { fontFamily: 'inherit' },
-          }}
-        />
-      </Paper>
+      {selfTiles === true ? (
+        <Suspense
+          fallback={
+            <Stack sx={{ py: 6, alignItems: 'center' }}>
+              <CircularProgress size={24} />
+            </Stack>
+          }
+        >
+          <VectorMap stops={stops} roadPoints={roadPoints} />
+        </Suspense>
+      ) : (
+        <Paper sx={{ overflow: 'hidden' }}>
+          <Box
+            ref={container}
+            sx={{
+              height: { xs: 320, sm: 460 },
+              // برچسب‌های Leaflet لاتین‌اند و نباید آینه شوند؛ محتوای نقشه از
+              // جهت راست‌به‌چپ صفحه مستثناست.
+              direction: 'ltr',
+              '& .leaflet-container': { fontFamily: 'inherit' },
+            }}
+          />
+        </Paper>
+      )}
 
       <Paper sx={{ p: 2 }}>
         <Typography variant="caption" color="text.secondary">
