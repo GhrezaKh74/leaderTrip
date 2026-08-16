@@ -158,6 +158,10 @@ export function OriginStep({ cities }: { cities: City[] }) {
                       if (next !== null) field.onChange(next)
                     }}
                     size="small"
+                    sx={{
+                      width: { xs: '100%', sm: 'fit-content' },
+                      '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'initial' }, whiteSpace: 'nowrap' },
+                    }}
                   >
                     <ToggleButton value="Mixed">ترکیبی</ToggleButton>
                     <ToggleButton value="Stay">فقط مقصد</ToggleButton>

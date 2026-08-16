@@ -80,7 +80,10 @@ export function CostPanel({ cost, budget, people }: { cost: CostBreakdown; budge
         </Alert>
       ) : null}
 
-      <TableContainer component={Paper}>
+      {/* روی گوشی، جدول سه‌ستونه فرمول را در ستونی سه‌کلمه‌ای له می‌کند —
+          همان ستونی که کل ادعای «قابل‌ردیابی» است. آن‌جا هر قلم یک ردیفِ
+          پشته‌ای می‌شود: قلم و مبلغ در یک خط، فرمول تمام‌عرض زیرش. */}
+      <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' } }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -107,6 +110,26 @@ export function CostPanel({ cost, budget, people }: { cost: CostBreakdown; budge
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Paper sx={{ display: { xs: 'block', sm: 'none' } }}>
+        <Stack divider={<Divider />} sx={{ p: 2 }} spacing={1.5}>
+          {cost.lines.map((line) => (
+            <Stack key={line.key} spacing={0.25}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {line.label}
+                </Typography>
+                <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {toman(line.amount)}
+                </Typography>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                {shapeDigits(line.formula)}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+      </Paper>
 
       <Paper sx={{ p: 2 }}>
         <Stack spacing={1}>

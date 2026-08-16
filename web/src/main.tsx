@@ -31,4 +31,10 @@ createRoot(root).render(
   </StrictMode>,
 )
 
+// اسپلش در index.html منتظر همین است؛ یک فریم بعد از رندر اول تا صحنه واقعاً
+// نقاشی شده باشد — اسپلشی که کنار برود و پشتش سفید باشد، بدتر از نبودنش است.
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => window.dispatchEvent(new Event('leadertrip:ready')))
+})
+
 registerServiceWorker()

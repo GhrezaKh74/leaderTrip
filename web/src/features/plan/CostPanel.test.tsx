@@ -33,8 +33,9 @@ describe('تفکیک هزینه', () => {
     renderPanel(COST, 1_000_000)
 
     // ستون فرمول تزئین نیست: بدون آن، عدد فقط قابل باور یا ناباور کردن است.
-    expect(screen.getByText(/۲۱۰ کیلومتر × ۲٬۱۰۰ تومان/)).toBeInTheDocument()
-    expect(screen.getByText(/۱ جاذبه × ۲ نفر/)).toBeInTheDocument()
+    // دو نسخه در DOM هست — جدولِ دسکتاپ و پشتهٔ موبایل؛ یکی با CSS پنهان است.
+    expect(screen.getAllByText(/۲۱۰ کیلومتر × ۲٬۱۰۰ تومان/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/۱ جاذبه × ۲ نفر/).length).toBeGreaterThan(0)
   })
 
   it('باقی‌ماندهٔ بودجه را نشان می‌دهد', () => {

@@ -22,7 +22,11 @@ function precachePlugin(): Plugin {
         .filter((name) => /\.(js|css|woff2?)$/.test(name))
         .map((name) => `/${name}`)
 
-      const shell = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', ...assets]
+      const shell = [
+        '/', '/index.html', '/manifest.webmanifest', '/favicon.svg',
+        '/icons/app-icon.svg', '/icons/icon-192.png',
+        ...assets,
+      ]
 
       const source = readFileSync(swPath, 'utf8')
       writeFileSync(swPath, `self.__PRECACHE__ = ${JSON.stringify(shell)}\n${source}`, 'utf8')

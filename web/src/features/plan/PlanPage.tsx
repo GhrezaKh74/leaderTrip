@@ -176,7 +176,23 @@ export function PlanPage({
             />
           </Stack>
 
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+          {/* روی گوشی، شش دکمه سه ردیف می‌شدند و نصف صفحهٔ اول را می‌خوردند؛
+              یک ردیفِ اسکرول‌شونده همان‌ها را در یک خط نگه می‌دارد. */}
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              flexWrap: { xs: 'nowrap', sm: 'wrap' },
+              gap: 1,
+              overflowX: { xs: 'auto', sm: 'visible' },
+              pb: { xs: 0.5, sm: 0 },
+              mx: { xs: -0.5, sm: 0 },
+              px: { xs: 0.5, sm: 0 },
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+              '& > *': { flexShrink: 0 },
+            }}
+          >
             <Button onClick={onNew} startIcon={<AddIcon sx={{ fontSize: 18 }} />} variant="outlined" size="small">
               سفر جدید
             </Button>

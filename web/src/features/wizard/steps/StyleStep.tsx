@@ -146,6 +146,10 @@ export function StyleStep() {
                 onChange={(_, next: 'Relaxed' | 'Balanced' | 'Packed' | null) => {
                   if (next !== null) field.onChange(next)
                 }}
+                sx={{
+                  width: { xs: '100%', sm: 'fit-content' },
+                  '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'initial' }, whiteSpace: 'nowrap' },
+                }}
               >
                 <ToggleButton value="Relaxed">آرام</ToggleButton>
                 <ToggleButton value="Balanced">متعادل</ToggleButton>
@@ -179,6 +183,10 @@ export function StyleStep() {
                 value={field.value}
                 onChange={(_, next: 'Restaurant' | 'Picnic' | null) => {
                   if (next !== null) field.onChange(next)
+                }}
+                sx={{
+                  width: { xs: '100%', sm: 'fit-content' },
+                  '& .MuiToggleButton-root': { flex: { xs: 1, sm: 'initial' }, whiteSpace: 'nowrap' },
                 }}
               >
                 <ToggleButton value="Restaurant">رستوران بین‌راهی</ToggleButton>

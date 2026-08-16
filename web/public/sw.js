@@ -20,7 +20,7 @@ const CACHE = 'leadertrip-web-v1'
  * نتیجه‌اش آفلاینی بود که فقط از بازدید دوم به بعد کار می‌کرد — یعنی دقیقاً
  * وقتی کار نمی‌کرد که لازم بود.
  */
-const SHELL = self.__PRECACHE__ ?? ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg']
+const SHELL = self.__PRECACHE__ ?? ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icons/app-icon.svg', '/icons/icon-192.png']
 
 /**
  * <code>ignoreVary</code> اجباری است، نه احتیاط.

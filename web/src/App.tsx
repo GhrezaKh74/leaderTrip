@@ -12,11 +12,11 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 
-import { LogoIcon, MoonIcon, OfflineIcon, SunIcon } from './components/icons'
+import { MoonIcon, OfflineIcon, SunIcon } from './components/icons'
 import { IconGallery } from './components/IconGallery'
 import { AdminPage } from './features/admin/AdminPage'
 import { AccountButton } from './features/auth/AccountButton'
-import { glass, heroGradient } from './theme/tokens'
+import { glass } from './theme/tokens'
 
 import { RtlProvider } from './theme/RtlProvider'
 import { useThemeControl } from './theme/useThemeControl'
@@ -110,22 +110,20 @@ export function App() {
         className="no-print"
       >
         <Toolbar>
-          {/* لوگو در کاشی گرادیان — همان گرهٔ هشت‌پرِ فاوآیکون، همان گرادیان. */}
+          {/* آیکون رسمی اپ — همانی که روی گوشی نصب می‌شود، همان‌جا که اسم است. */}
           <Box
+            component="img"
+            src="/icons/icon-192.png"
+            alt=""
             sx={{
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               borderRadius: '10px',
-              background: heroGradient,
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
               ml: 1.25,
+              flexShrink: 0,
             }}
-          >
-            <LogoIcon sx={{ fontSize: 24 }} />
-          </Box>
+          />
 
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="h1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
