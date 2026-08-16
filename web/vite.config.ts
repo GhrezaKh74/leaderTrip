@@ -75,5 +75,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // تست داخل بیلد است و بیلد گاهی روی سرور اشتراکیِ کند اجرا می‌شود
+    // (هاست پنلی)؛ تستی که روی ماشین معمولی نیم‌ثانیه است، آن‌جا ۷ ثانیه
+    // می‌شود و سقف ۵ ثانیه‌ایِ پیش‌فرض، بیلد سالم را می‌شکند.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 })
