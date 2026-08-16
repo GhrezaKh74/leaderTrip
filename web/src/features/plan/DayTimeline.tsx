@@ -73,6 +73,7 @@ export function DayTimeline({
               justifyContent: 'center',
               background: heroGradient,
               color: '#fff',
+              fontFamily: (theme) => theme.typography.h3.fontFamily,
               fontWeight: 800,
               fontSize: '0.95rem',
             }}

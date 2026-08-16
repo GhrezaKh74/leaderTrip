@@ -72,7 +72,9 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
         // حروف به هم می‌چسبند.
         body1: { lineHeight: 1.9 },
         body2: { lineHeight: 1.8 },
-        button: { fontWeight: 700, letterSpacing: 0 },
+        // دکمه‌ها و تب‌ها هم با قلم نمایشی — «صدای» اپ یک‌دست: هرجا تأکید است،
+        // ایران‌سنس؛ هرجا متنِ خواندنی است، وزیرمتن.
+        button: { fontFamily: displayStack, fontWeight: 700, letterSpacing: 0 },
         // تیترها با قلم نمایشی و درشت‌تر از پیش‌فرض — «صدای» رابط. فاصلهٔ حرفی
         // همیشه صفر: خط فارسی پیوسته است و letter-spacing اتصال را زشت می‌کند.
         h1: { fontFamily: displayStack, fontSize: '2.25rem', fontWeight: 800, lineHeight: 1.5 },

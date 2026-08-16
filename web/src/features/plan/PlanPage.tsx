@@ -408,6 +408,7 @@ function StatCard({
           // بدون nowrap: مقدار بلند («۱۰ ساعت و ۱۶ دقیقه») باید بشکند، نه از کارت بیرون بزند.
           sx={{
             display: 'block',
+            fontFamily: (theme) => theme.typography.h3.fontFamily,
             fontWeight: 800,
             fontSize: { xs: '1.05rem', sm: '1.2rem' },
             lineHeight: 1.5,
