@@ -103,7 +103,38 @@ export const api = {
 
   postForm: <T>(path: string, form: FormData, schema: z.ZodType<T>) =>
     request(path, schema, { method: 'POST', body: form }),
+
+  // نسخه‌های مدیریتی: همان درخواست، با کلید در سرآیند. کلید هرگز در URL
+  // نمی‌رود — URL در تاریخچه و لاگ می‌ماند، سرآیند نه.
+  adminGet: <T>(path: string, schema: z.ZodType<T>, key: string) =>
+    request(path, schema, { headers: { [ADMIN_KEY_HEADER]: key } }),
+
+  adminPost: <T>(path: string, body: unknown, schema: z.ZodType<T>, key: string) =>
+    request(path, schema, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { [ADMIN_KEY_HEADER]: key },
+    }),
+
+  adminDelete: async (path: string, key: string): Promise<void> => {
+    let response: Response
+
+    try {
+      response = await fetch(`${BASE}${path}`, {
+        method: 'DELETE',
+        headers: { [ADMIN_KEY_HEADER]: key },
+      })
+    } catch {
+      throw new ApiError(0, 'network.unreachable', 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.')
+    }
+
+    if (!response.ok) {
+      throw await toApiError(response)
+    }
+  },
 }
+
+const ADMIN_KEY_HEADER = 'X-Admin-Key'
 
 /** نشانی نمایش یک عکس ذخیره‌شده — از همان مبدأ API. */
 export const photoUrl = (id: string): string => `${BASE}/photos/${id}`

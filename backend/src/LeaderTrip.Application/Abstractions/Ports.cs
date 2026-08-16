@@ -237,6 +237,15 @@ public sealed class NoPlaceDiscovery : IPlaceDiscovery
 /// <summary>عکس ذخیره‌شده — فقط شناسه؛ نشانی را لایهٔ وب می‌سازد.</summary>
 public sealed record StoredPhoto(string Id);
 
+/// <summary>مشخصات یک عکس برای مدیریت — بدون محتوا.</summary>
+public sealed record StoredPhotoInfo(string Id, long Bytes, DateTimeOffset CreatedAt);
+
+/// <summary>یک صفحه از موجودی عکس‌ها + جمع کل برای نمایش مصرف دیسک.</summary>
+public sealed record PhotoInventory(
+    IReadOnlyList<StoredPhotoInfo> Items,
+    int TotalCount,
+    long TotalBytes);
+
 /// <summary>محتوای یک عکس برای برگرداندن به کلاینت.</summary>
 /// <remarks>بستن <see cref="Content"/> با گیرنده است.</remarks>
 public sealed record PhotoContent(Stream Content, string ContentType, long Length);
@@ -263,4 +272,10 @@ public interface IPhotoStore
 
     /// <summary>بازکردن عکس با شناسه؛ <see langword="null"/> یعنی وجود ندارد.</summary>
     Task<PhotoContent?> OpenAsync(string id, CancellationToken cancellationToken);
+
+    /// <summary>فهرست عکس‌ها برای مدیریت، تازه‌ترین اول.</summary>
+    Task<PhotoInventory> ListAsync(int skip, int take, CancellationToken cancellationToken);
+
+    /// <summary>حذف عکس؛ <see langword="false"/> یعنی از اول نبود.</summary>
+    Task<bool> DeleteAsync(string id, CancellationToken cancellationToken);
 }

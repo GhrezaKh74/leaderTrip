@@ -148,6 +148,44 @@ public sealed class FileSystemPhotoStore : IPhotoStore
             new PhotoContent(stream, ContentTypes[extension], stream.Length));
     }
 
+    public Task<PhotoInventory> ListAsync(int skip, int take, CancellationToken cancellationToken)
+    {
+        // فقط فایل‌هایی که خودمان ساخته‌ایم؛ فایل غریبه در پوشه (مثلاً .tmp
+        // جامانده از یک کرش) نه شمرده می‌شود نه نشان داده می‌شود.
+        var all = new DirectoryInfo(_root)
+            .EnumerateFiles()
+            .Where(file => ParseId(file.Name) is not null)
+            .OrderByDescending(file => file.CreationTimeUtc)
+            .ToList();
+
+        var items = all
+            .Skip(Math.Max(0, skip))
+            .Take(Math.Clamp(take, 1, 200))
+            .Select(file => new StoredPhotoInfo(file.Name, file.Length, file.CreationTimeUtc))
+            .ToList();
+
+        return Task.FromResult(new PhotoInventory(items, all.Count, all.Sum(file => file.Length)));
+    }
+
+    public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
+    {
+        if (ParseId(id) is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        string path = Path.Combine(_root, id);
+
+        if (!File.Exists(path))
+        {
+            return Task.FromResult(false);
+        }
+
+        File.Delete(path);
+
+        return Task.FromResult(true);
+    }
+
     /// <summary>خواندن تا پرشدن بافر یا تمام‌شدن جریان — <c>ReadAsync</c> می‌تواند کمتر بدهد.</summary>
     private static async Task<int> ReadUpToAsync(Stream source, byte[] buffer, CancellationToken cancellationToken)
     {

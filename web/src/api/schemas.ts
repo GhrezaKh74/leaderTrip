@@ -237,7 +237,45 @@ export const photoUploadSchema = z.object({
   url: z.string(),
 })
 
+/** نمای کلی سامانه — پنل مدیریت. */
+export const adminOverviewSchema = z.object({
+  storageMode: z.enum(['Seed', 'Database']),
+  cities: z.number(),
+  pois: z.number(),
+  vehicles: z.number(),
+  pricesUpdatedAt: z.string(),
+  photoCount: z.number(),
+  photoBytes: z.number(),
+  routingEnabled: z.boolean(),
+  weatherEnabled: z.boolean(),
+  discoveryEnabled: z.boolean(),
+  requestsPerMinute: z.number(),
+  planRequestsPerMinute: z.number(),
+})
+
+/** موجودی عکس‌ها — پنل مدیریت. */
+export const photoInventorySchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      bytes: z.number(),
+      createdAt: z.string(),
+    }),
+  ),
+  totalCount: z.number(),
+  totalBytes: z.number(),
+})
+
+/** پاسخ انتشار نسخهٔ تازهٔ دفترچهٔ قیمت. */
+export const priceVersionSchema = z.object({
+  version: z.number(),
+  effectiveFrom: z.string(),
+  updatedAt: z.string(),
+})
+
 export type BudgetLever = z.infer<typeof budgetLeverSchema>
 export type BudgetLevers = z.infer<typeof budgetLeversSchema>
 export type DiscoveredPlace = z.infer<typeof discoveredPlaceSchema>
 export type PhotoUpload = z.infer<typeof photoUploadSchema>
+export type AdminOverview = z.infer<typeof adminOverviewSchema>
+export type PhotoInventory = z.infer<typeof photoInventorySchema>

@@ -14,6 +14,7 @@ import Box from '@mui/material/Box'
 
 import { LogoIcon, MoonIcon, OfflineIcon, SunIcon } from './components/icons'
 import { IconGallery } from './components/IconGallery'
+import { AdminPage } from './features/admin/AdminPage'
 import { glass, heroGradient } from './theme/tokens'
 
 import { RtlProvider } from './theme/RtlProvider'
@@ -56,6 +57,11 @@ export function App() {
   // آیکون تازه باید یک‌بار با چشم دیده شود.
   const showIconGallery =
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('icons')
+
+  // پنل مدیریت — «/?admin». پنهان‌بودن نشانی، امنیت نیست و ادعایش را هم ندارد؛
+  // امنیت کلیدِ سرآیند است که بدونش سرور ۴۰۱ می‌دهد.
+  const showAdmin =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('admin')
 
   useEffect(() => {
     if (shared !== null) {
@@ -148,7 +154,9 @@ export function App() {
       </AppBar>
 
       <Container maxWidth="md" sx={{ py: 4 }}>
-        {showIconGallery ? (
+        {showAdmin ? (
+          <AdminPage />
+        ) : showIconGallery ? (
           <IconGallery />
         ) : generated === null ? (
           <WizardPage initial={shared} onPlanReady={accept} />

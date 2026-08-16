@@ -119,6 +119,42 @@ async function stubApi(page: Page): Promise<{ planCalls: () => number }> {
     route.fulfill({ body: jpegPixel, contentType: 'image/jpeg' }),
   )
 
+  // پنل مدیریت
+  await page.route('**/api/admin/overview', (route) =>
+    route.fulfill({
+      json: {
+        storageMode: 'Seed',
+        cities: 2,
+        pois: 3,
+        vehicles: 1,
+        pricesUpdatedAt: '1404/05',
+        photoCount: 1,
+        photoBytes: 12_345,
+        routingEnabled: false,
+        weatherEnabled: true,
+        discoveryEnabled: false,
+        requestsPerMinute: 60,
+        planRequestsPerMinute: 10,
+      },
+    }),
+  )
+
+  await page.route('**/api/admin/photos*', (route) =>
+    route.fulfill({
+      json: {
+        items: [{ id: photoId, bytes: 12_345, createdAt: '2026-08-16T10:00:00Z' }],
+        totalCount: 1,
+        totalBytes: 12_345,
+      },
+    }),
+  )
+
+  await page.route('**/api/admin/prices', (route) =>
+    route.fulfill({
+      json: { version: 2, effectiveFrom: '2026-08-16T10:00:00Z', updatedAt: '1405/05' },
+    }),
+  )
+
   await page.route('**/api/trips/plan', (route) => {
     planCalls += 1
 
@@ -337,4 +373,27 @@ test('حالت تاریک بین بارگذاری‌ها می‌ماند', async
   await page.reload()
 
   await expect(page.getByRole('button', { name: 'حالت روشن' })).toBeVisible()
+})
+
+test('پنل مدیریت: ورود با کلید، نمای کلی، قیمت‌ها و عکس‌ها', async ({ page }) => {
+  await stubApi(page)
+  await page.goto('/?admin')
+
+  // بدون کلید، فقط فرم ورود
+  await page.getByLabel('کلید مدیریتی').fill('test-admin-key')
+  await page.getByRole('button', { name: 'ورود' }).click()
+
+  // نمای کلی از پاسخ سرور پر می‌شود
+  await expect(page.getByText('دادهٔ همراه برنامه')).toBeVisible()
+  await expect(page.getByText('هواشناسی: روشن')).toBeVisible()
+  await expect(page.getByText('مسیریابی: خاموش')).toBeVisible()
+
+  // فرم قیمت از دادهٔ مرجع زنده پر شده و انتشار پاسخ موفق می‌گیرد
+  await expect(page.getByText('دفترچهٔ قیمت')).toBeVisible()
+  await page.getByRole('button', { name: 'انتشار نسخهٔ تازه' }).click()
+  await expect(page.getByText(/منتشر شد/)).toBeVisible()
+
+  // عکس ذخیره‌شده با حجمش فهرست می‌شود
+  await expect(page.locator('img[alt^="عکس"]')).toBeVisible()
+  await expect(page.getByText(/کیلوبایت/).first()).toBeVisible()
 })
