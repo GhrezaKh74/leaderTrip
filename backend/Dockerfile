@@ -38,7 +38,11 @@ COPY --from=build /app/publish ./
 # اجرا با کاربر غیر root. به همین دلیل پورت ۸۰۸۰ است نه ۸۰: پروسهٔ غیر root
 # اجازهٔ گرفتن پورت‌های زیر ۱۰۲۴ را ندارد.
 RUN addgroup -S leadertrip && adduser -S leadertrip -G leadertrip \
-    && chown -R leadertrip:leadertrip /app
+    && chown -R leadertrip:leadertrip /app \
+    # پوشهٔ عکس‌ها از پیش با مالکیت کاربر اپ: volume تازه مالکیت را از همین
+    # مسیر ایمیج به ارث می‌برد. بدون این، mount با مالکیت root ساخته می‌شد و
+    # اولین آپلود عکس با Permission denied می‌مرد — پیدا شده در دود-آزمای واقعی.
+    && mkdir -p /data/photos && chown leadertrip:leadertrip /data/photos
 
 USER leadertrip
 

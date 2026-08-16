@@ -8,27 +8,35 @@
 #
 # سه سرویس بالا می‌آید: رابط کاربری (nginx)، بک‌اند (.NET) و پایگاه داده
 # (PostgreSQL). بک‌اند بدون پایگاه داده هم کار می‌کند — دادهٔ مرجع همراهش است —
-# ولی آن‌وقت به‌روزرسانی قیمت‌ها بدون انتشار نسخهٔ جدید ممکن نیست، که اصلی‌ترین
-# دلیل داشتن بک‌اند بود.
+# ولی آن‌وقت به‌روزرسانی قیمت‌ها و حساب‌های کاربری جایی برای ماندن ندارند.
+#
+# رابط کاربری /api را به بک‌اند پروکسی می‌کند: مرورگر همه‌چیز را از یک مبدأ
+# می‌بیند، CORS بسته می‌ماند و توکن‌ها به مبدأ غریبه نمی‌روند.
+#
+# (نسخهٔ اول اپ — `Dockerfile` ریشه — دیگر این‌جا بالا نمی‌آید؛ تا تصمیم
+# نهایی بازنشستگی، فایلش سر جایش است.)
 
 services:
   app:
     build:
-      context: .
+      context: ./web
       dockerfile: Dockerfile
-    image: leadertrip:latest
+    image: leadertrip-web:latest
     container_name: leadertrip
     ports:
       # پورت میزبان با متغیر PORT قابل تغییر است: PORT=3000 docker compose up -d
       - "${PORT:-8080}:8080"
     restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 5s
-    # اپ هیچ حالتی روی سرور نگه نمی‌دارد — همه‌چیز در مرورگر کاربر است.
+    # اپ حالتش را یا در مرورگر کاربر نگه می‌دارد یا پشت /api در بک‌اند.
     # nginx فقط به چند مسیر موقت نیاز دارد که به‌صورت tmpfs داده می‌شوند.
     read_only: true
     tmpfs:

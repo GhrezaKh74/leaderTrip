@@ -1,0 +1,9 @@
+# e2e و پیکربندی Playwright عمداً کپی می‌شوند: tsconfig.node آن‌ها را
+# تایپ‌چک می‌کند و بدونشان `tsc -b` داخل ایمیج می‌شکند. خود تست e2e در
+# بیلد اجرا نمی‌شود.
+node_modules
+dist
+test-results
+playwright-report
+Dockerfile
+.dockerignore
