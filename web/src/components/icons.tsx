@@ -312,6 +312,16 @@ export const UploadIcon = make(
   </>,
 )
 
+/** تقویم — قاب با دو گیره و نقطهٔ کانونی روی «روزِ سفر». */
+export const CalendarIcon = make(
+  'CalendarIcon',
+  <>
+    <rect x="3.8" y="5" width="16.4" height="14.2" rx="3" />
+    <path d="M3.8 9.4 H20.2 M8.2 3.2 V6.4 M15.8 3.2 V6.4" />
+    <circle cx="12" cy="14.2" r="1.7" {...fill} />
+  </>,
+)
+
 export const EditIcon = make(
   'EditIcon',
   <>

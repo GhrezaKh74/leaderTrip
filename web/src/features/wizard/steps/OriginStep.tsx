@@ -6,6 +6,7 @@ import Slider from '@mui/material/Slider'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 
+import { JalaliDateField } from '../../../components/JalaliDateField'
 import { NumberField } from '../../../components/NumberField'
 import Typography from '@mui/material/Typography'
 
@@ -51,14 +52,12 @@ export function OriginStep({ cities }: { cities: City[] }) {
             name="startDate"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                type="date"
+              <JalaliDateField
+                value={field.value}
+                onChange={field.onChange}
                 label="تاریخ حرکت"
-                slotProps={{ inputLabel: { shrink: true } }}
                 error={Boolean(errors.startDate)}
-                // تقویم بومی مرورگر میلادی است؛ معادل شمسی زیرش نوشته می‌شود تا
-                // کاربر مجبور نباشد در ذهنش تبدیل کند.
+                // فیلد و تقویمش شمسی‌اند؛ راهنمای زیرش روز هفته را هم می‌گوید.
                 helperText={errors.startDate?.message ?? formatJalaliFromIso(field.value)}
               />
             )}
