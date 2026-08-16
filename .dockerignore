@@ -1,10 +1,21 @@
-node_modules
-dist
+# بستهٔ بیلد ریشه: سه مرحله فقط web/ و backend/ را کپی می‌کنند؛
+# این‌جا فقط جلوی چیزهای سنگین و بی‌ربط را می‌گیریم.
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/test-results
+**/playwright-report
 .git
 .github
-*.log
-.DS_Store
+.vs
+.vscode
 .vite
+*.log
+*.user
+.DS_Store
 Dockerfile
+Dockerfile.legacy
 docker-compose.yml
 .dockerignore
+.env
