@@ -38,7 +38,7 @@ export const tripFormSchema = z
      * راه، و برگشت معنا دارد)؛ «Corridor» یعنی خودِ مسیر هدف است (یک‌سویه،
      * روز آخر رسیدن به مقصد). بدون مقصد اثری ندارد.
      */
-    destinationMode: z.enum(['Stay', 'Corridor']),
+    destinationMode: z.enum(['Mixed', 'Stay', 'Corridor']),
     startDate: z.string().min(1, 'تاریخ حرکت را انتخاب کنید.'),
     days: z.number().int().min(1, 'حداقل یک روز.').max(30, 'حداکثر ۳۰ روز.'),
     radiusKm: z.number().min(20, 'شعاع خیلی کم است.').max(1500, 'شعاع خیلی زیاد است.'),
@@ -107,7 +107,7 @@ export type TripRequest = TripForm
 export function parseTripForm(value: unknown): TripForm | null {
   if (typeof value !== 'object' || value === null) return null
 
-  const withDefaults = { destinationCityId: null, destinationMode: 'Stay', ...value }
+  const withDefaults = { destinationCityId: null, destinationMode: 'Mixed', ...value }
   const parsed = tripFormSchema.safeParse(withDefaults)
 
   return parsed.success ? parsed.data : null
@@ -116,7 +116,7 @@ export function parseTripForm(value: unknown): TripForm | null {
 export const DEFAULT_TRIP: TripForm = {
   originCityId: 'tehran',
   destinationCityId: null,
-  destinationMode: 'Stay',
+  destinationMode: 'Mixed',
   startDate: isoToday(),
   days: 3,
   radiusKm: 400,

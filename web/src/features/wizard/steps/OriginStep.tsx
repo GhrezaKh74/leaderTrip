@@ -154,19 +154,22 @@ export function OriginStep({ cities }: { cities: City[] }) {
                     exclusive
                     color="primary"
                     value={field.value}
-                    onChange={(_, next: 'Stay' | 'Corridor' | null) => {
+                    onChange={(_, next: 'Mixed' | 'Stay' | 'Corridor' | null) => {
                       if (next !== null) field.onChange(next)
                     }}
                     size="small"
                   >
-                    <ToggleButton value="Stay">اقامت در مقصد</ToggleButton>
+                    <ToggleButton value="Mixed">ترکیبی</ToggleButton>
+                    <ToggleButton value="Stay">فقط مقصد</ToggleButton>
                     <ToggleButton value="Corridor">گشت در مسیر</ToggleButton>
                   </ToggleButtonGroup>
 
                   <Typography variant="caption" color="text.secondary">
-                    {field.value === 'Stay'
-                      ? 'مقصد پایگاه سفر است: جاذبه‌ها دور مقصد و سرِ راه چیده می‌شوند، شب‌ها آن‌جا می‌مانید، و اگر «برگشت به مبدأ» روشن باشد روز آخر برمی‌گردید.'
-                      : 'خودِ راه هدف است: جاذبه‌ها در طول مسیر چیده می‌شوند و روز آخر به مقصد می‌رسید — برگشت، خودش سفری است جدا.'}
+                    {field.value === 'Mixed'
+                      ? 'اقامت دور مقصد + گشتِ سرِ راه: هم توقف‌های بین راه، هم شب‌ها در مقصد. زمان رفت و برگشت جزو روزهای سفر حساب می‌شود.'
+                      : field.value === 'Stay'
+                        ? 'یک‌راست تا مقصد: راه فقط راه است و همهٔ گشت دور مقصد می‌گذرد.'
+                        : 'خودِ راه هدف است: جاذبه‌ها در طول مسیر و روز آخر رسیدن به مقصد — برگشت، خودش سفری است جدا.'}
                   </Typography>
                 </Stack>
               )}
@@ -222,9 +225,11 @@ export function OriginStep({ cities }: { cities: City[] }) {
                   ? `شعاع جست‌وجو: تا ${faNum(field.value)} کیلومتر از ${
                       cities.find((c) => c.id === control._formValues.originCityId)?.name ?? 'مبدأ'
                     }`
-                  : watch('destinationMode') === 'Stay'
-                    ? `شعاع گشت: تا ${faNum(field.value)} کیلومتر دور مقصد، به‌علاوهٔ توقف‌های سرِ راه`
-                    : `پهنای راهرو: جاذبه‌ها تا ${faNum(field.value)} کیلومتر دو طرف مسیر`}
+                  : watch('destinationMode') === 'Corridor'
+                    ? `پهنای راهرو: جاذبه‌ها تا ${faNum(field.value)} کیلومتر دو طرف مسیر`
+                    : watch('destinationMode') === 'Mixed'
+                      ? `شعاع گشت: تا ${faNum(field.value)} کیلومتر دور مقصد، به‌علاوهٔ توقف‌های سرِ راه`
+                      : `شعاع گشت: تا ${faNum(field.value)} کیلومتر دور مقصد`}
               </Typography>
               <Slider
                 value={field.value}

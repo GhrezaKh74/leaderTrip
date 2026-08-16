@@ -89,7 +89,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         // «اقامت در مقصد» یعنی مقصد پایگاه است و برگشت معنا دارد؛ «مسیرگردی»
         // یعنی خودِ راه هدف است و یک‌سویه — برگشتش خودش سفری است با توقف‌های
         // خودش. بدون مقصد، همان پرچم رفت‌وبرگشتِ حلقه‌ای.
-        bool stayAtDestination = destination is not null && query.DestinationMode == DestinationMode.Stay;
+        bool stayAtDestination = destination is not null && query.DestinationMode != DestinationMode.Corridor;
         bool returnsToOrigin = query.RoundTrip && (destination is null || stayAtDestination);
 
         // لنگرِ جست‌وجو و آب‌وهوا: در سفر اقامتی، مقصد است — جاذبه‌ها و هوای
@@ -134,14 +134,20 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         // اطراف مقصد ممکن باشد هم توقف‌های بین راه.
         Specification<PointOfInterest> geography = destination is null
             ? new WithinRadiusSpecification(origin.Location, radius)
-            : stayAtDestination
-                ? Spec.Any(
+            : query.DestinationMode switch
+            {
+                // فقط مقصد: راه، راه است — بی‌توقفِ گردشی.
+                DestinationMode.Stay => new WithinRadiusSpecification(destination.Location, radius),
+                DestinationMode.Corridor =>
+                    new WithinCorridorSpecification(origin.Location, destination.Location, radius),
+                // ترکیبی: دور مقصد + راهروی باریکِ سرِ راه.
+                _ => Spec.Any(
                     new WithinRadiusSpecification(destination.Location, radius),
                     new WithinCorridorSpecification(
                         origin.Location,
                         destination.Location,
-                        Distance.FromKilometers(Math.Min(query.RadiusKm, 60))))
-                : new WithinCorridorSpecification(origin.Location, destination.Location, radius);
+                        Distance.FromKilometers(Math.Min(query.RadiusKm, 60)))),
+            };
 
         var eligibility = Spec.All(
             new NotExcludedSpecification(excluded),

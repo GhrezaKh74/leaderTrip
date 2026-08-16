@@ -57,9 +57,12 @@ public enum Terrain { Freeway, Plain, Mountain, Dirt }
 /// </remarks>
 public enum DestinationMode
 {
-    /// <summary>مقصد پایگاه است: جاذبه‌ها دور مقصد و سرِ راه؛ برگشت معنا دارد.</summary>
+    /// <summary>فقط مقصد: جاذبه‌ها دور مقصد؛ راه، فقط راه است. برگشت معنا دارد.</summary>
     Stay,
 
     /// <summary>خودِ مسیر هدف است: جاذبه‌ها در راهرو؛ روز آخر رسیدن به مقصد.</summary>
     Corridor,
+
+    /// <summary>ترکیبی: اقامت دور مقصد + گشتِ سرِ راه — پیش‌فرض، چون سفر واقعی همین است.</summary>
+    Mixed,
 }

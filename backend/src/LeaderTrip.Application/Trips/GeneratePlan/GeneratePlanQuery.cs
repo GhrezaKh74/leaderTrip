@@ -15,11 +15,12 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
     public string? DestinationCityId { get; init; }
 
     /// <summary>
-    /// هدف از مقصد: «اقامت» (پیش‌فرض — مقصد پایگاه است، جاذبه‌ها دور مقصد و
-    /// سرِ راه، و <see cref="RoundTrip"/> یعنی روز آخر برگشت به مبدأ) یا
-    /// «مسیرگردی» (خودِ راه هدف است؛ یک‌سویه، روز آخر رسیدن به مقصد).
+    /// هدف از مقصد: «ترکیبی» (پیش‌فرض — اقامت دور مقصد + گشتِ سرِ راه)،
+    /// «اقامت» (فقط دور مقصد؛ راه فقط راه است) یا «مسیرگردی» (خودِ راه هدف
+    /// است؛ یک‌سویه، روز آخر رسیدن به مقصد). در دو حالت اول
+    /// <see cref="RoundTrip"/> یعنی روز آخر برگشت به مبدأ.
     /// </summary>
-    public DestinationMode DestinationMode { get; init; } = DestinationMode.Stay;
+    public DestinationMode DestinationMode { get; init; } = DestinationMode.Mixed;
 
     public required DateOnly StartDate { get; init; }
 
