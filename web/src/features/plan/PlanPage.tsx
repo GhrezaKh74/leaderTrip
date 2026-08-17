@@ -191,6 +191,13 @@ export function PlanPage({
               scrollbarWidth: 'none',
               '&::-webkit-scrollbar': { display: 'none' },
               '& > *': { flexShrink: 0 },
+              // محو لبهٔ سرریز: بدون نوار اسکرول، تنها نشانهٔ «دکمهٔ بیشتری هست»
+              // همین بریده‌دیده‌شدن دکمهٔ لبه است — محو ملایم آن را عمدی نشان می‌دهد.
+              // در راست‌به‌چپ سرریز به سمت چپِ دیداری می‌رود، پس محو در لبهٔ چپ فیزیکی است.
+              maskImage: {
+                xs: 'linear-gradient(90deg, transparent 0, #000 56px)',
+                sm: 'none',
+              },
             }}
           >
             <Button onClick={onNew} startIcon={<AddIcon sx={{ fontSize: 18 }} />} variant="outlined" size="small">

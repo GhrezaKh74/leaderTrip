@@ -56,6 +56,27 @@ export function OptimizerPanel({
 
       {levers.isError ? <Alert severity="error">{levers.error.message}</Alert> : null}
 
+      {/* پیش از اولین محاسبه، صفحهٔ خالی شبیه صفحهٔ خراب است؛ جای خالیِ نتیجه
+          می‌گوید این‌جا قرار است چه ظاهر شود و چرا ارزش یک کلیک را دارد. */}
+      {!levers.data && !levers.isError && !levers.isPending ? (
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 3, sm: 4 },
+            textAlign: 'center',
+            borderStyle: 'dashed',
+            bgcolor: 'transparent',
+            backgroundImage: 'none',
+          }}
+        >
+          <SavingsIcon sx={{ fontSize: 36, color: 'text.disabled', mb: 1 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
+            چند نسخهٔ جایگزین از همین سفر ساخته می‌شود — اقامت ارزان‌تر، ناهار همراه،
+            مسیر جمع‌وجورتر — و صرفه‌جویی واقعی هرکدام این‌جا فهرست می‌شود.
+          </Typography>
+        </Paper>
+      ) : null}
+
       {levers.data ? (
         levers.data.levers.length === 0 ? (
           <Alert severity="info">

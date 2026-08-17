@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import LinearProgress from '@mui/material/LinearProgress'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { alpha } from '@mui/material/styles'
 
 import type { PackingItem } from '../../api/schemas'
 import { faNum } from '../../lib/format'
@@ -43,9 +45,31 @@ export function PackingPanel({ items }: { items: PackingItem[] }) {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="body2" color="text.secondary">
-        {faNum(packed.size)} از {faNum(items.length)} قلم آماده است.
-      </Typography>
+      {/* نوار پیشرفت کنار متن: عددِ تنها احساس پیشروی نمی‌دهد؛ نواری که با هر
+          تیک پر می‌شود، چک‌لیست را از فهرست به بازیِ تمام‌کردنی تبدیل می‌کند. */}
+      <Stack spacing={0.75}>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <Typography variant="body2" color="text.secondary">
+            {faNum(packed.size)} از {faNum(items.length)} قلم آماده است.
+          </Typography>
+          {packed.size === items.length && items.length > 0 ? (
+            <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+              آمادهٔ حرکت!
+            </Typography>
+          ) : null}
+        </Stack>
+        <LinearProgress
+          variant="determinate"
+          value={items.length > 0 ? (packed.size / items.length) * 100 : 0}
+          color={packed.size === items.length && items.length > 0 ? 'success' : 'primary'}
+          // زمینهٔ پیش‌فرض آن‌قدر پررنگ است که نوارِ خالی «پُر» خوانده می‌شود.
+          sx={(theme) => ({
+            height: 6,
+            borderRadius: 999,
+            backgroundColor: alpha(theme.palette.primary.main, 0.16),
+          })}
+        />
+      </Stack>
 
       {groups.map(([group, groupItems]) => (
         <Paper key={group} sx={{ p: 2 }}>

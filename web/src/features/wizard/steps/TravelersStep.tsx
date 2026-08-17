@@ -55,7 +55,9 @@ export function TravelersStep() {
               />
             </Grid>
 
-            <Grid size={{ xs: 6, sm: 2 }}>
+            {/* سن باریک، توان پهن: «بدون محدودیت» بلندترین گزینه است و در ستون
+                نصف‌نصف موبایل بریده می‌شد («بدون محدود…»). */}
+            <Grid size={{ xs: 4, sm: 2 }}>
               <Controller
                 name={`travelers.${index}.age`}
                 control={control}
@@ -68,13 +70,13 @@ export function TravelersStep() {
                     min={0}
                     max={120}
                     error={Boolean(formState.errors.travelers?.[index]?.age)}
-                    helperText={formState.errors.travelers?.[index]?.age?.message ?? ' '}
+                    helperText={formState.errors.travelers?.[index]?.age?.message}
                   />
                 )}
               />
             </Grid>
 
-            <Grid size={{ xs: 6, sm: 3 }}>
+            <Grid size={{ xs: 8, sm: 3 }}>
               <Controller
                 name={`travelers.${index}.mobility`}
                 control={control}
