@@ -37,9 +37,12 @@ export function useThemeControl(): ThemeControl {
 }
 
 function readStoredMode(): ThemeMode {
-  if (typeof localStorage === 'undefined') return 'system'
+  // پیش‌فرض «تاریک» است نه «سیستم»: سرمه‌ایِ شب هویت بصری لیدرتریپ است و
+  // اولین برخورد باید همان باشد. کاربر روشن‌پسند با یک ضربه عوضش می‌کند و
+  // انتخابش می‌ماند.
+  if (typeof localStorage === 'undefined') return 'dark'
 
   const stored = localStorage.getItem(STORAGE_KEY)
 
-  return stored === 'light' || stored === 'dark' ? stored : 'system'
+  return stored === 'light' || stored === 'dark' ? stored : 'dark'
 }

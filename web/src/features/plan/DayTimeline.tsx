@@ -113,14 +113,18 @@ export function DayTimeline({
           sx={(theme) => ({
             position: 'relative',
             // خط سفرِ روز: نقطه‌چینی که حباب‌های توقف را به هم می‌دوزد.
-            // ‏۸۴ = عرض ستون ساعت (۵۲) + فاصله (۱۶) + نصف حباب (۱۷) − ۱.
+            // دسکتاپ: ۸۴ = عرض ستون ساعت (۵۲) + فاصله (۱۶) + نصف حباب (۱۷) − ۱.
+            // گوشی ستون ساعت ندارد (ساعت کنار عنوان است): ۱۶ = نصف حباب − ۱.
+            // موقعیت با خاصیت منطقی: stylis راست/چپ فیزیکی را در RTL فلیپ
+            // می‌کند و خط را سمت مخالف حباب‌ها می‌انداخت؛ inline-start در
+            // این چیدمان یعنی «همان سمتی که ستون حباب‌هاست»، بی‌قید فلیپ.
             '&::before': {
               content: '""',
               position: 'absolute',
               top: 24,
               bottom: 24,
-              right: 84,
-              borderRight: `2px dashed ${alpha(theme.palette.primary.main, 0.28)}`,
+              insetInlineStart: { xs: 15, sm: 83 },
+              borderInlineStart: `2px dashed ${alpha(theme.palette.primary.main, 0.28)}`,
               pointerEvents: 'none',
             },
           })}
@@ -181,13 +185,21 @@ function BlockRow({
   const color = kindColor[block.kind]
 
   return (
-    <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start', py: 1 }}>
+    <Stack direction="row" spacing={{ xs: 1.5, sm: 2 }} sx={{ alignItems: 'flex-start', py: 1 }}>
+      {/* ستون ساعت فقط از sm به بالا: روی گوشی این ستون + حباب نصف عرض را
+          می‌خورد و چیپ‌ها تک‌ستونه زیر هم می‌ریختند؛ آن‌جا ساعت کنار عنوان
+          می‌نشیند و کل عرض به محتوا می‌رسد. */}
       <Typography
         variant="body2"
         color="text.secondary"
         // عرض ثابت تا ساعت‌ها زیر هم بنشینند؛ `tabular-nums` تا ارقام هم‌عرض
         // شوند و ستون نلرزد.
-        sx={{ minWidth: 52, fontVariantNumeric: 'tabular-nums', pt: 0.25 }}
+        sx={{
+          minWidth: 52,
+          fontVariantNumeric: 'tabular-nums',
+          pt: 0.25,
+          display: { xs: 'none', sm: 'block' },
+        }}
       >
         {toFa(block.startsAt)}
       </Typography>
@@ -218,9 +230,27 @@ function BlockRow({
       </Box>
 
       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-        <Typography variant="body2" sx={{ fontWeight: block.kind === 'Visit' ? 600 : 400 }}>
-          {block.title}
-        </Typography>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: block.kind === 'Visit' ? 600 : 400 }}>
+            {block.title}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              fontVariantNumeric: 'tabular-nums',
+              flexShrink: 0,
+              display: { xs: 'block', sm: 'none' },
+            }}
+          >
+            {toFa(block.startsAt)}
+          </Typography>
+        </Stack>
 
         <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
           <Chip size="small" variant="outlined" label={duration(block.durationMinutes)} />

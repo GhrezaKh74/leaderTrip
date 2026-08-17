@@ -423,15 +423,16 @@ test('حین سفر: چک‌این، هزینهٔ واقعی و تسویه‌ح�
   await expect(page.getByText(/کمترین تعداد جابه‌جایی پول/)).toBeVisible()
 })
 
-test('حالت تاریک بین بارگذاری‌ها می‌ماند', async ({ page }) => {
+test('انتخاب تم بین بارگذاری‌ها می‌ماند', async ({ page }) => {
   await stubApi(page)
   await page.goto('/')
   await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
 
-  await page.getByRole('button', { name: 'حالت تاریک' }).click()
+  // پیش‌فرض، سرمه‌ایِ تاریک است (هویت محصول)؛ کاربر روشن را انتخاب می‌کند
+  await page.getByRole('button', { name: 'حالت روشن' }).click()
   await page.reload()
 
-  await expect(page.getByRole('button', { name: 'حالت روشن' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'حالت تاریک' })).toBeVisible()
 })
 
 test('پنل مدیریت: ورود با کلید، نمای کلی، قیمت‌ها و عکس‌ها', async ({ page }) => {

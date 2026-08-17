@@ -26,7 +26,7 @@ import {
   UploadIcon,
   VisitPinIcon,
 } from '../../components/icons'
-import { girihPattern, heroGradient } from '../../theme/tokens'
+import { heroGradient } from '../../theme/tokens'
 import { drawPath, riseIn } from '../../lib/motion'
 
 import { useGeneratePlan, useReferenceData } from '../../api/queries'
@@ -71,27 +71,49 @@ const STEP_ICONS = [PinPointIcon, PeopleIcon, CarIcon, SlidersIcon, VisitPinIcon
  */
 function BrandStepIcon({ active, completed, icon }: StepIconProps) {
   const Icon = STEP_ICONS[Number(icon) - 1] ?? PinPointIcon
-  const lit = active === true || completed === true
 
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         width: 38,
         height: 38,
         borderRadius: '12px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: lit ? heroGradient : 'transparent',
-        color: lit ? '#fff' : 'text.disabled',
-        border: lit ? 'none' : '1.5px solid',
-        borderColor: 'divider',
         transition: 'all .2s ease',
-      }}
+        // فلت: گامِ فعال فیروزهٔ تخت با هالهٔ بسیار ظریف؛ انجام‌شده سطحِ
+        // کم‌رنگ فیروزه با تیک؛ آینده فقط خطِ خاکستری. یک رنگ، سه شدت.
+        ...(active === true
+          ? {
+              backgroundColor: 'primary.main',
+              color: mode(theme) === 'dark' ? '#08252b' : '#fff',
+              boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.16)}, 0 0 20px ${alpha(
+                theme.palette.primary.main,
+                0.35,
+              )}`,
+            }
+          : completed === true
+            ? {
+                backgroundColor: alpha(theme.palette.primary.main, 0.14),
+                color: 'primary.main',
+              }
+            : {
+                backgroundColor: 'transparent',
+                color: 'text.disabled',
+                border: '1.5px solid',
+                borderColor: 'divider',
+              }),
+      })}
     >
       {completed === true ? <CheckIcon sx={{ fontSize: 19 }} /> : <Icon sx={{ fontSize: 21 }} />}
     </Box>
   )
+}
+
+/** حالت تم از خود شیء تم — بدون هوک اضافه در آیکون گام. */
+function mode(theme: { palette: { mode: string } }): string {
+  return theme.palette.mode
 }
 
 /**
@@ -130,14 +152,9 @@ function HeroRoute() {
         strokeLinecap="round"
       />
       <g ref={stopsRef} fill="#fff">
-        {/* توقف‌ها روی پایین‌روی منحنی — دور از سطرهای عنوان و زیرعنوان. */}
-        <circle cx="390" cy="138" r="4" opacity="0.75" />
-        <circle cx="228" cy="112" r="4" opacity="0.75" />
-        {/* مقصد: سنجاقِ ساده — حلقه + مرکز پُر، هم‌خانوادهٔ VisitPinIcon. */}
-        <g opacity="0.95">
-          <circle cx="34" cy="100" r="9" fill="none" stroke="#fff" strokeWidth="2.5" />
-          <circle cx="34" cy="100" r="3.4" />
-        </g>
+        {/* توقف‌های میانی — در بازه‌ای که برشِ موبایل هم نگهشان می‌دارد. */}
+        <circle cx="380" cy="150" r="4" opacity="0.7" />
+        <circle cx="230" cy="152" r="4" opacity="0.7" />
       </g>
     </Box>
   )
@@ -232,12 +249,14 @@ export function WizardPage({
   return (
     <FormProvider {...form}>
       <Stack spacing={3} component="form" onSubmit={submit} noValidate>
-        {/* سرصفحهٔ قهرمان: گرادیان برند + نقش گره + مسیرِ متحرک — زبان لوگو، زنده. */}
+        {/* سرصفحهٔ قهرمان — فلت و مینیمال: گرادیان سرمه‌ای→فیروزه‌ای، فقط
+            تصویرسازی هندسیِ مسیر (جاده، ماشین کوچک، سنجاق مقصد). نقش تزئینی
+            عمداً حذف شد: چیزی که قصه نگوید، شلوغی است. */}
         <Box
           sx={{
-            borderRadius: 4,
+            borderRadius: '20px',
             p: { xs: 3, sm: 4.5 },
-            minHeight: { xs: 150, sm: 185 },
+            minHeight: { xs: 156, sm: 185 },
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -245,27 +264,59 @@ export function WizardPage({
             background: heroGradient,
             position: 'relative',
             overflow: 'hidden',
-            boxShadow: '0 16px 44px -18px rgba(29, 63, 119, 0.55)',
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: girihPattern(0.1),
-              pointerEvents: 'none',
-            },
+            boxShadow: '0 10px 30px -16px rgba(12, 125, 132, 0.45)',
           }}
         >
           <HeroRoute />
+
+          {/* قصهٔ سفر در نوار پایین، راست‌به‌چپ: ماشین → توقف‌ها → مقصد. */}
+          <Box
+            aria-hidden
+            sx={{ position: 'absolute', bottom: 10, insetInlineStart: '9%', color: '#fff', opacity: 0.92, display: 'flex' }}
+          >
+            <CarIcon sx={{ fontSize: 22 }} />
+          </Box>
+          <Box
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              bottom: 14,
+              insetInlineEnd: '7%',
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              border: '2.5px solid #fff',
+              opacity: 0.95,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              '&::after': {
+                content: '""',
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                backgroundColor: '#fff',
+              },
+            }}
+          />
+
           <Typography variant="h1" component="h2" className="lt-rise" sx={{ position: 'relative' }}>
             برنامهٔ سفرت را بساز
           </Typography>
           <Typography
-            variant="body1"
+            variant="body2"
             className="lt-rise"
-            sx={{ position: 'relative', opacity: 0.92, mt: 1, maxWidth: 460, animationDelay: '.12s' }}
+            sx={{
+              position: 'relative',
+              opacity: 0.88,
+              mt: 1,
+              maxWidth: 440,
+              lineHeight: 1.9,
+              animationDelay: '.12s',
+            }}
           >
-            مسیر، هزینهٔ قابل‌ردیابی و برنامهٔ ساعت‌به‌ساعت — متناسب با خودرو،
-            همسفرها و بودجه‌ات.
+            مسیر، هزینه، برنامه و زمان‌بندی سفرت را متناسب با خودرو، همسفرها و
+            بودجه تنظیم کن.
           </Typography>
         </Box>
 
@@ -276,7 +327,7 @@ export function WizardPage({
             // نشان‌گرِ بزرگ‌تر یعنی خط اتصال باید پایین‌تر بنشیند، وگرنه از
             // بالای کاشی‌ها رد می‌شود.
             '& .MuiStepConnector-root': { top: 19 },
-            '& .MuiStepConnector-line': { borderColor: 'divider' },
+            '& .MuiStepConnector-line': { borderColor: 'divider', borderTopWidth: 1 },
             '& .Mui-active .MuiStepConnector-line, & .Mui-completed .MuiStepConnector-line': {
               borderColor: (theme) => alpha(theme.palette.primary.main, 0.5),
             },
