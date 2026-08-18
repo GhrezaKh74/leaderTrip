@@ -13,9 +13,13 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { BanIcon, CompassIcon, PinIcon, SearchIcon } from '../../../components/icons'
 
+import Box from '@mui/material/Box'
+import { alpha } from '@mui/material/styles'
+
 import { useDiscoverPlaces, usePois } from '../../../api/queries'
 import type { City, Poi } from '../../../api/schemas'
 import { CATEGORY_LABEL } from '../labels'
+import { CATEGORY_VISUAL } from '../categoryVisual'
 import type { TripForm } from '../tripSchema'
 import { faNum, toman } from '../../../lib/format'
 
@@ -144,9 +148,38 @@ function PoiRow({
   onPin: () => void
   onExclude: () => void
 }) {
+  const visual = CATEGORY_VISUAL[poi.category]
+  const CategoryIcon = visual.icon
+
   return (
-    <Paper sx={{ p: 1.5, opacity: excluded ? 0.55 : 1 }}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+    <Paper
+      sx={{
+        p: 1.5,
+        opacity: excluded ? 0.55 : 1,
+        transition: 'border-color .2s ease, opacity .2s ease',
+        // سنجاق‌شده باید در فهرست هم «قول داده‌شده» دیده شود، نه فقط در آیکونش.
+        ...(pinned ? { borderColor: 'primary.main' } : null),
+      }}
+    >
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+        {/* آواتار دسته: پیش از خواندنِ نام، «جنس» جاذبه معلوم است. */}
+        <Box
+          aria-hidden
+          sx={(theme) => ({
+            width: 38,
+            height: 38,
+            borderRadius: '12px',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: theme.palette[visual.color].main,
+            bgcolor: alpha(theme.palette[visual.color].main, 0.12),
+          })}
+        >
+          <CategoryIcon sx={{ fontSize: 20 }} />
+        </Box>
+
         <Stack sx={{ flexGrow: 1, minWidth: 0 }}>
           <Typography variant="body2" sx={{ fontWeight: pinned ? 700 : 400 }}>
             {poi.name}

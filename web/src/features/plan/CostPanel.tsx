@@ -13,8 +13,61 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
 
+import { alpha } from '@mui/material/styles'
+
+import {
+  CarIcon,
+  CostIcon,
+  FuelIcon,
+  LodgingIcon,
+  MealIcon,
+  RouteIcon,
+  TeaIcon,
+  VisitPinIcon,
+} from '../../components/icons'
+
 import type { CostBreakdown } from '../../api/schemas'
 import { faNum, toFa, toman, tomanShort } from '../../lib/format'
+
+/**
+ * آیکون و رنگ هر قلم هزینه — همان نگاشت معناییِ بلوک‌های برنامه.
+ *
+ * <p>جدولِ صرفاً متنی، اقلام را هم‌وزن نشان می‌دهد؛ آیکونِ رنگی می‌گذارد چشم
+ * مستقیم سراغ قلمی برود که دنبالش است — سوخت اُخرا، اقامت لاجورد، وعده زعفران.</p>
+ */
+const LINE_VISUAL: Record<string, { icon: typeof CostIcon; color: 'primary' | 'secondary' | 'info' | 'success' | 'warning' }> = {
+  fuel: { icon: FuelIcon, color: 'warning' },
+  toll: { icon: RouteIcon, color: 'info' },
+  lodging: { icon: LodgingIcon, color: 'info' },
+  meals: { icon: MealIcon, color: 'secondary' },
+  snacks: { icon: TeaIcon, color: 'success' },
+  tickets: { icon: VisitPinIcon, color: 'primary' },
+  depreciation: { icon: CarIcon, color: 'warning' },
+}
+
+function LineAvatar({ lineKey, size = 30 }: { lineKey: string; size?: number }) {
+  const visual = LINE_VISUAL[lineKey] ?? { icon: CostIcon, color: 'primary' as const }
+  const Icon = visual.icon
+
+  return (
+    <Box
+      aria-hidden
+      sx={(theme) => ({
+        width: size,
+        height: size,
+        borderRadius: '10px',
+        flexShrink: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: theme.palette[visual.color].main,
+        bgcolor: alpha(theme.palette[visual.color].main, 0.12),
+      })}
+    >
+      <Icon sx={{ fontSize: size * 0.55 }} />
+    </Box>
+  )
+}
 
 /**
  * ارقام لاتینِ داخل فرمول را فارسی می‌کند.
@@ -96,7 +149,12 @@ export function CostPanel({ cost, budget, people }: { cost: CostBreakdown; budge
           <TableBody>
             {cost.lines.map((line) => (
               <TableRow key={line.key}>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>{line.label}</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <LineAvatar lineKey={line.key} size={28} />
+                    <span>{line.label}</span>
+                  </Stack>
+                </TableCell>
                 <TableCell align="left" sx={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                   {toman(line.amount)}
                 </TableCell>
@@ -114,18 +172,21 @@ export function CostPanel({ cost, budget, people }: { cost: CostBreakdown; budge
       <Paper sx={{ display: { xs: 'block', sm: 'none' } }}>
         <Stack divider={<Divider />} sx={{ p: 2 }} spacing={1.5}>
           {cost.lines.map((line) => (
-            <Stack key={line.key} spacing={0.25}>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {line.label}
-                </Typography>
-                <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {toman(line.amount)}
+            <Stack key={line.key} direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
+              <LineAvatar lineKey={line.key} />
+              <Stack spacing={0.25} sx={{ flexGrow: 1, minWidth: 0 }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {line.label}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {toman(line.amount)}
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {shapeDigits(line.formula)}
                 </Typography>
               </Stack>
-              <Typography variant="caption" color="text.secondary">
-                {shapeDigits(line.formula)}
-              </Typography>
             </Stack>
           ))}
         </Stack>

@@ -21,7 +21,10 @@ const SEVERITY = {
 export function AdvicePanel({ advice }: { advice: Advice[] }) {
   if (advice.length === 0) {
     return (
-      <Alert severity="success">
+      <Alert
+        severity="success"
+        sx={(theme) => ({ borderInlineStart: `3px solid ${theme.palette.success.main}` })}
+      >
         هشدار مهمی برای این برنامه پیدا نشد. باز هم پیش از حرکت وضعیت جاده و
         هوا را بررسی کنید.
       </Alert>
@@ -31,7 +34,14 @@ export function AdvicePanel({ advice }: { advice: Advice[] }) {
   return (
     <Stack spacing={2}>
       {advice.map((item) => (
-        <Alert key={item.code} severity={SEVERITY[item.level]}>
+        <Alert
+          key={item.code}
+          severity={SEVERITY[item.level]}
+          // لبهٔ رنگیِ آغازِ خط: شدت هشدار پیش از خواندن متن، از گوشهٔ چشم معلوم است.
+          sx={(theme) => ({
+            borderInlineStart: `3px solid ${theme.palette[SEVERITY[item.level]].main}`,
+          })}
+        >
           <AlertTitle>{item.title}</AlertTitle>
           <Typography variant="body2">{item.detail}</Typography>
         </Alert>

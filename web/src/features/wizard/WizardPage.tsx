@@ -141,7 +141,23 @@ function HeroRoute() {
       viewBox="0 0 600 170"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden
-      sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+      sx={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        // نقطه‌های نوری که روی جاده «می‌رانند» — دورهٔ دش ۱۶ است، پس هر مضربی
+        // از ۱۶ حلقهٔ بی‌درز می‌سازد. جهتِ منفی یعنی از مبدأ به سمت سنجاق مقصد.
+        '@keyframes lt-road-flow': { to: { strokeDashoffset: -160 } },
+        '& .lt-flow': {
+          strokeDasharray: '1 15',
+          animation: 'lt-road-flow 9s linear infinite',
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          '& .lt-flow': { animation: 'none', opacity: 0 },
+        },
+      }}
     >
       <path
         ref={routeRef}
@@ -149,6 +165,15 @@ function HeroRoute() {
         fill="none"
         stroke="rgba(255,255,255,0.38)"
         strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      {/* لایهٔ حرکت روی همان جاده: چراغ خودروهایی که در مسیرند. */}
+      <path
+        className="lt-flow"
+        d="M 618 34 C 500 148, 430 -12, 310 84 S 150 176, 34 100"
+        fill="none"
+        stroke="rgba(255,255,255,0.75)"
+        strokeWidth="3.5"
         strokeLinecap="round"
       />
       <g ref={stopsRef} fill="#fff">
@@ -265,6 +290,15 @@ export function WizardPage({
             position: 'relative',
             overflow: 'hidden',
             boxShadow: '0 10px 30px -16px rgba(12, 125, 132, 0.45)',
+            // نور صحنه از بالا: هالهٔ سفید بسیار نرم که گرادیان را «جنس‌دار» می‌کند.
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(560px 200px at 78% -30%, rgba(255,255,255,0.16), transparent 70%)',
+              pointerEvents: 'none',
+            },
           }}
         >
           <HeroRoute />
@@ -272,7 +306,21 @@ export function WizardPage({
           {/* قصهٔ سفر در نوار پایین، راست‌به‌چپ: ماشین → توقف‌ها → مقصد. */}
           <Box
             aria-hidden
-            sx={{ position: 'absolute', bottom: 10, insetInlineStart: '9%', color: '#fff', opacity: 0.92, display: 'flex' }}
+            sx={{
+              position: 'absolute',
+              bottom: 10,
+              insetInlineStart: '9%',
+              color: '#fff',
+              opacity: 0.92,
+              display: 'flex',
+              // تکان نرم رانندگی — دو پیکسل، نه بیشتر: زنده، نه بازیگوش.
+              '@keyframes lt-car-drive': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-2px)' },
+              },
+              animation: 'lt-car-drive 2.8s ease-in-out infinite',
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+            }}
           >
             <CarIcon sx={{ fontSize: 22 }} />
           </Box>
@@ -290,6 +338,14 @@ export function WizardPage({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              // تپش سنجاق مقصد — «این‌جا قرار است برسی».
+              '@keyframes lt-pin-pulse': {
+                '0%': { boxShadow: '0 0 0 0 rgba(255,255,255,0.35)' },
+                '70%': { boxShadow: '0 0 0 9px rgba(255,255,255,0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(255,255,255,0)' },
+              },
+              animation: 'lt-pin-pulse 2.6s ease-out infinite',
+              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
               '&::after': {
                 content: '""',
                 width: 6,

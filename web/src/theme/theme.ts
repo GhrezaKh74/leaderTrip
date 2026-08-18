@@ -174,6 +174,11 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
               border: `1px solid ${theme.palette.divider}`,
               borderRadius: radii.card,
               backgroundImage: 'none',
+              // لبهٔ بالایی روشن در شب — همان یک پیکسلی که سطح را «جسم» می‌کند
+              // نه مستطیل؛ نور صحنه از بالاست، پس لبهٔ بالایی کمی روشن‌تر است.
+              ...(theme.palette.mode === 'dark'
+                ? { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }
+                : null),
             }),
           },
         },
@@ -189,6 +194,10 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
             root: {
               minHeight: 48,
               fontWeight: 600,
+              // بالای نشان‌گر قرصی — متن باید روی قرص بنشیند، نه زیرش.
+              zIndex: 1,
+              borderRadius: radii.control,
+              transition: 'color .2s ease',
               // فاصلهٔ آیکون از متن در چیدمان راست‌به‌چپ
               '& .MuiTab-iconWrapper': { marginLeft: 6, marginRight: 0 },
             },
@@ -197,9 +206,15 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
 
         MuiTabs: {
           styleOverrides: {
+            // قرصِ تمام‌قد به‌جای خط زیرین: تبِ فعال «انتخاب‌شده» است، نه فقط
+            // «زیرش خط‌کشیده» — همان زبان کنترل قطعه‌ای که در گزینه‌های ویزارد هم هست.
             indicator: {
-              height: 3,
-              borderRadius: 3,
+              top: 7,
+              bottom: 7,
+              height: 'auto',
+              borderRadius: radii.control,
+              backgroundColor: alpha(mode === 'light' ? brand.turquoise.main : '#43c6c0', 0.13),
+              zIndex: 0,
             },
           },
         },

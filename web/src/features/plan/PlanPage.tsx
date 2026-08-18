@@ -419,13 +419,18 @@ function StatCard({
     <Box
       sx={(theme) => ({
         ...glass(theme.palette.mode),
-        border: `1px solid ${theme.palette.divider}`,
+        // حاشیه به رنگِ همان آمار، بسیار کم‌رنگ: چهار کارت، چهار هویت — بی‌آنکه
+        // رنگی جیغ بزند. لبهٔ بالایی روشن همان نور صحنهٔ بقیهٔ سطح‌هاست.
+        border: `1px solid ${alpha(theme.palette[color].main, theme.palette.mode === 'dark' ? 0.24 : 0.3)}`,
         borderRadius: 3,
         p: { xs: 1.5, sm: 2 },
         display: 'flex',
         alignItems: 'center',
         gap: 1.5,
         minWidth: 0,
+        ...(theme.palette.mode === 'dark'
+          ? { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)' }
+          : null),
       })}
     >
       <Box
@@ -439,6 +444,8 @@ function StatCard({
           justifyContent: 'center',
           color: theme.palette[color].main,
           bgcolor: alpha(theme.palette[color].main, 0.12),
+          // هالهٔ نوری زیر آیکون — کاشی آیکون «منبع نور» کارت است.
+          boxShadow: `0 0 18px ${alpha(theme.palette[color].main, 0.3)}`,
         })}
       >
         <Icon sx={{ fontSize: 21 }} />
