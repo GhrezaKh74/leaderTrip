@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
@@ -16,9 +17,11 @@ import type { DayPlan, PlanBlock } from '../../api/schemas'
 import { duration, faNum, toFa, toman } from '../../lib/format'
 import { formatJalaliFromIso } from '../../lib/jalaliDisplay'
 import type { NavPoint } from '../../lib/navigation'
+import { revealOnScroll } from '../../lib/motion'
 import { heroGradient } from '../../theme/tokens'
 import { DayWeatherChip } from './DayWeatherChip'
 import { NavigateButton } from './NavigateButton'
+import { RoadTrail } from './RoadTrail'
 
 /**
  * آیکون و رنگ هر نوع بلوک — از پالت معنایی برند.
@@ -54,6 +57,18 @@ export function DayTimeline({
   /** مختصات جاذبه از روی شناسه — برای دکمهٔ «برو با مسیریاب». */
   locate?: (poiId: string) => { lat: number; lng: number } | undefined
 }) {
+  const trailRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const trail = trailRef.current
+
+    if (trail == null) return
+
+    // حباب‌ها با رسیدنِ چشم جان می‌گیرند. وابسته به تعداد بلوک‌هاست چون
+    // جابه‌جایی و حذفِ توقف، فهرست را از نو می‌سازد.
+    return revealOnScroll([...trail.querySelectorAll('.lt-stop')])
+  }, [day.blocks.length])
+
   return (
     <Paper
       className="lt-rise"
@@ -108,27 +123,14 @@ export function DayTimeline({
       {day.blocks.length === 0 ? (
         <Typography color="text.secondary">برای این روز برنامه‌ای ساخته نشد.</Typography>
       ) : (
-        <Stack
-          spacing={0}
-          sx={(theme) => ({
-            position: 'relative',
-            // خط سفرِ روز: نقطه‌چینی که حباب‌های توقف را به هم می‌دوزد.
-            // دسکتاپ: ۸۴ = عرض ستون ساعت (۵۲) + فاصله (۱۶) + نصف حباب (۱۷) − ۱.
-            // گوشی ستون ساعت ندارد (ساعت کنار عنوان است): ۱۶ = نصف حباب − ۱.
-            // موقعیت با خاصیت منطقی: stylis راست/چپ فیزیکی را در RTL فلیپ
-            // می‌کند و خط را سمت مخالف حباب‌ها می‌انداخت؛ inline-start در
-            // این چیدمان یعنی «همان سمتی که ستون حباب‌هاست»، بی‌قید فلیپ.
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 24,
-              bottom: 24,
-              insetInlineStart: { xs: 15, sm: 83 },
-              borderInlineStart: `2px dashed ${alpha(theme.palette.primary.main, 0.28)}`,
-              pointerEvents: 'none',
-            },
-          })}
-        >
+        <Stack ref={trailRef} spacing={0} sx={{ position: 'relative' }}>
+          {/*
+            جادهٔ روز. تا پیش از این یک `::before` نقطه‌چین ساکن بود؛ حالا
+            لایه‌ای است که اسکرولِ شما آن را می‌پیماید. مرکزش همان دو عدد
+            قبلی است: دسکتاپ ۸۴ = ستون ساعت (۵۲) + فاصله (۱۶) + نصف حباب
+            (۱۷) − ۱، و گوشی ۱۶ = نصف حباب − ۱ (آن‌جا ساعت کنار عنوان است).
+          */}
+          <RoadTrail />
           {day.blocks.map((block, index) => {
             // مقصدِ ناوبری: خود توقف اگر مختصات دارد؛ برای بلوک رانندگی،
             // نخستین توقفِ مختصات‌دارِ بعدی — همان جایی که واقعاً می‌رانید.
@@ -208,6 +210,7 @@ function BlockRow({
           متن معلوم است. پس‌زمینهٔ دولایه (کاغذ + رنگ‌مایه) حباب را کدر می‌کند
           تا خط سفرِ پشتش از میانش رد نشود. */}
       <Box
+        className="lt-stop"
         sx={{
           width: 34,
           height: 34,

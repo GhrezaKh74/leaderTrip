@@ -1,4 +1,4 @@
-import { animate, stagger, svg, utils } from 'animejs'
+import { animate, onScroll, stagger, svg, utils } from 'animejs'
 
 /**
  * حرکت — یک درگاه، همهٔ انیمیشن‌های جاوااسکریپتی (anime.js v4).
@@ -91,4 +91,111 @@ export function countUp(el: Element, to: number, format: (value: number) => stri
       el.textContent = format(to)
     },
   })
+}
+
+/* ──────────────────────── اسکرول به‌عنوان نوار زمان ────────────────────────
+ *
+ * تا این‌جا حرکت‌ها «یک‌باره هنگام ورود» بودند. چیزی که در ادامه می‌آید فرق
+ * بنیادی دارد: خودِ اسکرول، انیمیشن را جلو و عقب می‌برد (`sync`). قاعدهٔ ۲ باز
+ * هم حاکم است — جاده کشیده می‌شود چون شما دارید در برنامه پیش می‌روید، نه
+ * برای اینکه چیزی تکان بخورد.
+ *
+ * قاعدهٔ ۳ (هرگز حلقهٔ بی‌پایان) این‌جا هم برقرار است: انیمیشن اسکرول‌بند در
+ * حالت سکون هیچ فریمی نمی‌سازد؛ فقط وقتی انگشت/چرخ حرکت می‌کند کار می‌کند.
+ */
+
+/**
+ * آستانه‌ها: کجای صفحه «شروع سفر» است و کجا «رسیدن».
+ *
+ * <p>پایان روی ۶۵٪ است نه وسط صفحه: روزِ کوتاه (دو سه توقف) در انتهای صفحه
+ * ممکن است هرگز تا وسط بالا نیاید و آن‌وقت جاده‌اش برای همیشه نیمه‌کشیده
+ * می‌ماند — که غلط است، چون آن روز هم دیده شده.</p>
+ */
+const ROAD_ENTER = { target: 'top', container: '95%' } as const
+const ROAD_LEAVE = { target: 'bottom', container: '65%' } as const
+
+/**
+ * جادهٔ زنده — پیشرفت خط مسیر و پیمایشگری که رویش می‌راند، هر دو به اسکرول
+ * بسته‌اند.
+ *
+ * <p>`sync` عددی (نه `true`) عمدی است: کمی میرایی می‌گذارد تا حرکت به‌جای
+ * چسبیدنِ خشک به پیکسلِ اسکرول، مثل دوربین نرم دنبال کند. همان چیزی که
+ * اسکرول را «سینمایی» می‌کند.</p>
+ *
+ * <p>خروجی، تابع پاک‌سازی است: هر بار که قد جاده عوض شود (تغییر اندازهٔ
+ * پنجره، بازشدن پنل) این‌ها باید برچیده و از نو ساخته شوند، وگرنه ناظرهای
+ * اسکرول روی هم تلنبار می‌شوند.</p>
+ */
+export function scrubRoad(params: {
+  container: HTMLElement
+  progress: SVGPathElement
+  rider: SVGGElement
+}): () => void {
+  const { container, progress, rider } = params
+
+  if (prefersReducedMotion()) {
+    // بدون حرکت: جادهٔ کامل و بی‌پیمایشگر. مسیر همچنان دیده می‌شود — این
+    // اطلاعات است، نه تزئین؛ چیزی که حذف می‌شود فقط «کشیده‌شدن» است.
+    progress.style.opacity = '1'
+    rider.style.display = 'none'
+
+    return () => {}
+  }
+
+  const [drawable] = svg.createDrawable(progress)
+
+  if (drawable === undefined) return () => {}
+
+  const path = svg.createMotionPath(progress)
+
+  const line = animate(drawable, {
+    draw: ['0 0', '0 1'],
+    ease: 'linear',
+    autoplay: onScroll({ target: container, enter: ROAD_ENTER, leave: ROAD_LEAVE, sync: 0.32 }),
+  })
+
+  const ride = animate(rider, {
+    translateX: path.translateX,
+    translateY: path.translateY,
+    ease: 'linear',
+    autoplay: onScroll({ target: container, enter: ROAD_ENTER, leave: ROAD_LEAVE, sync: 0.32 }),
+  })
+
+  return () => {
+    line.revert()
+    ride.revert()
+  }
+}
+
+/**
+ * ورود هنگام رسیدن به دید — یک‌بار، و بعد رها.
+ *
+ * <p>`repeat: false` عمدی است: توقفی که هر بار اسکرول دوباره ظاهر شود،
+ * از بار دوم به بعد مزاحم است نه جذاب.</p>
+ */
+export function revealOnScroll(targets: Element[]): () => void {
+  if (targets.length === 0) return () => {}
+
+  if (prefersReducedMotion()) {
+    utils.remove(targets)
+
+    return () => {}
+  }
+
+  const entrance = animate(targets, {
+    opacity: [0, 1],
+    scale: [0.72, 1],
+    duration: 520,
+    ease: 'out(3)',
+    autoplay: onScroll({
+      enter: { target: 'top', container: '94%' },
+      leave: { target: 'bottom', container: '0%' },
+      sync: 'play',
+      repeat: false,
+    }),
+  })
+
+  return () => {
+    entrance.revert()
+  }
 }
