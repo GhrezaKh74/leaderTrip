@@ -27,16 +27,22 @@ export function RoadTrail() {
   const progressRef = useRef<SVGPathElement>(null)
   const riderRef = useRef<SVGGElement>(null)
   const [height, setHeight] = useState(0)
+  const [offset, setOffset] = useState<number | null>(null)
 
   useLayoutEffect(() => {
     const parent = hostRef.current?.parentElement
 
     if (parent == null) return
 
-    const observer = new ResizeObserver(() => setHeight(parent.clientHeight))
+    const measure = () => {
+      setHeight(parent.clientHeight)
+      setOffset(railOffset(parent))
+    }
+
+    const observer = new ResizeObserver(measure)
 
     observer.observe(parent)
-    setHeight(parent.clientHeight)
+    measure()
 
     return () => observer.disconnect()
   }, [])
@@ -62,9 +68,12 @@ export function RoadTrail() {
       sx={{
         position: 'absolute',
         top: 0,
-        // همان مرکزِ ستون حباب‌ها که خط نقطه‌چین قبلی داشت (۱۶ و ۸۴)، منهای
-        // نصف عرض این لایه. خاصیت منطقی است تا stylis در RTL فلیپش نکند.
-        insetInlineStart: { xs: 3, sm: 71 },
+        // اندازه‌گیری‌شده، نه عدد ثابت. تا پیش از این دو عدد دستی این‌جا بود
+        // (۱۵ و ۸۳) و روی گوشی ۱۳ پیکسل خطا داشت: ستون ساعت آن‌جا
+        // `display:none` می‌شود ولی فرزندِ Stack می‌ماند، پس فاصلهٔ ۱۲
+        // پیکسلی‌اش را همچنان می‌گیرد — چیزی که عدد ثابت نمی‌بیند. خط نازک
+        // قبلی خطا را پنهان می‌کرد.
+        insetInlineStart: `${(offset ?? 16) - RAIL / 2}px`,
         width: RAIL,
         height: '100%',
         pointerEvents: 'none',
@@ -141,4 +150,27 @@ function roadPath(height: number): string {
   }
 
   return d
+}
+
+/**
+ * مرکز ستون حباب‌ها، از لبهٔ شروعِ محتوا — با خط‌کش، نه با حساب سرانگشتی.
+ *
+ * <p>چرا اندازه‌گیری: چیدمان این ردیف بین گوشی و دسکتاپ عوض می‌شود (ستون
+ * ساعت پنهان می‌شود ولی فاصله‌اش می‌ماند)، و هر بار که کسی فاصله یا اندازهٔ
+ * حباب را دست بزند، عددِ ثابتِ جاده بی‌صدا غلط می‌شود. خواندن از خود حباب
+ * یعنی جاده همیشه همان‌جاست که باید.</p>
+ *
+ * <p>راست‌به‌چپ: «شروع» لبهٔ راست است. فاصله از همان لبه حساب می‌شود تا
+ * `insetInlineStart` بی‌قید جهت درست بنشیند.</p>
+ */
+function railOffset(container: HTMLElement): number | null {
+  const bubble = container.querySelector('.lt-stop')
+
+  if (bubble === null) return null
+
+  const box = bubble.getBoundingClientRect()
+  const frame = container.getBoundingClientRect()
+  const rtl = getComputedStyle(container).direction === 'rtl'
+
+  return rtl ? frame.right - box.right + box.width / 2 : box.left - frame.left + box.width / 2
 }
