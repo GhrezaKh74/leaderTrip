@@ -130,8 +130,14 @@ export function scrubRoad(params: {
   container: HTMLElement
   progress: SVGPathElement
   rider: SVGGElement
+  /**
+   * هالهٔ زیر خط، اگر باشد همراه خودِ خط کشیده می‌شود. لایهٔ جدا و بی‌فیلتر
+   * است: drop-shadow روی مسیری که هر فریمِ اسکرول عوض می‌شود، یعنی blur
+   * دوباره در هر فریم — همان چیزی که روی گوشی لگ می‌ساخت.
+   */
+  glow?: SVGPathElement
 }): () => void {
-  const { container, progress, rider } = params
+  const { container, progress, rider, glow } = params
 
   if (prefersReducedMotion()) {
     // بدون حرکت: جادهٔ کامل و بی‌پیمایشگر. مسیر همچنان دیده می‌شود — این
@@ -146,9 +152,12 @@ export function scrubRoad(params: {
 
   if (drawable === undefined) return () => {}
 
+  const [glowDrawable] = glow === undefined ? [] : svg.createDrawable(glow)
+  const lineTargets = glowDrawable === undefined ? [drawable] : [drawable, glowDrawable]
+
   const path = svg.createMotionPath(progress)
 
-  const line = animate(drawable, {
+  const line = animate(lineTargets, {
     draw: ['0 0', '0 1'],
     ease: 'linear',
     autoplay: onScroll({ target: container, enter: ROAD_ENTER, leave: ROAD_LEAVE, sync: 0.32 }),

@@ -12,9 +12,9 @@ import { scrubRoad } from '../../lib/motion'
  * کشیده می‌شود، به‌علاوهٔ پیمایشگری که رویش می‌راند. یعنی هرچه در برنامهٔ روز
  * پایین‌تر می‌روید، دقیقاً همان‌قدر از مسیر طی شده است.</p>
  *
- * <p>چرا خط کمی موج دارد: جادهٔ واقعی خط‌کشی نیست. دامنهٔ موج ۴ پیکسل است —
- * آن‌قدر کم که حباب‌های توقف (۳۴ پیکسل، کدر) همیشه رویش بنشینند، و آن‌قدر
- * هست که بین دو توقف دیده شود.</p>
+ * <p>خط صاف است، نه موج‌دار: نسخهٔ اول ۴ پیکسل موج داشت و روی گوشی به‌جای
+ * «جادهٔ پیچ‌دار»، خطِ کج خوانده می‌شد — انحرافی که قصه نمی‌گوید، خطا دیده
+ * می‌شود.</p>
  *
  * <p>ابعاد از والد خوانده می‌شود نه از پراپ: بلوک‌های روز ارتفاع متغیر دارند
  * (یادداشت، چیپ‌های چندخطی، دکمهٔ ویرایش) و هر بار که چیزی باز/بسته شود قد
@@ -25,6 +25,7 @@ export function RoadTrail() {
   const theme = useTheme()
   const hostRef = useRef<HTMLDivElement>(null)
   const progressRef = useRef<SVGPathElement>(null)
+  const glowRef = useRef<SVGPathElement>(null)
   const riderRef = useRef<SVGGElement>(null)
   const [height, setHeight] = useState(0)
   const [offset, setOffset] = useState<number | null>(null)
@@ -50,12 +51,13 @@ export function RoadTrail() {
   useEffect(() => {
     const parent = hostRef.current?.parentElement
     const progress = progressRef.current
+    const glow = glowRef.current
     const rider = riderRef.current
 
     // قد صفر یعنی هنوز چیدمان نشده؛ ساختن ناظر روی جادهٔ بی‌طول بی‌معنی است.
     if (height === 0 || parent == null || progress == null || rider == null) return
 
-    return scrubRoad({ container: parent, progress, rider })
+    return scrubRoad({ container: parent, progress, rider, ...(glow ? { glow } : {}) })
   }, [height])
 
   const d = roadPath(height)
@@ -98,6 +100,18 @@ export function RoadTrail() {
             strokeLinecap="round"
           />
 
+          {/* هالهٔ جادهٔ پیموده‌شده — استروک پهنِ کم‌رنگ، نه فیلتر drop-shadow:
+              فیلتر SVG روی مسیری که هر فریمِ اسکرول عوض می‌شود، یعنی blur
+              دوباره در هر فریم — روی گوشی با DPR بالا همین بود که لگ می‌ساخت.
+              استروک ساده همان هاله را می‌دهد و raster ارزانی دارد. */}
+          <path
+            ref={glowRef}
+            d={d}
+            stroke={alpha(road, 0.2)}
+            strokeWidth={8}
+            strokeLinecap="round"
+          />
+
           {/* جادهٔ پیموده‌شده — این یکی را اسکرول می‌کشد. */}
           <path
             ref={progressRef}
@@ -105,7 +119,6 @@ export function RoadTrail() {
             stroke="url(#lt-road)"
             strokeWidth={3}
             strokeLinecap="round"
-            style={{ filter: `drop-shadow(0 0 6px ${alpha(road, 0.55)})` }}
           />
 
           {/* پیمایشگر: هالهٔ نرم + مغزِ روشن. ماشینِ ریزنقش در ۱۲ پیکسل به
@@ -123,33 +136,13 @@ export function RoadTrail() {
 /** عرض لایهٔ جاده — جا برای موج و هالهٔ پیمایشگر. */
 const RAIL = 26
 
-/**
- * مسیر جاده برای این قد. موج با کنترل‌نقطه‌های متناوب ساخته می‌شود تا هر
- * بخش خلاف بخش قبل خم شود؛ فاصلهٔ ~۱۹۰ پیکسلی یعنی تقریباً یک خم به‌ازای هر
- * توقف، نه بیشتر.
- */
+/** مسیر جاده برای این قد — خط صافِ عمودی از مرکز ستون حباب‌ها. */
 function roadPath(height: number): string {
   const top = 24
   const bottom = Math.max(top + 40, height - 24)
   const center = RAIL / 2
-  const sway = 4
-  const span = bottom - top
-  const segments = Math.max(1, Math.round(span / 190))
-  const step = span / segments
 
-  let d = `M ${center} ${top}`
-
-  for (let index = 0; index < segments; index += 1) {
-    const from = top + step * index
-    const to = from + step
-    const direction = index % 2 === 0 ? 1 : -1
-
-    d += ` C ${center + sway * direction} ${from + step * 0.33}, ${center - sway * direction} ${
-      to - step * 0.33
-    }, ${center} ${to}`
-  }
-
-  return d
+  return `M ${center} ${top} L ${center} ${bottom}`
 }
 
 /**
