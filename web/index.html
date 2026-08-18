@@ -14,26 +14,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="لیدرتریپ" />
     <title>لیدرتریپ</title>
-    <script>
-      // اسپلش فقط بار اول: از بازدید دوم به بعد، کاربر اپ را می‌شناسد و اسپلش
-      // فقط بین او و کارش می‌ایستد. این‌جا (پیش از رندر body) تصمیم می‌گیریم تا
-      // حتی یک فریم هم دیده نشود. پس‌زمینهٔ تیره هم همین‌جا ست می‌شود که در
-      // فاصلهٔ بارشدن باندل، صفحهٔ سفید برق نزند.
-      ;(function () {
-        try {
-          if (localStorage.getItem('leadertrip.theme') !== 'light') {
-            document.documentElement.style.background = '#0a1120'
-          }
-          if (localStorage.getItem('leadertrip.splash.seen') === '1') {
-            document.documentElement.classList.add('no-splash')
-          } else {
-            localStorage.setItem('leadertrip.splash.seen', '1')
-          }
-        } catch (e) {
-          /* حالت خصوصی: اسپلش مثل بار اول نشان داده می‌شود */
-        }
-      })()
-    </script>
+    <!-- تصمیم نمایش اسپلش + پس‌زمینهٔ تیره؛ پیش از رندر body، پس بدون
+         defer/async. عمداً فایل جداست نه درون‌خطی: اسکریپت درون‌خطی را CSP
+         (`script-src 'self'`) بی‌صدا بلوک می‌کند و اسپلش تا ابد می‌ماند. -->
+    <script src="/boot.js"></script>
     <style>
       .no-splash #splash { display: none; }
       /* ── اسپلش — پیش از بارشدن جاوااسکریپت دیده می‌شود، پس همین‌جا زندگی
@@ -54,6 +38,18 @@
         transition: opacity 0.45s ease, visibility 0.45s;
       }
       #splash.done { opacity: 0; visibility: hidden; }
+      /* ── تور ایمنی، بدون هیچ جاوااسکریپتی ──
+         روکشی که تمام صفحه را می‌گیرد نباید بقایش به بارشدنِ یک فایل بند
+         باشد. دو بار همین اتفاق افتاد — یک‌بار CSP اسکریپت درون‌خطی را بلوک
+         کرد، یک‌بار آفلاین فایل بیرونی را ۴۰۴ کرد — و هر دو بار اسپلش روی
+         اپِ سالم قفل شد. این انیمیشن به هیچ اسکریپتی وابسته نیست: اگر تا
+         ۸ ثانیه کسی اسپلش را نبسته باشد، خودش کنار می‌رود و مهم‌تر از آن
+         `pointer-events` را رها می‌کند تا حتی اگر دیده شد، جلوی کلیک را
+         نگیرد. `both` یعنی حالت پایانی می‌ماند و برنمی‌گردد. */
+      #splash { animation: splash-timeout 0.5s ease 8s both; }
+      @keyframes splash-timeout {
+        to { opacity: 0; visibility: hidden; pointer-events: none; }
+      }
       #splash img {
         width: clamp(96px, 30vw, 148px);
         height: auto;
@@ -115,20 +111,9 @@
       <button type="button" class="skip">رد شدن</button>
     </div>
     <div id="root"></div>
-    <script>
-      // اپ که آماده شد این رویداد را می‌فرستد؛ اگر هم هرگز نیامد (خطای بارگذاری)،
-      // اسپلش خودش کنار می‌رود تا پیام خطا پنهان نماند.
-      (function () {
-        var splash = document.getElementById('splash')
-        var hide = function () {
-          splash.classList.add('done')
-          setTimeout(function () { splash.remove() }, 600)
-        }
-        window.addEventListener('leadertrip:ready', hide, { once: true })
-        splash.querySelector('.skip').addEventListener('click', hide)
-        setTimeout(hide, 8000)
-      })()
-    </script>
+    <!-- بستن اسپلش (رویداد آمادگی، دکمهٔ ردشدن، و مهلت ۸ ثانیه‌ای). مثل
+         boot.js فایل جداست تا CSP بلوکش نکند. -->
+    <script src="/splash.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
