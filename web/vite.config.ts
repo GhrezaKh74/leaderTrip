@@ -23,9 +23,12 @@ function precachePlugin(): Plugin {
         .filter((name) => /\.(js|css|woff2?|svg)$/.test(name))
         .map((name) => `/${name}`)
 
+      // boot.js و splash.js از `public/` کپی می‌شوند، پس در `bundle` نیستند و
+      // باید دستی بیایند. نبودشان در این فهرست یعنی آفلاین ۴۰۴ می‌شوند — و
+      // چون بستنِ اسپلش کارِ splash.js است، اپ زیر اسپلش دفن می‌ماند.
       const shell = [
         '/', '/index.html', '/manifest.webmanifest', '/favicon.svg',
-        '/icons/icon-192.png',
+        '/icons/icon-192.png', '/boot.js', '/splash.js',
         ...assets,
       ]
 
