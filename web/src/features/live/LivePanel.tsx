@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import ButtonBase from '@mui/material/ButtonBase'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import Collapse from '@mui/material/Collapse'
 import Divider from '@mui/material/Divider'
 import Grid from '@mui/material/Grid'
 import IconButton from '@mui/material/IconButton'
@@ -16,6 +18,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import ExpandIcon from '@mui/icons-material/ExpandMore'
 
 import { CameraIcon } from '../../components/icons'
 import { NumberField } from '../../components/NumberField'
@@ -74,6 +77,9 @@ export function LivePanel({
   const upload = useUploadPhoto()
   const [uploadingFor, setUploadingFor] = useState<string | null>(null)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  // فرمِ باز فقط برای توقفی که الان با آن کار می‌کنید؛ بقیه یک ردیفِ خلاصه‌اند.
+  // فرمِ همیشه‌بازِ همهٔ توقف‌ها همان چیزی بود که این تب را شلوغ می‌کرد.
+  const [openStop, setOpenStop] = useState<string | null>(null)
 
   /**
    * پیوست عکس: کوچک‌سازی سمت کلاینت، بارگذاری، و ثبت فقط شناسه در دفترچه.
@@ -107,18 +113,81 @@ export function LivePanel({
           {visits.map((visit) => {
             const checkIn = journal.checkIns.find((c) => c.poiId === visit.poiId)
             const drift = checkIn ? driftMinutes(visit.startsAt, checkIn.arrivedAt) : null
+            const open = openStop === visit.poiId
 
             return (
-              <Paper key={visit.poiId} sx={{ p: 2 }}>
-                <Stack spacing={1}>
-                  <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="subtitle1">
-                      روز {faNum(visit.day)} · {visit.title}
+              <Paper key={visit.poiId} sx={{ overflow: 'hidden' }}>
+                {/* ردیفِ خلاصه: عنوان + وضعیت در یک نگاه. فرم با ضربه باز می‌شود. */}
+                <ButtonBase
+                  onClick={() => setOpenStop(open ? null : visit.poiId)}
+                  aria-expanded={open}
+                  aria-label={`چک‌این ${visit.title}`}
+                  sx={{
+                    width: '100%',
+                    px: 2,
+                    py: 1.5,
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    textAlign: 'start',
+                  }}
+                >
+                  <Stack sx={{ flexGrow: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {visit.title}
                     </Typography>
-                    <Chip size="small" variant="outlined" label={`برنامه ${toFa(visit.startsAt)}`} />
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      روز {faNum(visit.day)} · برنامه {toFa(visit.startsAt)}
+                      {checkIn?.arrivedAt ? (
+                        <>
+                          {' · '}
+                          <Box
+                            component="span"
+                            sx={{
+                              color:
+                                drift !== null && Math.abs(drift) <= 15
+                                  ? 'success.main'
+                                  : drift !== null && drift > 0
+                                    ? 'warning.main'
+                                    : 'info.main',
+                              fontWeight: 600,
+                            }}
+                          >
+                            رسید {toFa(checkIn.arrivedAt)}
+                            {drift === null || drift === 0
+                              ? ''
+                              : drift > 0
+                                ? ` (${faNum(drift)} دقیقه دیرتر)`
+                                : ` (${faNum(-drift)} دقیقه زودتر)`}
+                          </Box>
+                        </>
+                      ) : null}
+                      {checkIn?.rating ? (
+                        <>
+                          {' · '}
+                          <Box component="span" sx={{ color: 'secondary.main' }}>
+                            ★ {faNum(checkIn.rating)}
+                          </Box>
+                        </>
+                      ) : null}
+                    </Typography>
                   </Stack>
 
-                  <Grid container spacing={2} sx={{ alignItems: 'center' }}>
+                  <ExpandIcon
+                    sx={{
+                      color: 'text.secondary',
+                      transition: 'transform .2s ease',
+                      transform: open ? 'rotate(180deg)' : 'none',
+                    }}
+                  />
+                </ButtonBase>
+
+                <Collapse in={open} timeout={220} unmountOnExit={false}>
+                  <Grid container spacing={2} sx={{ alignItems: 'center', px: 2, pb: 2 }}>
                     <Grid size={{ xs: 6, sm: 3 }}>
                       <TextField
                         type="time"
@@ -200,7 +269,7 @@ export function LivePanel({
                       />
                     </Grid>
                   </Grid>
-                </Stack>
+                </Collapse>
               </Paper>
             )
           })}
@@ -240,7 +309,7 @@ export function LivePanel({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Stack spacing={1}>
-      <Typography variant="h3" component="h3">
+      <Typography variant="h3" component="h3" sx={{ fontSize: { xs: '1.02rem', sm: '1.25rem' } }}>
         {title}
       </Typography>
       {children}
@@ -304,7 +373,9 @@ function ExpenseEditor({
           />
         </Grid>
 
-        <Grid size={{ xs: 6, sm: 3 }}>
+        {/* مبلغ باریک، «چه کسی پرداخت کرد» پهن — درس گام همسفران: برچسب بلند
+            در ستون نصف‌نصفِ موبایل بریده می‌شود. */}
+        <Grid size={{ xs: 5, sm: 3 }}>
           <NumberField
             label="مبلغ"
             value={draft.amount}
@@ -314,7 +385,7 @@ function ExpenseEditor({
           />
         </Grid>
 
-        <Grid size={{ xs: 6, sm: 3 }}>
+        <Grid size={{ xs: 7, sm: 3 }}>
           <TextField
             select
             label="چه کسی پرداخت کرد"

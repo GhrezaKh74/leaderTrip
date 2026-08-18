@@ -404,9 +404,13 @@ test('حین سفر: چک‌این، هزینهٔ واقعی و تسویه‌ح�
 
   await page.getByRole('tab', { name: 'حین سفر' }).click()
 
+  // فرم چک‌این بسته است؛ ردیفِ خلاصه با ضربه باز می‌شود.
+  await page.getByRole('button', { name: 'چک‌این کاخ گلستان' }).click()
+
   // ساعت واقعی رسیدن، اختلاف با برنامه را نشان می‌دهد.
   await page.getByLabel('ساعت واقعی').first().fill('10:30')
-  await expect(page.getByText(/دیرتر/)).toBeVisible()
+  // اختلاف هم در خلاصهٔ ردیف می‌آید هم در چیپ داخل فرم — پس first().
+  await expect(page.getByText(/دیرتر/).first()).toBeVisible()
 
   // پیوست عکس: بندانگشتی از سرور می‌آید و دکمهٔ پیوست جایش را می‌دهد.
   await page
