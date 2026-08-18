@@ -12,7 +12,28 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="لیدرتریپ" />
     <title>لیدرتریپ</title>
+    <script>
+      // اسپلش فقط بار اول: از بازدید دوم به بعد، کاربر اپ را می‌شناسد و اسپلش
+      // فقط بین او و کارش می‌ایستد. این‌جا (پیش از رندر body) تصمیم می‌گیریم تا
+      // حتی یک فریم هم دیده نشود. پس‌زمینهٔ تیره هم همین‌جا ست می‌شود که در
+      // فاصلهٔ بارشدن باندل، صفحهٔ سفید برق نزند.
+      ;(function () {
+        try {
+          if (localStorage.getItem('leadertrip.theme') !== 'light') {
+            document.documentElement.style.background = '#0a1120'
+          }
+          if (localStorage.getItem('leadertrip.splash.seen') === '1') {
+            document.documentElement.classList.add('no-splash')
+          } else {
+            localStorage.setItem('leadertrip.splash.seen', '1')
+          }
+        } catch (e) {
+          /* حالت خصوصی: اسپلش مثل بار اول نشان داده می‌شود */
+        }
+      })()
+    </script>
     <style>
+      .no-splash #splash { display: none; }
       /* ── اسپلش — پیش از بارشدن جاوااسکریپت دیده می‌شود، پس همین‌جا زندگی
          می‌کند و به هیچ باندلی وابسته نیست. با آماده‌شدن React محو می‌شود. ── */
       #splash {
@@ -60,6 +81,20 @@
         animation: splash-drive 0.9s linear infinite;
         opacity: 0.8;
       }
+      /* دکمهٔ ردشدن — کنترل دست کاربر است، حتی وقتی شبکه کند است */
+      #splash .skip {
+        position: absolute;
+        bottom: max(28px, env(safe-area-inset-bottom));
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        color: rgba(255, 255, 255, 0.9);
+        border-radius: 999px;
+        padding: 8px 26px;
+        font: 600 14px / 1.6 'IRANSans', Vazirmatn, system-ui, sans-serif;
+        cursor: pointer;
+        animation: splash-rise 0.6s 0.6s ease-out both;
+      }
+      #splash .skip:active { transform: translateY(1px); }
       @keyframes splash-pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       @keyframes splash-rise { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
       @keyframes splash-drive { to { background-position-x: -26px; } }
@@ -71,10 +106,11 @@
   </head>
   <body>
     <div id="splash" role="status" aria-label="در حال بارگذاری لیدرتریپ">
-      <img src="/icons/icon-192.png" alt="" />
+      <img src="/icons/app-icon.svg" alt="" />
       <div class="name">لیدرتریپ</div>
       <div class="tag">دستیار لیدر سفر — برنامهٔ ساعت‌به‌ساعت، هزینهٔ قابل‌ردیابی</div>
       <div class="road"></div>
+      <button type="button" class="skip">رد شدن</button>
     </div>
     <div id="root"></div>
     <script>
@@ -87,6 +123,7 @@
           setTimeout(function () { splash.remove() }, 600)
         }
         window.addEventListener('leadertrip:ready', hide, { once: true })
+        splash.querySelector('.skip').addEventListener('click', hide)
         setTimeout(hide, 8000)
       })()
     </script>

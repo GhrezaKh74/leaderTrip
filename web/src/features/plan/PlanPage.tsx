@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -43,7 +43,6 @@ import { OptimizerPanel } from './OptimizerPanel'
 import { PackingPanel } from './PackingPanel'
 import { PrintSheet } from './PrintSheet'
 import { buildStops } from './buildStops'
-import { RouteMap } from './RouteMap'
 import { downloadTrip, shareUrl } from './sharing'
 import { LivePanel } from '../live/LivePanel'
 import { learnedTaste, loadJournal, saveJournal, type Journal } from '../live/journal'
@@ -65,6 +64,10 @@ const TABS = [
 const ADVICE_TAB = 3
 const MAP_TAB = 5
 const LIVE_TAB = 6
+
+// نقشه (و Leaflet همراهش) فقط وقتی دانلود می‌شود که تبش باز شود؛ در باندل
+// اولیه بودنش یعنی اسپلش طولانی‌تر برای همه، به‌خاطر تبی که شاید باز نشود.
+const RouteMap = lazy(() => import('./RouteMap').then((m) => ({ default: m.RouteMap })))
 
 export function PlanPage({
   plan,
@@ -325,7 +328,18 @@ export function PlanPage({
           ) : (
             // نقشه فقط وقتی ساخته می‌شود که تبش باز باشد: Leaflet در کانتینری با
             // ارتفاع صفر اندازه‌ها را غلط حساب می‌کند و بعد هم خودش را درست نمی‌کند.
-            tab === MAP_TAB ? <RouteMap stops={stops} expectTiles={online} /> : null
+            tab === MAP_TAB ? (
+              <Suspense
+                fallback={
+                  <Stack spacing={2} sx={{ py: 6, alignItems: 'center' }}>
+                    <CircularProgress />
+                    <Typography color="text.secondary">در حال آماده‌سازی نقشه…</Typography>
+                  </Stack>
+                }
+              >
+                <RouteMap stops={stops} expectTiles={online} />
+              </Suspense>
+            ) : null
           )}
         </Box>
 

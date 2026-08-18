@@ -56,6 +56,9 @@ export default defineConfig({
           ) {
             return 'maplibre'
           }
+          // Leaflet فقط در تب نقشه لازم است (RouteMap تنبل بار می‌شود)؛ اگر در
+          // vendor بماند، عملاً از بازدید اول دانلود می‌شود و تنبل‌بودن بی‌اثر است.
+          if (id.includes('leaflet')) return 'leaflet'
           if (id.includes('@mui') || id.includes('@emotion')) return 'mui'
           if (id.includes('react-dom') || id.includes('/react/')) return 'react'
 

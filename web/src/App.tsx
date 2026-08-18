@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Backdrop from '@mui/material/Backdrop'
 import Chip from '@mui/material/Chip'
@@ -13,8 +13,6 @@ import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 
 import { MoonIcon, OfflineIcon, SunIcon } from './components/icons'
-import { IconGallery } from './components/IconGallery'
-import { AdminPage } from './features/admin/AdminPage'
 import { AccountButton } from './features/auth/AccountButton'
 import { glass } from './theme/tokens'
 
@@ -34,6 +32,16 @@ interface Generated {
   plan: TripPlan
   input: TripForm
 }
+
+// خارج از باندل اولیه: این دو صفحه فقط با «/?admin» و «/?icons» دیده می‌شوند،
+// ولی به‌صورت ایستا وزنشان روی دوش اولین بازدیدِ هر کاربر بود — یعنی اسپلشِ
+// طولانی‌تر برای صفحه‌ای که ۹۹٪ کاربران هرگز نمی‌بینند.
+const AdminPage = lazy(() =>
+  import('./features/admin/AdminPage').then((m) => ({ default: m.AdminPage })),
+)
+const IconGallery = lazy(() =>
+  import('./components/IconGallery').then((m) => ({ default: m.IconGallery })),
+)
 
 export function App() {
   const { resolved, setMode } = useThemeControl()
@@ -113,7 +121,7 @@ export function App() {
           {/* آیکون رسمی اپ — همانی که روی گوشی نصب می‌شود، همان‌جا که اسم است. */}
           <Box
             component="img"
-            src="/icons/icon-192.png"
+            src="/icons/app-icon.svg"
             alt=""
             sx={{
               width: 38,
@@ -167,9 +175,13 @@ export function App() {
 
       <Container maxWidth="md" sx={{ py: 4 }}>
         {showAdmin ? (
-          <AdminPage />
+          <Suspense fallback={<CircularProgress sx={{ display: 'block', mx: 'auto', my: 6 }} />}>
+            <AdminPage />
+          </Suspense>
         ) : showIconGallery ? (
-          <IconGallery />
+          <Suspense fallback={<CircularProgress sx={{ display: 'block', mx: 'auto', my: 6 }} />}>
+            <IconGallery />
+          </Suspense>
         ) : generated === null ? (
           <WizardPage
             key={loaded?.sequence ?? 0}
