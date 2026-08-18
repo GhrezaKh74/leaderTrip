@@ -50,5 +50,29 @@ public sealed class GeneratePlanValidator : AbstractValidator<GeneratePlanQuery>
         RuleFor(q => q.FirstDayStartHour)
             .Must((query, hour) => hour is null || (hour >= 0 && hour < query.DayEndHour - 2))
             .WithMessage("ساعت حرکت روز اول باید دست‌کم دو ساعت پیش از پایان روز باشد.");
+
+        RuleFor(q => q.CustomStops)
+            .Must(stops => stops.Count <= 20)
+            .WithMessage("حداکثر ۲۰ توقف دلخواه ممکن است.");
+
+        RuleForEach(q => q.CustomStops).ChildRules(stop =>
+        {
+            stop.RuleFor(s => s.Name)
+                .NotEmpty().WithMessage("توقف دلخواه عنوان لازم دارد.")
+                .MaximumLength(80).WithMessage("عنوان توقف دلخواه بلندتر از حد است.");
+
+            // چهارگوش دربرگیرندهٔ ایران — این محصول سفر جاده‌ای داخل ایران است.
+            stop.RuleFor(s => s.Lat)
+                .InclusiveBetween(24, 41)
+                .WithMessage("مختصات توقف دلخواه بیرون از ایران است.");
+
+            stop.RuleFor(s => s.Lng)
+                .InclusiveBetween(43, 64)
+                .WithMessage("مختصات توقف دلخواه بیرون از ایران است.");
+
+            stop.RuleFor(s => s.VisitMinutes)
+                .InclusiveBetween(15, 600)
+                .WithMessage("مدت بازدید توقف دلخواه باید بین ۱۵ دقیقه تا ۱۰ ساعت باشد.");
+        });
     }
 }

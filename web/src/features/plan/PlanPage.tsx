@@ -77,6 +77,11 @@ const LIVE_TAB = 6
 // اولیه بودنش یعنی اسپلش طولانی‌تر برای همه، به‌خاطر تبی که شاید باز نشود.
 const RouteMap = lazy(() => import('./RouteMap').then((m) => ({ default: m.RouteMap })))
 
+// همان دلیل: گفت‌وگوی «افزودن توقف دلخواه» هم Leaflet دارد و تنبل بار می‌شود.
+const AddStopDialog = lazy(() =>
+  import('./AddStopDialog').then((m) => ({ default: m.AddStopDialog })),
+)
+
 export function PlanPage({
   plan,
   input,
@@ -99,6 +104,7 @@ export function PlanPage({
   // منوی «بیشتر» روی گوشی: چاپ/اشتراک/خروجی کنش‌های گاه‌به‌گاه‌اند و سه
   // دکمهٔ متنی جا می‌خوردند.
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null)
+  const [addStopOpen, setAddStopOpen] = useState(false)
   const reference = useReferenceData()
   const pois = usePois()
 
@@ -116,16 +122,33 @@ export function PlanPage({
   const locatePoi = useMemo(() => {
     const byId = new Map((pois.data?.items ?? []).map((poi) => [poi.id, { lat: poi.lat, lng: poi.lng }]))
 
+    // توقف‌های دلخواه در دیتاست نیستند؛ مختصاتشان از خود ورودی سفر می‌آید.
+    for (const stop of input.customStops) {
+      byId.set(stop.id, { lat: stop.lat, lng: stop.lng })
+    }
+
     return (id: string) => byId.get(id)
-  }, [pois.data])
+  }, [pois.data, input.customStops])
 
   const stops = useMemo(() => {
     const ordered = plan.days.flatMap((day) =>
       day.blocks.filter((block) => block.kind === 'Visit' && block.poiId).map((block) => block.poiId!),
     )
 
-    return buildStops(ordered, pois.data?.items)
-  }, [plan, pois.data])
+    return buildStops(ordered, pois.data?.items, input.customStops)
+  }, [plan, pois.data, input.customStops])
+
+  // کانون نقشهٔ «افزودن توقف»: مقصد اگر هست، وگرنه مبدأ.
+  const mapFocus = useMemo(() => {
+    const cities = reference.data?.cities ?? []
+    const city =
+      cities.find((c) => c.id === input.destinationCityId) ??
+      cities.find((c) => c.id === input.originCityId)
+
+    return city === undefined
+      ? { lat: 35.6892, lng: 51.389, name: 'ایران' }
+      : { lat: city.lat, lng: city.lng, name: city.name }
+  }, [reference.data, input.destinationCityId, input.originCityId])
 
   const updateJournal = (next: Journal) => {
     setJournal(next)
@@ -141,7 +164,11 @@ export function PlanPage({
     onMove: (poiId: string, targetDay: number) =>
       onRebuild({ ...input, dayAssignments: { ...input.dayAssignments, [poiId]: targetDay } }),
     onRemove: (poiId: string) =>
-      onRebuild({ ...input, excludedPoiIds: [...input.excludedPoiIds, poiId] }),
+      // توقف دلخواه با حذف از فهرست خودش می‌رود؛ excludedPoiIds برای دیتاست است
+      // و شناسهٔ دلخواه آن‌جا فقط زباله می‌ماند.
+      input.customStops.some((stop) => stop.id === poiId)
+        ? onRebuild({ ...input, customStops: input.customStops.filter((s) => s.id !== poiId) })
+        : onRebuild({ ...input, excludedPoiIds: [...input.excludedPoiIds, poiId] }),
   }
 
   const taste = learnedTaste(journal)
@@ -395,6 +422,17 @@ export function PlanPage({
                 locate={locatePoi}
               />
             ))}
+
+            {/* جایی در فهرست ما نبود؟ کاربر خودش روی نقشه اضافه‌اش می‌کند. */}
+            <Button
+              onClick={() => setAddStopOpen(true)}
+              startIcon={<VisitPinIcon sx={{ fontSize: 18 }} />}
+              variant="outlined"
+              sx={{ alignSelf: { xs: 'stretch', sm: 'flex-start' } }}
+              className="no-print"
+            >
+              افزودن توقف دلخواه از نقشه
+            </Button>
           </Stack>
         </Box>
 
@@ -460,6 +498,21 @@ export function PlanPage({
           ) : null}
         </Box>
       </Stack>
+
+      {addStopOpen ? (
+        <Suspense fallback={null}>
+          <AddStopDialog
+            open={addStopOpen}
+            focus={mapFocus}
+            online={online}
+            onClose={() => setAddStopOpen(false)}
+            onAdd={(stop) => {
+              setAddStopOpen(false)
+              onRebuild({ ...input, customStops: [...input.customStops, stop] })
+            }}
+          />
+        </Suspense>
+      ) : null}
 
       <Snackbar
         open={toast !== null}

@@ -53,6 +53,26 @@ public sealed class WeatherOptions
     public int CacheHours { get; set; } = 6;
 }
 
+/// <summary>تنظیمات جست‌وجوی نام مکان (Nominatim).</summary>
+/// <remarks>
+/// برخلاف کشفِ Overpass، پیش‌فرض روشن است: هر جست‌وجو یک درخواست سبک است که
+/// فقط با کلیک کاربر اتفاق می‌افتد، و بدون آن «افزودن توقف دلخواه» فقط راه
+/// دستیِ روی نقشه را دارد. سیاست Nominatim شناساندن کلاینت را لازم می‌داند —
+/// هدر User-Agent در ثبت HttpClient ست می‌شود.
+/// </remarks>
+public sealed class GeocodingOptions
+{
+    public const string SectionName = "Geocoding";
+
+    public bool Enabled { get; set; } = true;
+
+    [Required]
+    public Uri BaseAddress { get; set; } = new("https://nominatim.openstreetmap.org/");
+
+    [Range(1, 120)]
+    public int TimeoutSeconds { get; set; } = 10;
+}
+
 /// <summary>تنظیمات کشف مکان از OpenStreetMap.</summary>
 public sealed class DiscoveryOptions
 {

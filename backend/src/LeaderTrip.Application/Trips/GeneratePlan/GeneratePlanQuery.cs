@@ -100,6 +100,24 @@ public sealed record GeneratePlanQuery : IQuery<TripPlanResponse>
     /// </remarks>
     public IReadOnlyDictionary<string, int> DayAssignments { get; init; } =
         new Dictionary<string, int>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// توقف‌های دلخواه کاربر — جاهایی که در دیتاست ما نیستند و کاربر خودش روی
+    /// نقشه انتخابشان کرده است.
+    /// </summary>
+    /// <remarks>
+    /// مثل سنجاق‌شده‌ها رفتار می‌کنند: حتماً در برنامه می‌آیند و زمان‌بند دورشان
+    /// می‌چیند. دادهٔ غنی (سختی، بلیت، ساعت کار) ندارند — کاربر خودش خواسته،
+    /// پس پیش‌فرض‌های خنثی می‌گیرند.
+    /// </remarks>
+    public IReadOnlyList<CustomStopDto> CustomStops { get; init; } = [];
 }
 
 public sealed record TravelerDto(string Id, string Name, int Age, MobilityLevel Mobility, bool IsDriver);
+
+/// <param name="Id">شناسهٔ سمت کلاینت — با پیشوند «custom-» تا با دیتاست تداخل نکند.</param>
+/// <param name="Name">عنوانی که کاربر انتخاب کرده.</param>
+/// <param name="Lat">عرض جغرافیایی.</param>
+/// <param name="Lng">طول جغرافیایی.</param>
+/// <param name="VisitMinutes">مدت بازدید به دقیقه — انتخاب خود کاربر.</param>
+public sealed record CustomStopDto(string Id, string Name, double Lat, double Lng, int VisitMinutes = 60);

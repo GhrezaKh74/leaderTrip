@@ -231,6 +231,19 @@ export const discoveredPlacesSchema = z.object({
   note: z.string(),
 })
 
+/** نتیجهٔ جست‌وجوی نام مکان — برای «افزودن توقف دلخواه» روی نقشه. */
+export const searchedPlacesSchema = z.object({
+  items: z.array(
+    z.object({
+      name: z.string(),
+      lat: z.number(),
+      lng: z.number(),
+    }),
+  ),
+})
+
+export type SearchedPlace = z.infer<typeof searchedPlacesSchema>['items'][number]
+
 /** پاسخ بارگذاری عکس چک‌این. */
 export const photoUploadSchema = z.object({
   id: z.string(),

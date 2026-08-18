@@ -8,6 +8,7 @@ import {
   routePathSchema,
   poiListSchema,
   referenceDataSchema,
+  searchedPlacesSchema,
   tripPlanSchema,
   type TripPlan,
 } from './schemas'
@@ -60,6 +61,14 @@ export function useDiscoverPlaces() {
         `/pois/discover?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
         discoveredPlacesSchema,
       ),
+  })
+}
+
+/** جست‌وجوی نام مکان — برای «افزودن توقف دلخواه» روی نقشه. */
+export function useSearchPlaces() {
+  return useMutation({
+    mutationFn: (text: string) =>
+      api.get(`/geo/search?q=${encodeURIComponent(text)}`, searchedPlacesSchema),
   })
 }
 

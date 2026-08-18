@@ -87,6 +87,20 @@ export const tripFormSchema = z
      * هستند، و اجبارِ داشتنِ هر ۱۶ دسته یعنی پرکردن جدول با صفرهای بی‌معنا.
      */
     learnedTaste: z.record(z.string(), z.number().min(-1).max(1)),
+
+    /**
+     * توقف‌های دلخواه — جاهایی که در دیتاست ما نیستند و کاربر خودش روی نقشه
+     * پیدا یا پین کرده است. موتور مثل سنجاق‌شده حتماً در برنامه می‌گذاردشان.
+     */
+    customStops: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string().min(1).max(80),
+        lat: z.number().min(24).max(41),
+        lng: z.number().min(43).max(64),
+        visitMinutes: z.number().int().min(15).max(600),
+      }),
+    ),
   })
   .refine((v) => v.destinationCityId === null || v.destinationCityId !== v.originCityId, {
     message: 'مقصد نمی‌تواند همان مبدأ باشد؛ برای سفر حلقه‌ای، مقصد را خالی بگذارید.',
@@ -128,6 +142,7 @@ export function parseTripForm(value: unknown): TripForm | null {
     dayPace: 'Packed',
     lunchStyle: 'Restaurant',
     firstDayStartHour: null,
+    customStops: [],
     ...value,
   }
   const parsed = tripFormSchema.safeParse(withDefaults)
@@ -167,6 +182,7 @@ export const DEFAULT_TRIP: TripForm = {
   excludedPoiIds: [],
   dayAssignments: {},
   learnedTaste: {},
+  customStops: [],
 }
 
 function isoToday(): string {

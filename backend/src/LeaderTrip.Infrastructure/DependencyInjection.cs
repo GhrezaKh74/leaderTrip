@@ -2,6 +2,7 @@ using LeaderTrip.Application.Abstractions;
 using LeaderTrip.Domain.Routing;
 using LeaderTrip.Infrastructure.External;
 using LeaderTrip.Infrastructure.External.Discovery;
+using LeaderTrip.Infrastructure.External.Geocoding;
 using LeaderTrip.Infrastructure.External.Elevation;
 using LeaderTrip.Infrastructure.External.Routing;
 using LeaderTrip.Infrastructure.External.Weather;
@@ -49,6 +50,11 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<GeocodingOptions>()
+            .Bind(configuration.GetSection(GeocodingOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddOptions<PhotoOptions>()
             .Bind(configuration.GetSection(PhotoOptions.SectionName))
             .ValidateDataAnnotations()
@@ -61,6 +67,7 @@ public static class DependencyInjection
         AddRouting(services);
         AddWeather(services);
         AddDiscovery(services);
+        AddGeocoding(services);
 
         return services;
     }
@@ -184,6 +191,21 @@ public static class DependencyInjection
 
         services.RemoveAll<IPlaceDiscovery>();
         services.AddScoped<IPlaceDiscovery>(sp => sp.GetRequiredService<OverpassPlaceDiscovery>());
+    }
+
+    private static void AddGeocoding(IServiceCollection services)
+    {
+        services.AddHttpClient<NominatimGeocoder>((provider, client) =>
+        {
+            var options = GetOptions<GeocodingOptions>(provider);
+            client.BaseAddress = options.BaseAddress;
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            // سیاست Nominatim: کلاینت باید خودش را بشناساند.
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("LeaderTrip/1.0 (+https://github.com/GhrezaKh74/leaderTrip)");
+        });
+
+        services.RemoveAll<IGeocoder>();
+        services.AddScoped<IGeocoder>(sp => sp.GetRequiredService<NominatimGeocoder>());
     }
 
     private static TOptions GetOptions<TOptions>(IServiceProvider provider)

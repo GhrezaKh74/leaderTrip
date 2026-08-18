@@ -1,5 +1,6 @@
 using LeaderTrip.Application.Abstractions;
 using LeaderTrip.Application.Reference.DiscoverPlaces;
+using LeaderTrip.Application.Reference.SearchPlaces;
 using LeaderTrip.Application.Reference.GetPois;
 using LeaderTrip.Application.Reference.GetReferenceData;
 using LeaderTrip.Application.Trips.GeneratePlan;
@@ -143,6 +144,18 @@ internal static class TripEndpoints
             .WithName("DiscoverPlaces")
             .WithSummary("کشف مکان از OpenStreetMap")
             .WithDescription("دادهٔ خام، برای پرکردن حفرهٔ پوشش دیتاست.")
+            .RequireRateLimiting(RateLimitPolicies.Plan);
+
+        api.MapGet("/geo/search", async (
+                    IDispatcher dispatcher,
+                    string q,
+                    CancellationToken cancellationToken) =>
+                (await dispatcher.QueryAsync(
+                    new SearchPlacesQuery { Text = q },
+                    cancellationToken)).ToHttpResult())
+            .WithName("SearchPlaces")
+            .WithSummary("جست‌وجوی نام مکان")
+            .WithDescription("برای «افزودن توقف دلخواه» روی نقشه؛ محدود به ایران.")
             .RequireRateLimiting(RateLimitPolicies.Plan);
     }
 }

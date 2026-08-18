@@ -13,6 +13,12 @@ using LeaderTrip.Domain.ValueObjects;
 
 namespace LeaderTrip.Application.Trips.GeneratePlan;
 
+file static class CustomStopDefaults
+{
+    /// <summary>توقف دلخواه فصل ندارد — کاربر خودش تاریخ سفرش را می‌داند.</summary>
+    public static readonly IReadOnlySet<int> AllMonths = new HashSet<int>(Enumerable.Range(1, 12));
+}
+
 /// <summary>ساخت برنامهٔ سفر — ارکستراسیون دامنه، بدون منطق کسب‌وکار.</summary>
 /// <remarks>
 /// این‌جا هیچ فرمولی نیست. مسئول فقط داده را می‌آورد، اجزای دامنه را به‌هم وصل
@@ -126,6 +132,49 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         var radius = Distance.FromKilometers(query.RadiusKm);
         var excluded = query.ExcludedPoiIds.ToHashSet(StringComparer.Ordinal);
         var pinned = query.PinnedPoiIds.ToHashSet(StringComparer.Ordinal);
+
+        // ─── توقف‌های دلخواه کاربر ───
+        // مثل سنجاق رفتار می‌کنند: سنجاق قیدها را دور می‌زند، پس «دور بودن» یا
+        // «فصل نامناسب» جلوی چیزی را که کاربر با دست روی نقشه گذاشته نمی‌گیرد.
+        // دادهٔ غنی ندارند — پیش‌فرض‌های خنثی می‌گیرند و شهرشان نزدیک‌ترین شهر است.
+        if (query.CustomStops.Count > 0)
+        {
+            var withCustom = new List<PointOfInterest>(allPois);
+
+            foreach (var stop in query.CustomStops)
+            {
+                var location = Coordinate.Create(stop.Lat, stop.Lng);
+
+                if (location.IsFailure || withCustom.Any(p => string.Equals(p.Id, stop.Id, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                var nearestCity = cities.MinBy(c => c.Location.StraightLineTo(location.Value).Kilometers);
+
+                withCustom.Add(new PointOfInterest(
+                    stop.Id,
+                    stop.Name,
+                    nearestCity?.Id ?? origin.Id,
+                    location.Value,
+                    PoiCategory.Entertainment,
+                    rating: 4.0,
+                    TimeSpan.FromMinutes(stop.VisitMinutes),
+                    Money.FromToman(0),
+                    CustomStopDefaults.AllMonths,
+                    isIndoor: false,
+                    Difficulty.None,
+                    minimumAge: 0,
+                    isKidFriendly: true,
+                    isSeniorFriendly: true,
+                    OffroadCapability.Paved,
+                    "توقف دلخواه شما — از روی نقشه اضافه شده."));
+
+                pinned.Add(stop.Id);
+            }
+
+            allPois = withCustom;
+        }
 
         // ─── قیدهای سخت، به‌صورت ترکیبی ───
         // محدودهٔ جغرافیایی به نوع سفر بستگی دارد:

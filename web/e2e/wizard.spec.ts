@@ -427,6 +427,44 @@ test('حین سفر: چک‌این، هزینهٔ واقعی و تسویه‌ح�
   await expect(page.getByText(/کمترین تعداد جابه‌جایی پول/)).toBeVisible()
 })
 
+test('توقف دلخواه: جست‌وجو روی نقشه، پین و ساخت دوبارهٔ برنامه', async ({ page }) => {
+  await stubApi(page)
+
+  // کاشی‌های نقشه به آزمون ربطی ندارند؛ بدون شبکهٔ بیرونی هم Leaflet بالا می‌آید.
+  await page.route('**/tile.openstreetmap.org/**', (route) => route.abort())
+  await page.route('**/api/geo/search**', (route) =>
+    route.fulfill({ json: { items: [{ name: 'باغ گیلاس عمو', lat: 35.83, lng: 50.95 }] } }),
+  )
+
+  // ثبتِ بدنهٔ هر درخواست ساخت برنامه — ثبتِ دیرتر بر stubApi مقدم است.
+  const planBodies: unknown[] = []
+  await page.route('**/api/trips/plan', (route) => {
+    planBodies.push(route.request().postDataJSON())
+
+    return route.fulfill({ json: PLAN })
+  })
+
+  await generatePlan(page)
+
+  await page.getByRole('button', { name: 'افزودن توقف دلخواه از نقشه' }).click()
+  await page.getByLabel('جست‌وجوی مکان').fill('باغ گیلاس')
+  await page.getByRole('button', { name: 'جست‌وجو' }).click()
+  await page.getByText('باغ گیلاس عمو').click()
+  await page.getByRole('button', { name: 'افزودن به برنامه' }).click()
+
+  // برنامه باید با توقف دلخواه از نو ساخته شود — با همان عنوان و مختصات.
+  await expect
+    .poll(() => planBodies.length, { message: 'ساخت دوبارهٔ برنامه با توقف دلخواه' })
+    .toBeGreaterThan(1)
+
+  const last = planBodies.at(-1) as {
+    customStops?: { name: string; lat: number; lng: number; visitMinutes: number }[]
+  }
+
+  expect(last.customStops?.[0]?.name).toBe('باغ گیلاس عمو')
+  expect(last.customStops?.[0]?.visitMinutes).toBe(60)
+})
+
 test('انتخاب تم بین بارگذاری‌ها می‌ماند', async ({ page }) => {
   await stubApi(page)
   await page.goto('/')

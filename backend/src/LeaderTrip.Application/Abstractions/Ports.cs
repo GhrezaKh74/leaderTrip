@@ -234,6 +234,30 @@ public sealed class NoPlaceDiscovery : IPlaceDiscovery
         Task.FromResult<IReadOnlyList<DiscoveredPlace>>([]);
 }
 
+/// <summary>نتیجهٔ جست‌وجوی نام مکان.</summary>
+/// <param name="Name">نام نمایشی — همان‌که کاربر با آن جست‌وجو را می‌شناسد.</param>
+/// <param name="Location">مختصات.</param>
+public sealed record GeocodedPlace(string Name, Coordinate Location);
+
+/// <summary>جست‌وجوی مکان با نام — برای «افزودن توقف دلخواه» روی نقشه.</summary>
+/// <remarks>
+/// از <see cref="IPlaceDiscovery"/> جداست چون کاری دیگر می‌کند: آن یکی «اطراف
+/// این نقطه چه هست؟» را جواب می‌دهد، این یکی «این اسم کجاست؟» را. فهرست خالی
+/// یعنی سرویس در دسترس نبود یا چیزی پیدا نشد — و کاربر همیشه راه دستی دارد:
+/// انتخاب مستقیم نقطه روی نقشه.
+/// </remarks>
+public interface IGeocoder
+{
+    Task<IReadOnlyList<GeocodedPlace>> SearchAsync(string text, CancellationToken cancellationToken);
+}
+
+/// <summary>وقتی سرویس جست‌وجوی مکان پیکربندی نشده است.</summary>
+public sealed class NoGeocoder : IGeocoder
+{
+    public Task<IReadOnlyList<GeocodedPlace>> SearchAsync(string text, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<GeocodedPlace>>([]);
+}
+
 /// <summary>هندسهٔ مسیر واقعی جاده از میان نقاط، به ترتیب.</summary>
 /// <remarks>
 /// جدا از <see cref="Domain.Routing.IRoadDistanceProvider"/> است چون مصرفش

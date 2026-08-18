@@ -5,6 +5,7 @@ using LeaderTrip.Application.Behaviors;
 using LeaderTrip.Application.Prices.UpdatePriceBook;
 using LeaderTrip.Application.Reference.DiscoverPlaces;
 using LeaderTrip.Application.Reference.GetPois;
+using LeaderTrip.Application.Reference.SearchPlaces;
 using LeaderTrip.Application.Reference.GetReferenceData;
 using LeaderTrip.Application.Trips.GeneratePlan;
 using LeaderTrip.Application.Trips.OptimizeBudget;
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.TryAddScoped<IRoadNetworkWarmup, NoRoadNetworkWarmup>();
         services.TryAddScoped<IElevationProvider, NoElevationProvider>();
         services.TryAddScoped<IPlaceDiscovery, NoPlaceDiscovery>();
+        services.TryAddScoped<IGeocoder, NoGeocoder>();
         services.TryAddScoped<IRouteGeometryProvider, NoRouteGeometryProvider>();
         services.TryAddSingleton<IRoadDistanceProvider>(NoRoadDistanceProvider.Instance);
 
@@ -92,6 +94,14 @@ public static class DependencyInjection
         services.AddScoped<DiscoverPlacesHandler>();
         services.AddScoped<IQueryHandler<DiscoverPlacesQuery, DiscoveredPlacesResponse>>(sp =>
             sp.GetRequiredService<DiscoverPlacesHandler>());
+
+        services.AddScoped<SearchPlacesHandler>();
+        services.AddScoped<IQueryHandler<SearchPlacesQuery, SearchPlacesResponse>>(sp =>
+            new ValidationDecorator<SearchPlacesQuery, SearchPlacesResponse>(
+                sp.GetRequiredService<SearchPlacesHandler>(),
+                sp.GetService<IValidator<SearchPlacesQuery>>()));
+
+        services.AddScoped<IValidator<SearchPlacesQuery>, SearchPlacesValidator>();
 
         // ─── بهینه‌ساز بودجه ───
         // مسئولِ برنامه را از ظرف می‌گیرد، یعنی همان مسیرِ اعتبارسنجی‌شده را چند
