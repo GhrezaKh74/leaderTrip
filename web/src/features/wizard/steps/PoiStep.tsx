@@ -18,6 +18,7 @@ import { alpha } from '@mui/material/styles'
 
 import { useDiscoverPlaces, usePois } from '../../../api/queries'
 import type { City, Poi } from '../../../api/schemas'
+import { haversineKm } from '../../../lib/geo'
 import { CATEGORY_LABEL } from '../labels'
 import { CATEGORY_VISUAL } from '../categoryVisual'
 import type { TripForm } from '../tripSchema'
@@ -36,9 +37,14 @@ export function PoiStep({ cities }: { cities: City[] }) {
   const [search, setSearch] = useState('')
 
   const originCityId = watch('originCityId')
+  const destinationCityId = watch('destinationCityId')
   const pois = usePois()
 
   const origin = cities.find((city) => city.id === originCityId)
+  // کانون فهرست: اگر مقصد انتخاب شده، جاذبه‌ها باید مالِ همان‌جا باشند —
+  // کسی که به اصفهان می‌رود، فهرست جاهای اطراف تهران به کارش نمی‌آید.
+  // سفر حلقه‌ای (بی‌مقصد) دور مبدأ می‌گردد، پس آن‌جا مبدأ کانون است.
+  const focus = cities.find((city) => city.id === destinationCityId) ?? origin
   const cityName = useMemo(() => {
     const byId = new Map(cities.map((city) => [city.id, city.name]))
 
@@ -49,12 +55,22 @@ export function PoiStep({ cities }: { cities: City[] }) {
     const all = pois.data?.items ?? []
     const term = search.trim()
 
-    if (term === '') return all.slice(0, 12)
+    // نزدیک‌ترین‌ها به کانون سفر اول — نه ترتیبِ اتفاقی پایگاه داده.
+    const byDistance = (list: Poi[]) =>
+      focus === undefined
+        ? list
+        : [...list].sort(
+            (a, b) =>
+              haversineKm(a.lat, a.lng, focus.lat, focus.lng) -
+              haversineKm(b.lat, b.lng, focus.lat, focus.lng),
+          )
 
-    return all
-      .filter((poi) => poi.name.includes(term) || cityName(poi.cityId).includes(term))
-      .slice(0, 20)
-  }, [pois.data, search, cityName])
+    if (term === '') return byDistance(all).slice(0, 12)
+
+    return byDistance(
+      all.filter((poi) => poi.name.includes(term) || cityName(poi.cityId).includes(term)),
+    ).slice(0, 20)
+  }, [pois.data, search, cityName, focus])
 
   return (
     <Stack spacing={3}>
@@ -128,7 +144,7 @@ export function PoiStep({ cities }: { cities: City[] }) {
         />
       )}
 
-      {origin ? <DiscoverySection origin={origin} /> : null}
+      {focus ? <DiscoverySection around={focus} /> : null}
     </Stack>
   )
 }
@@ -223,7 +239,7 @@ function PoiRow({
  * حفرهٔ پوشش» است نه بخش اصلی. نتیجه هم با برچسب «دادهٔ خام» نشان داده می‌شود،
  * چون مدت بازدید و بلیت و سختی مسیر ندارد.</p>
  */
-function DiscoverySection({ origin }: { origin: City }) {
+function DiscoverySection({ around }: { around: City }) {
   const discover = useDiscoverPlaces()
 
   return (
@@ -231,11 +247,11 @@ function DiscoverySection({ origin }: { origin: City }) {
       <Button
         variant="outlined"
         startIcon={discover.isPending ? <CircularProgress size={16} /> : <CompassIcon />}
-        onClick={() => discover.mutate({ lat: origin.lat, lng: origin.lng, radiusKm: 20 })}
+        onClick={() => discover.mutate({ lat: around.lat, lng: around.lng, radiusKm: 20 })}
         disabled={discover.isPending}
         sx={{ alignSelf: 'flex-start' }}
       >
-        {discover.isPending ? 'در حال جست‌وجو…' : `کشف جاهای دیگر اطراف ${origin.name}`}
+        {discover.isPending ? 'در حال جست‌وجو…' : `کشف جاهای دیگر اطراف ${around.name}`}
       </Button>
 
       {discover.isError ? <Alert severity="warning">{discover.error.message}</Alert> : null}

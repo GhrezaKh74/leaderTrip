@@ -4,12 +4,20 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import IconButton from '@mui/material/IconButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
 import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
+
+import MoreIcon from '@mui/icons-material/MoreHoriz'
 
 import {
   CarIcon,
@@ -88,6 +96,9 @@ export function PlanPage({
 }) {
   const [tab, setTab] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
+  // منوی «بیشتر» روی گوشی: چاپ/اشتراک/خروجی کنش‌های گاه‌به‌گاه‌اند و سه
+  // دکمهٔ متنی جا می‌خوردند.
+  const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null)
   const reference = useReferenceData()
   const pois = usePois()
 
@@ -163,7 +174,7 @@ export function PlanPage({
           sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' } }}
         >
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <Typography variant="h1" component="h2">
+            <Typography variant="h1" component="h2" sx={{ fontSize: { xs: '1.55rem', sm: '2.25rem' } }}>
               برنامهٔ {faNum(plan.days.length)} روزه
             </Typography>
 
@@ -179,45 +190,80 @@ export function PlanPage({
             />
           </Stack>
 
-          {/* روی گوشی، شش دکمه سه ردیف می‌شدند و نصف صفحهٔ اول را می‌خوردند؛
-              یک ردیفِ اسکرول‌شونده همان‌ها را در یک خط نگه می‌دارد. */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              flexWrap: { xs: 'nowrap', sm: 'wrap' },
-              gap: 1,
-              overflowX: { xs: 'auto', sm: 'visible' },
-              pb: { xs: 0.5, sm: 0 },
-              mx: { xs: -0.5, sm: 0 },
-              px: { xs: 0.5, sm: 0 },
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-              '& > *': { flexShrink: 0 },
-              // محو لبهٔ سرریز: بدون نوار اسکرول، تنها نشانهٔ «دکمهٔ بیشتری هست»
-              // همین بریده‌دیده‌شدن دکمهٔ لبه است — محو ملایم آن را عمدی نشان می‌دهد.
-              // در راست‌به‌چپ سرریز به سمت چپِ دیداری می‌رود، پس محو در لبهٔ چپ فیزیکی است.
-              maskImage: {
-                xs: 'linear-gradient(90deg, transparent 0, #000 56px)',
-                sm: 'none',
-              },
-            }}
-          >
-            <Button onClick={onNew} startIcon={<AddIcon sx={{ fontSize: 18 }} />} variant="outlined" size="small">
+          {/* روی گوشی، شش دکمهٔ متنی نصف صفحهٔ اول را می‌خوردند. حالا: کنش
+              اصلی (ذخیره) متنی می‌ماند، «سفر جدید» و «ویرایش» آیکونی
+              می‌شوند، و کنش‌های گاه‌به‌گاه (چاپ/اشتراک/خروجی) پشت منوی «بیشتر»
+              می‌روند. دسکتاپ جا دارد؛ همه متنی می‌مانند. */}
+          <Stack direction="row" spacing={1} sx={{ flexWrap: { sm: 'wrap' }, gap: 1, alignItems: 'center' }}>
+            <Tooltip title="سفر جدید">
+              <IconButton
+                onClick={onNew}
+                aria-label="سفر جدید"
+                size="small"
+                sx={{
+                  display: { xs: 'inline-flex', sm: 'none' },
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: '10px',
+                }}
+              >
+                <AddIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+            <Button
+              onClick={onNew}
+              startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+              variant="outlined"
+              size="small"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
               سفر جدید
             </Button>
 
             <SaveTripButton input={input} onSaved={setToast} />
 
-            <Button onClick={onEdit} startIcon={<EditIcon />} variant="outlined" size="small">
+            <Tooltip title="ویرایش ورودی‌ها">
+              <IconButton
+                onClick={onEdit}
+                aria-label="ویرایش ورودی‌ها"
+                size="small"
+                sx={{
+                  display: { xs: 'inline-flex', sm: 'none' },
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: '10px',
+                }}
+              >
+                <EditIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Button
+              onClick={onEdit}
+              startIcon={<EditIcon />}
+              variant="outlined"
+              size="small"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
               ویرایش ورودی‌ها
             </Button>
 
-            <Button onClick={() => window.print()} startIcon={<PrintIcon />} variant="outlined" size="small">
+            <Button
+              onClick={() => window.print()}
+              startIcon={<PrintIcon />}
+              variant="outlined"
+              size="small"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
               چاپ
             </Button>
 
-            <Button onClick={() => void share()} startIcon={<ShareIcon />} variant="outlined" size="small">
+            <Button
+              onClick={() => void share()}
+              startIcon={<ShareIcon />}
+              variant="outlined"
+              size="small"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+            >
               اشتراک
             </Button>
 
@@ -226,9 +272,62 @@ export function PlanPage({
               startIcon={<DownloadIcon />}
               variant="outlined"
               size="small"
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
             >
               خروجی
             </Button>
+
+            <Tooltip title="چاپ، اشتراک و خروجی">
+              <IconButton
+                aria-label="کنش‌های بیشتر"
+                size="small"
+                onClick={(event) => setMoreAnchor(event.currentTarget)}
+                sx={{
+                  display: { xs: 'inline-flex', sm: 'none' },
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: '10px',
+                }}
+              >
+                <MoreIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Menu anchorEl={moreAnchor} open={moreAnchor !== null} onClose={() => setMoreAnchor(null)}>
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null)
+                  window.print()
+                }}
+              >
+                <ListItemIcon>
+                  <PrintIcon sx={{ fontSize: 19 }} />
+                </ListItemIcon>
+                <ListItemText>چاپ برنامه</ListItemText>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null)
+                  void share()
+                }}
+              >
+                <ListItemIcon>
+                  <ShareIcon sx={{ fontSize: 19 }} />
+                </ListItemIcon>
+                <ListItemText>اشتراک‌گذاری</ListItemText>
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setMoreAnchor(null)
+                  downloadTrip(input)
+                }}
+              >
+                <ListItemIcon>
+                  <DownloadIcon sx={{ fontSize: 19 }} />
+                </ListItemIcon>
+                <ListItemText>خروجی فایل سفر</ListItemText>
+              </MenuItem>
+            </Menu>
           </Stack>
         </Stack>
 

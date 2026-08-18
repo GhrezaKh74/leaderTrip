@@ -15,7 +15,8 @@ export interface GeoCity {
 
 const EarthRadiusKm = 6371
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+/** فاصلهٔ کرویِ دو مختصات به کیلومتر — برای مرتب‌سازی «نزدیک به سفر». */
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const rad = (deg: number) => (deg * Math.PI) / 180
   const dLat = rad(lat2 - lat1)
   const dLng = rad(lng2 - lng1)
