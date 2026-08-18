@@ -19,12 +19,13 @@ function precachePlugin(): Plugin {
       const swPath = join(outDir, 'sw.js')
 
       const assets = Object.keys(bundle)
-        .filter((name) => /\.(js|css|woff2?)$/.test(name))
+        // svg هم داخل فهرست است: آیکون اپ حالا دارایی هش‌دار بیلد است، نه فایل public.
+        .filter((name) => /\.(js|css|woff2?|svg)$/.test(name))
         .map((name) => `/${name}`)
 
       const shell = [
         '/', '/index.html', '/manifest.webmanifest', '/favicon.svg',
-        '/icons/app-icon.svg', '/icons/icon-192.png',
+        '/icons/icon-192.png',
         ...assets,
       ]
 

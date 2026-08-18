@@ -14,6 +14,9 @@ import Box from '@mui/material/Box'
 
 import { MoonIcon, OfflineIcon, SunIcon } from './components/icons'
 import { AccountButton } from './features/auth/AccountButton'
+// آیکون از داخل سورس می‌آید و با بقیهٔ باندل هش می‌خورد — نه از مسیر خامِ
+// public که اگر روی سروری نبود، بی‌صدا ۴۰۴ می‌شود.
+import appIcon from './assets/app-icon.svg'
 import { glass } from './theme/tokens'
 
 import { RtlProvider } from './theme/RtlProvider'
@@ -121,7 +124,7 @@ export function App() {
           {/* آیکون رسمی اپ — همانی که روی گوشی نصب می‌شود، همان‌جا که اسم است. */}
           <Box
             component="img"
-            src="/icons/app-icon.svg"
+            src={appIcon}
             alt=""
             sx={{
               width: 38,
