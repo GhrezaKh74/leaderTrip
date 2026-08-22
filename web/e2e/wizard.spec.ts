@@ -427,6 +427,18 @@ test('حین سفر: چک‌این، هزینهٔ واقعی و تسویه‌ح�
   await expect(page.getByText(/کمترین تعداد جابه‌جایی پول/)).toBeVisible()
 })
 
+test('ساخت سریع: از گام اول با یک کلیک برنامه می‌سازد', async ({ page }) => {
+  const { planCalls } = await stubApi(page)
+  await page.goto('/')
+  await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
+
+  // بدون هیچ پیمایشی در گام‌ها — همان پیش‌فرض‌ها، یک کلیک.
+  await page.getByRole('button', { name: 'ساخت سریع' }).click()
+
+  await expect(page.getByRole('tab', { name: 'برنامه' })).toBeVisible()
+  expect(planCalls()).toBe(1)
+})
+
 test('توقف دلخواه: جست‌وجو روی نقشه، پین و ساخت دوبارهٔ برنامه', async ({ page }) => {
   await stubApi(page)
 

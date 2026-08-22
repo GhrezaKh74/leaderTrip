@@ -6,6 +6,7 @@ using LeaderTrip.Domain.Entities;
 using LeaderTrip.Domain.Enums;
 using LeaderTrip.Domain.Planning;
 using LeaderTrip.Domain.Pricing;
+using LeaderTrip.Domain.Routing;
 using LeaderTrip.Domain.Scoring;
 using LeaderTrip.Domain.Specifications;
 using LeaderTrip.Domain.Specifications.Poi;
@@ -39,6 +40,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
     private readonly IRoadNetworkWarmup _roadNetwork;
     private readonly PoiScorer _scorer;
     private readonly ItinerarySelector _selector;
+    private readonly TravelPlanner _travelPlanner;
     private readonly DayScheduler _scheduler;
     private readonly CostCalculator _costCalculator;
 
@@ -52,6 +54,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         IRoadNetworkWarmup roadNetwork,
         PoiScorer scorer,
         ItinerarySelector selector,
+        TravelPlanner travelPlanner,
         DayScheduler scheduler,
         CostCalculator costCalculator)
     {
@@ -64,6 +67,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
         _roadNetwork = roadNetwork;
         _scorer = scorer;
         _selector = selector;
+        _travelPlanner = travelPlanner;
         _scheduler = scheduler;
         _costCalculator = costCalculator;
     }
@@ -280,6 +284,41 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
 
         var usable = (TimeSpan.FromHours(query.DayEndHour - query.DayStartHour) - TimeSpan.FromMinutes(150))
             * paceShare;
+
+        // ─── امکان‌سنجی مقصد، پیش از انتخاب ───
+        // اگر خودِ رفتن به مقصد (و برگشت) در بودجهٔ رانندگی سفر جا نشود،
+        // انتخاب‌گر هیچ جاذبه‌ای برنمی‌دارد و نتیجه، برنامهٔ خالیِ بی‌توضیح
+        // می‌شد — بدترین جواب ممکن به کاربر. این‌جا همان واقعیت، با عدد و
+        // راه چاره گفته می‌شود.
+        if (destination is not null)
+        {
+            var toDestination = _travelPlanner.Plan(
+                origin.Location,
+                destination.Location,
+                TravelPlanner.InferTerrain(
+                    origin.Climate,
+                    destination.Climate,
+                    origin.Location.StraightLineTo(destination.Location)),
+                vehicle,
+                group.PaceFactor);
+
+            var baseline = returnsToOrigin ? toDestination.Duration * 2 : toDestination.Duration;
+            var budget = TimeSpan.FromHours(query.MaxDrivingHoursPerDay * query.Days);
+
+            if (baseline > budget)
+            {
+                int neededDays = (int)Math.Ceiling(baseline.TotalHours / query.MaxDrivingHoursPerDay);
+                string journey = returnsToOrigin
+                    ? $"رفت‌وبرگشت {origin.Name}–{destination.Name}"
+                    : $"مسیر {origin.Name} تا {destination.Name}";
+
+                return Result.Failure<TripPlanResponse>(DomainError.Validation(
+                    "plan.destinationTooFar",
+                    $"{journey} حدود {Math.Round(baseline.TotalHours)} ساعت رانندگی دارد و با سقف "
+                    + $"{query.MaxDrivingHoursPerDay:0.#} ساعت در روز، در {query.Days} روز جا نمی‌شود. "
+                    + $"دست‌کم {neededDays} روز لازم است — یا سقف رانندگی روزانه را بیشتر کنید."));
+            }
+        }
 
         var route = _selector.Select(candidates, new SelectionRequest
         {

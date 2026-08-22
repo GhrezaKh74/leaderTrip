@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack'
 import Step from '@mui/material/Step'
 import StepLabel from '@mui/material/StepLabel'
 import Stepper from '@mui/material/Stepper'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
@@ -229,6 +230,22 @@ export function WizardPage({
     if (valid) setActiveStep((current) => current + 1)
   }
 
+  /**
+   * ساخت سریع — از همان گام اول، با تنظیمات پیشنهادی برای باقی گام‌ها.
+   *
+   * <p>بیشترِ کاربرها فقط مبدأ/مقصد و چند روز را می‌دانند؛ چهار گام دیگر
+   * برایشان «تنظیمات پیش‌فرضِ خوب» است. این دکمه همان چهار گام را با
+   * پیش‌فرض‌های عمومی می‌پرد — و هر وقت خواستند، با «ویرایش ورودی‌ها» از
+   * صفحهٔ برنامه برمی‌گردند و ریز می‌کنند.</p>
+   */
+  const quickBuild = async () => {
+    const step = STEPS[0]
+    if (!step) return
+
+    const valid = await form.trigger(step.fields)
+    if (valid) await submit()
+  }
+
   const submit = form.handleSubmit(async (values) => {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(values))
@@ -444,28 +461,55 @@ export function WizardPage({
             حالا دکمهٔ ارسال بود — کاربر با یک کلیک از گام سوم مستقیم به برنامهٔ
             ساخته‌شده می‌رسید و گام «سبک سفر» را هرگز نمی‌دید.
           */}
-          {isLast ? (
-            <Button
-              key="submit"
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={generate.isPending}
-              startIcon={generate.isPending ? <CircularProgress size={18} color="inherit" /> : null}
-            >
-              {generate.isPending ? 'در حال ساختن برنامه…' : 'ساخت برنامه'}
-            </Button>
-          ) : (
-            <Button
-              key="next"
-              type="button"
-              onClick={() => void next()}
-              variant="contained"
-              endIcon={<ArrowBackIcon />}
-            >
-              بعدی
-            </Button>
-          )}
+          <Stack direction="row" spacing={1}>
+            {/* ساخت سریع فقط در گام اول: همین‌جا همه‌چیزِ لازم پرسیده شده؛
+                باقی گام‌ها تنظیم‌اند، نه شرط. */}
+            {activeStep === 0 ? (
+              <Tooltip title="همین حالا با تنظیمات پیشنهادی برای باقی گام‌ها — بعداً از «ویرایش ورودی‌ها» ریز می‌کنید">
+                <span>
+                  <Button
+                    key="quick"
+                    type="button"
+                    variant="outlined"
+                    disabled={generate.isPending}
+                    onClick={() => void quickBuild()}
+                    startIcon={
+                      generate.isPending ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : (
+                        <CheckIcon sx={{ fontSize: 18 }} />
+                      )
+                    }
+                  >
+                    {generate.isPending ? 'در حال ساختن…' : 'ساخت سریع'}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : null}
+
+            {isLast ? (
+              <Button
+                key="submit"
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={generate.isPending}
+                startIcon={generate.isPending ? <CircularProgress size={18} color="inherit" /> : null}
+              >
+                {generate.isPending ? 'در حال ساختن برنامه…' : 'ساخت برنامه'}
+              </Button>
+            ) : (
+              <Button
+                key="next"
+                type="button"
+                onClick={() => void next()}
+                variant="contained"
+                endIcon={<ArrowBackIcon />}
+              >
+                بعدی
+              </Button>
+            )}
+          </Stack>
         </Stack>
 
         <Stack

@@ -154,9 +154,12 @@ export const DEFAULT_TRIP: TripForm = {
   originCityId: 'tehran',
   destinationCityId: null,
   destinationMode: 'Mixed',
+  // پیش‌فرض‌ها = رایج‌ترین سفر: آخر هفتهٔ ۳ روزه، شعاع ۳۰۰ کیلومتر (نه ۴۰۰ی که
+  // نصف فلات را می‌گرفت)، رانندگی تا ۶ ساعت و ریتم متعادل — کسی که «ساخت سریع»
+  // می‌زند باید به برنامه‌ای برسد که برای بیشترِ گروه‌ها جواب است.
   startDate: isoToday(),
   days: 3,
-  radiusKm: 400,
+  radiusKm: 300,
   vehicleId: 'sedan-206',
   vehicleCount: 1,
   travelers: [
@@ -167,14 +170,14 @@ export const DEFAULT_TRIP: TripForm = {
   style: 'Balanced',
   lodging: 'Hotel',
   interests: [],
-  maxDrivingHoursPerDay: 5,
+  maxDrivingHoursPerDay: 6,
   dayStartHour: 8,
   dayEndHour: 21,
   roundTrip: true,
   checkInFirst: false,
   middayRest: false,
   eveningProgram: true,
-  dayPace: 'Packed',
+  dayPace: 'Balanced',
   lunchStyle: 'Restaurant',
   firstDayStartHour: null,
   subsidizedFuelShare: 0.6,

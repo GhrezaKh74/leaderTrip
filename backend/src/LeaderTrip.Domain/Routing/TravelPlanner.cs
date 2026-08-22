@@ -43,6 +43,15 @@ public sealed class TravelPlanner
     /// <remarks>گذر از خزر به فلات مرکزی یعنی عبور از البرز.</remarks>
     public static Terrain InferTerrain(Climate from, Climate to, Distance straightLine)
     {
+        // پای بلندِ بین‌شهری از راه اصلی می‌رود. اقلیم «کوهستانی» مقصد یعنی
+        // شهرش در کوه است، نه اینکه ۵۰۰ کیلومتر جاده کوهستانی باشد — با ضریب
+        // کوهستان، تهران–تبریز ۱۲ ساعت حساب می‌شد و هیچ برنامه‌ای جا نمی‌گرفت؛
+        // واقعیتش راه آزادراهیِ حدود ۶–۷ ساعت است.
+        if (straightLine.Kilometers > 250)
+        {
+            return Terrain.Freeway;
+        }
+
         bool mountainous = from == Climate.Mountain || to == Climate.Mountain;
         bool crossesAlborz = (from == Climate.Caspian) != (to == Climate.Caspian)
                              && straightLine.Kilometers > 40;
