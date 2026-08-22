@@ -48,10 +48,19 @@ var app = builder.Build();
 
 // پشت پروکسی یا در داکر، بدون این، IP همهٔ درخواست‌ها یکی دیده می‌شود و
 // محدودسازی نرخ عملاً سراسری می‌شود نه به‌ازای کلاینت.
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+var forwarded = new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-});
+};
+
+// پیش‌فرض فقط loopback را پروکسی مطمئن می‌داند؛ در compose، پروکسی از شبکهٔ
+// داخلی داکر می‌آید و سرآیندش نادیده گرفته می‌شد — یعنی IP همه یکی و
+// محدودسازی نرخ عملاً سراسری. شبکه‌های خصوصی جای پروکسی خودی‌اند، نه اینترنت.
+forwarded.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("10.0.0.0/8"));
+forwarded.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+forwarded.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("192.168.0.0/16"));
+
+app.UseForwardedHeaders(forwarded);
 
 // استثنای پیش‌بینی‌نشده هرگز نباید جزئیات داخلی را بیرون بدهد؛ در لاگ کامل است.
 app.UseExceptionHandler(handler => handler.Run(async context =>

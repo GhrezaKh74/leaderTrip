@@ -10,8 +10,13 @@ import { registerServiceWorker } from './offline/registerServiceWorker'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // تلاش دوبارهٔ خودکار روی خطای ۴۰۰ بی‌فایده است و فقط تشخیص را کند می‌کند.
-      retry: 1,
+      // تلاش دوباره فقط برای شکستی که تکرارش معنا دارد: شبکه (status 0) یا
+      // خطای سرور. تکرار ۴xx فقط تشخیص را کند می‌کند.
+      retry: (failureCount: number, error: unknown) => {
+        const status = (error as { status?: number } | undefined)?.status ?? 0
+
+        return failureCount < 1 && (status === 0 || status >= 500)
+      },
       refetchOnWindowFocus: false,
     },
   },

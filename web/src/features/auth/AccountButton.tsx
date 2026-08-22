@@ -180,15 +180,20 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: () => vo
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               autoFocus
+              autoComplete="name"
             />
           ) : null}
 
+          {/* autocomplete درست یعنی مدیر گذرواژه و تکمیل خودکار iOS کار کنند —
+              بدون آن، کاربر موبایل گذرواژه را هر بار دستی می‌نویسد. */}
           <TextField
             type="email"
             label="ایمیل"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             autoFocus={mode === 'login'}
+            autoComplete="email"
+            slotProps={{ htmlInput: { inputMode: 'email', dir: 'ltr' } }}
           />
 
           <TextField
@@ -196,7 +201,12 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: () => vo
             label="گذرواژه"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            helperText={mode === 'register' ? 'دست‌کم ۸ نویسه — قاعدهٔ دیگری ندارد.' : ' '}
+            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+            helperText={
+              mode === 'register'
+                ? 'دست‌کم ۸ نویسه. بازیابی گذرواژه فعلاً ممکن نیست؛ آن را جایی امن نگه دارید.'
+                : ' '
+            }
           />
 
           {submit.isError ? <Alert severity="error">{submit.error.message}</Alert> : null}

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Backdrop from '@mui/material/Backdrop'
 import Chip from '@mui/material/Chip'
@@ -12,7 +12,11 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 
+import InfoIcon from '@mui/icons-material/InfoOutlined'
+import Button from '@mui/material/Button'
+
 import { MoonIcon, OfflineIcon, SunIcon } from './components/icons'
+import { AboutDialog } from './components/AboutDialog'
 import { AccountButton } from './features/auth/AccountButton'
 // آیکون از داخل سورس می‌آید و با بقیهٔ باندل هش می‌خورد — نه از مسیر خامِ
 // public که اگر روی سروری نبود، بی‌صدا ۴۰۴ می‌شود.
@@ -67,7 +71,15 @@ export function App() {
   // فرم را با مقدارهای تازه از نو بسازد — reset دستی فرمِ نیمه‌پرشده خطاخیز است.
   const [loaded, setLoaded] = useState<{ trip: TripForm; sequence: number } | null>(null)
 
+  // «ویرایش ورودی‌ها» برنامه را دور نمی‌ریزد: ویزارد باز می‌شود ولی برنامهٔ
+  // فعلی سر جایش می‌ماند تا «بازگشت به برنامه» بدون ساخت دوباره ممکن باشد.
+  const [editing, setEditing] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
+
   const rebuild = useGeneratePlan()
+
+  // انصرافِ ساخت دوباره: پاسخ دیررس نباید بی‌خبر برنامه را عوض کند.
+  const rebuildIgnored = useRef(false)
 
   // گالری کنترل کیفیت آیکون‌ها — «/?icons». سطح کاربری نیست؛ جایی است که هر
   // آیکون تازه باید یک‌بار با چشم دیده شود.
@@ -79,17 +91,38 @@ export function App() {
   const showAdmin =
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('admin')
 
-  useEffect(() => {
-    if (shared !== null) {
-      clearShareParam()
-      setToast('سفر از لینک اشتراکی بارگذاری شد. برای دیدن برنامه، آن را بسازید.')
-    }
-  }, [shared])
-
   const accept = (plan: TripPlan, input: TripForm) => {
     savePlan(plan, input)
     setGenerated({ plan, input })
+    setEditing(false)
   }
+
+  // لینک اشتراکی باید مستقیم به خودِ برنامه برسد — ارزش محصول همان است، نه
+  // فرمِ نیمه‌پُر. آفلاین که ساختن ممکن نیست، فرم پیش‌پُر با توضیح می‌ماند.
+  const sharedBuildStarted = useRef(false)
+
+  useEffect(() => {
+    if (shared === null || sharedBuildStarted.current) return
+
+    sharedBuildStarted.current = true
+    clearShareParam()
+
+    if (!online) {
+      setToast('سفر از لینک اشتراکی رسید؛ ساخت برنامه به اینترنت نیاز دارد.')
+
+      return
+    }
+
+    rebuildIgnored.current = false
+    rebuild.mutate(shared, {
+      onSuccess: (plan) => {
+        if (!rebuildIgnored.current) accept(plan, shared)
+      },
+      onError: (error) => setToast(`ساخت برنامهٔ اشتراکی نشد: ${error.message}`),
+    })
+    // فقط یک‌بار در شروع؛ وابستگی‌ها عمداً محدودند.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared, online])
 
   /**
    * ساخت دوباره با ورودی تغییرکرده.
@@ -103,8 +136,11 @@ export function App() {
     const taste = learnedTaste(loadJournal(`${next.originCityId}|${next.startDate}|${next.days}`))
     const withTaste: TripForm = { ...next, learnedTaste: taste }
 
+    rebuildIgnored.current = false
     rebuild.mutate(withTaste, {
-      onSuccess: (plan) => accept(plan, withTaste),
+      onSuccess: (plan) => {
+        if (!rebuildIgnored.current) accept(plan, withTaste)
+      },
       onError: (error) => setToast(error.message),
     })
   }
@@ -173,6 +209,12 @@ export function App() {
               {resolved === 'dark' ? <SunIcon /> : <MoonIcon />}
             </IconButton>
           </Tooltip>
+
+          <Tooltip title="دربارهٔ لیدرتریپ">
+            <IconButton aria-label="دربارهٔ لیدرتریپ" onClick={() => setAboutOpen(true)}>
+              <InfoIcon />
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
 
@@ -185,22 +227,32 @@ export function App() {
           <Suspense fallback={<CircularProgress sx={{ display: 'block', mx: 'auto', my: 6 }} />}>
             <IconGallery />
           </Suspense>
-        ) : generated === null ? (
+        ) : generated === null || editing ? (
           <WizardPage
             key={loaded?.sequence ?? 0}
             initial={loaded?.trip ?? shared}
             onPlanReady={accept}
+            {...(editing && generated !== null
+              ? { onCancelEdit: () => setEditing(false) }
+              : {})}
           />
         ) : (
           <PlanPage
             plan={generated.plan}
             input={generated.input}
             online={online}
-            onEdit={() => setGenerated(null)}
+            onEdit={() => {
+              setLoaded((current) => ({
+                trip: generated.input,
+                sequence: (current?.sequence ?? 0) + 1,
+              }))
+              setEditing(true)
+            }}
             // «سفر جدید» یعنی ویزارد با پیش‌فرض‌ها، نه فرم نیمه‌پر سفر قبلی —
             // برای برگشتن به همان مقدارها «ویرایش ورودی‌ها» هست.
             onNew={() => {
               setLoaded((current) => ({ trip: DEFAULT_TRIP, sequence: (current?.sequence ?? 0) + 1 }))
+              setEditing(false)
               setGenerated(null)
             }}
             onRebuild={rebuildWith}
@@ -209,11 +261,26 @@ export function App() {
       </Container>
 
       <Backdrop open={rebuild.isPending} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Stack spacing={2} sx={{ alignItems: 'center' }}>
+        {/* role=status: اسکرین‌ریدر هم بداند اپ مشغول است؛ دکمهٔ انصراف: روکشِ
+            تمام‌صفحه هرگز نباید بی‌راه‌فرار باشد. */}
+        <Stack spacing={2} sx={{ alignItems: 'center' }} role="status">
           <CircularProgress color="inherit" />
           <Typography color="inherit">در حال ساخت دوبارهٔ برنامه…</Typography>
+          <Button
+            color="inherit"
+            size="small"
+            variant="outlined"
+            onClick={() => {
+              rebuildIgnored.current = true
+              rebuild.reset()
+            }}
+          >
+            انصراف
+          </Button>
         </Stack>
       </Backdrop>
+
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
 
       <Snackbar
         open={toast !== null}

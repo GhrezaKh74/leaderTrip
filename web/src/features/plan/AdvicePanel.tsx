@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 
 import type { Advice } from '../../api/schemas'
+import { toFa } from '../../lib/format'
 
 const SEVERITY = {
   Critical: 'error',
@@ -42,8 +43,8 @@ export function AdvicePanel({ advice }: { advice: Advice[] }) {
             borderInlineStart: `3px solid ${theme.palette[SEVERITY[item.level]].main}`,
           })}
         >
-          <AlertTitle>{item.title}</AlertTitle>
-          <Typography variant="body2">{item.detail}</Typography>
+          <AlertTitle>{toFa(item.title)}</AlertTitle>
+          <Typography variant="body2">{toFa(item.detail)}</Typography>
         </Alert>
       ))}
     </Stack>

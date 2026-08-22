@@ -203,10 +203,13 @@ function readSavedTrip(): TripForm {
 export function WizardPage({
   initial,
   onPlanReady,
+  onCancelEdit,
 }: {
   /** ورودی آمده از لینک اشتراکی، اگر بود. */
   initial?: TripForm | null
   onPlanReady: (plan: TripPlan, input: TripForm) => void
+  /** وقتی ویزارد در حالت «ویرایش» باز شده، راه برگشت به برنامهٔ فعلی — بدون ساخت دوباره. */
+  onCancelEdit?: () => void
 }) {
   const [activeStep, setActiveStep] = useState(0)
   const [importError, setImportError] = useState<string | null>(null)
@@ -219,6 +222,30 @@ export function WizardPage({
   })
 
   const generate = useGeneratePlan()
+
+  const draftTimer = useRef<number | undefined>(undefined)
+
+  // ذخیرهٔ خودکار پیش‌نویس: بستن تب وسط گام چهارم نباید یعنی از نو شروع کردن.
+  // فقط هنگام submit ذخیره‌کردن، همان بود که فرم نیمه‌پر را می‌پراند.
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      if (typeof localStorage === 'undefined') return
+
+      window.clearTimeout(draftTimer.current)
+      draftTimer.current = window.setTimeout(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(values))
+        } catch {
+          /* حافظهٔ پر یا حالت خصوصی — پیش‌نویس از دست می‌رود ولی اپ نه. */
+        }
+      }, 800)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+      window.clearTimeout(draftTimer.current)
+    }
+  }, [form])
 
   const isLast = activeStep === STEPS.length - 1
 
@@ -412,6 +439,18 @@ export function WizardPage({
             </Step>
           ))}
         </Stepper>
+
+        {onCancelEdit ? (
+          // ویرایش نباید یک‌طرفه باشد: کسی که فقط سرک کشیده، بدون ساخت دوباره برمی‌گردد.
+          <Button
+            type="button"
+            onClick={onCancelEdit}
+            startIcon={<ArrowForwardIcon />}
+            sx={{ alignSelf: 'flex-start', mt: -1 }}
+          >
+            بازگشت به برنامهٔ فعلی — بدون تغییر
+          </Button>
+        ) : null}
 
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <Box hidden={activeStep !== 0}>

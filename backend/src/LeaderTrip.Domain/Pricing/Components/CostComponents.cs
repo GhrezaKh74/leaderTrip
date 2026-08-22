@@ -188,9 +188,9 @@ public sealed class TicketsCost : ICostComponent
     }
 }
 
-/// <summary>اهلاک خودرو — قلمی که تقریباً همه فراموشش می‌کنند.</summary>
+/// <summary>استهلاک خودرو — قلمی که تقریباً همه فراموشش می‌کنند.</summary>
 /// <remarks>
-/// در سفر نمونهٔ نسخهٔ اول، اهلاک بزرگ‌تر از سوخت درآمد. سوخت در ایران ارزان
+/// در سفر نمونهٔ نسخهٔ اول، استهلاک بزرگ‌تر از سوخت درآمد. سوخت در ایران ارزان
 /// است؛ لاستیک و روغن نیستند.
 /// </remarks>
 public sealed class DepreciationCost : ICostComponent
@@ -208,6 +208,6 @@ public sealed class DepreciationCost : ICostComponent
             CultureInfo.InvariantCulture,
             $"{context.TotalDistance.Kilometers:0} کیلومتر × {context.Vehicle.DepreciationPerKm:N0} تومان بر کیلومتر — روغن، لاستیک، لنت و سرویس");
 
-        return new CostLine("depreciation", "اهلاک خودرو", amount, formula);
+        return new CostLine("depreciation", "استهلاک خودرو", amount, formula);
     }
 }

@@ -48,7 +48,9 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
         primary:
           mode === 'light'
             ? { main: brand.turquoise.main, dark: brand.turquoise.dark, light: brand.turquoise.light }
-            : { main: '#43c6c0', dark: brand.turquoise.main, light: '#7fdcd7' },
+            // متن روی فیروزهٔ روشنِ تم تیره باید تیره باشد، نه سفید — همان
+            // درسی که BrandStepIcon جداگانه یاد گرفته بود، حالا در خود پالت.
+            : { main: '#43c6c0', dark: brand.turquoise.main, light: '#7fdcd7', contrastText: '#08252b' },
         secondary:
           mode === 'light'
             ? { main: brand.saffron.main, dark: brand.saffron.dark, light: brand.saffron.light }
@@ -94,6 +96,11 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
               backgroundAttachment: 'fixed',
               backgroundRepeat: 'no-repeat',
               backgroundSize: 'cover',
+              // ناحیهٔ امن آیفون: در PWA تمام‌صفحه، بدون این، محتوا زیر ناچ و
+              // نوار ژست خانه می‌رود.
+              paddingLeft: 'env(safe-area-inset-left)',
+              paddingRight: 'env(safe-area-inset-right)',
+              paddingBottom: 'env(safe-area-inset-bottom)',
             },
 
             // ورود نرم برای کارت‌هایی که با CSS خالص می‌آیند (بدون anime.js).
@@ -115,6 +122,13 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
               background: alpha(brand.turquoise.main, 0.25),
             },
 
+            // حلقهٔ فوکوس صفحه‌کلید — بدونش کاربر Tab نمی‌داند کجاست. فقط
+            // focus-visible، تا کلیک ماوس حلقه نگیرد.
+            '*:focus-visible': {
+              outline: `2px solid ${mode === 'light' ? brand.turquoise.main : '#43c6c0'}`,
+              outlineOffset: 2,
+            },
+
             // اسکرول‌بار باریک و هم‌رنگ — جزئیاتی که «اختصاصی» را می‌سازند.
             '*::-webkit-scrollbar': { width: 10, height: 10 },
             '*::-webkit-scrollbar-thumb': {
@@ -122,13 +136,19 @@ export function buildTheme(mode: 'light' | 'dark'): Theme {
               background: alpha(mode === 'light' ? brand.lajvard.main : '#7d97cf', 0.28),
             },
             '*::-webkit-scrollbar-track': { background: 'transparent' },
+            // فایرفاکس مدل خودش را دارد؛ جزئیاتِ «اختصاصی» نباید فقط برای WebKit باشد.
+            html: {
+              scrollbarWidth: 'thin',
+              scrollbarColor: `${alpha(mode === 'light' ? brand.lajvard.main : '#7d97cf', 0.28)} transparent`,
+            },
 
             // چاپ باید همان چیزی را بدهد که انتظار می‌رود، نه اسکرین‌شاتی از
             // رابط کاربری با منو و دکمه.
             '@media print': {
               '.no-print, header, nav, .MuiTabs-root, .MuiAlert-root': { display: 'none !important' },
               '.print-only': { display: 'block !important' },
-              '#root > *:not(.print-root)': { display: 'none' },
+              // پنهان‌کردن «فرزند مستقیم #root» اشتباه بود: PrintSheet درون
+              // Container است و همراه والدش ناپدید می‌شد — چاپ صفحهٔ سفید می‌داد.
               body: { background: '#fff', color: '#000' },
               '.MuiPaper-root': { border: 'none', boxShadow: 'none' },
               a: { textDecoration: 'none', color: '#000' },

@@ -4,6 +4,10 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
@@ -105,6 +109,8 @@ export function PlanPage({
   // دکمهٔ متنی جا می‌خوردند.
   const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null)
   const [addStopOpen, setAddStopOpen] = useState(false)
+  // «سفر جدید» مخرب است (فرم و برنامهٔ فعلی را کنار می‌گذارد) — بی‌تأیید نه.
+  const [confirmNew, setConfirmNew] = useState(false)
   const reference = useReferenceData()
   const pois = usePois()
 
@@ -185,8 +191,11 @@ export function PlanPage({
         await navigator.clipboard.writeText(url)
         setToast('لینک سفر کپی شد.')
       }
-    } catch {
-      setToast('اشتراک‌گذاری انجام نشد.')
+    } catch (error) {
+      // انصرافِ خود کاربر از منوی اشتراک، خطا نیست و پیام خطا نمی‌خواهد.
+      if ((error as DOMException | undefined)?.name !== 'AbortError') {
+        setToast('اشتراک‌گذاری انجام نشد.')
+      }
     }
   }
 
@@ -224,7 +233,7 @@ export function PlanPage({
           <Stack direction="row" spacing={1} sx={{ flexWrap: { sm: 'wrap' }, gap: 1, alignItems: 'center' }}>
             <Tooltip title="سفر جدید">
               <IconButton
-                onClick={onNew}
+                onClick={() => setConfirmNew(true)}
                 aria-label="سفر جدید"
                 size="small"
                 sx={{
@@ -238,7 +247,7 @@ export function PlanPage({
               </IconButton>
             </Tooltip>
             <Button
-              onClick={onNew}
+              onClick={() => setConfirmNew(true)}
               startIcon={<AddIcon sx={{ fontSize: 18 }} />}
               variant="outlined"
               size="small"
@@ -399,6 +408,8 @@ export function PlanPage({
             {TABS.map(({ label, icon: Icon }, index) => (
               <Tab
                 key={label}
+                id={`plan-tab-${index}`}
+                aria-controls={`plan-panel-${index}`}
                 icon={<Icon sx={{ fontSize: 19 }} />}
                 iconPosition="start"
                 label={
@@ -411,7 +422,7 @@ export function PlanPage({
           </Tabs>
         </Box>
 
-        <Box hidden={tab !== 0}>
+        <Box hidden={tab !== 0} role="tabpanel" id="plan-panel-0" aria-labelledby="plan-tab-0">
           <Stack spacing={2}>
             {plan.days.map((day) => (
               <DayTimeline
@@ -436,23 +447,23 @@ export function PlanPage({
           </Stack>
         </Box>
 
-        <Box hidden={tab !== 1}>
+        <Box hidden={tab !== 1} role="tabpanel" id="plan-panel-1" aria-labelledby="plan-tab-1">
           <CostPanel cost={plan.cost} budget={input.budgetToman} people={input.travelers.length} />
         </Box>
 
-        <Box hidden={tab !== 2}>
+        <Box hidden={tab !== 2} role="tabpanel" id="plan-panel-2" aria-labelledby="plan-tab-2">
           <OptimizerPanel input={input} onApply={onRebuild} />
         </Box>
 
-        <Box hidden={tab !== ADVICE_TAB}>
+        <Box hidden={tab !== ADVICE_TAB} role="tabpanel" id="plan-panel-3" aria-labelledby="plan-tab-3">
           <AdvicePanel advice={plan.advice} />
         </Box>
 
-        <Box hidden={tab !== 4}>
+        <Box hidden={tab !== 4} role="tabpanel" id="plan-panel-4" aria-labelledby="plan-tab-4">
           <PackingPanel items={plan.packing} />
         </Box>
 
-        <Box hidden={tab !== MAP_TAB}>
+        <Box hidden={tab !== MAP_TAB} role="tabpanel" id="plan-panel-5" aria-labelledby="plan-tab-5">
           {pois.isPending ? (
             <Stack spacing={2} sx={{ py: 6, alignItems: 'center' }}>
               <CircularProgress />
@@ -480,7 +491,7 @@ export function PlanPage({
           )}
         </Box>
 
-        <Box hidden={tab !== LIVE_TAB}>
+        <Box hidden={tab !== LIVE_TAB} role="tabpanel" id="plan-panel-6" aria-labelledby="plan-tab-6">
           <LivePanel
             plan={plan}
             input={input}
@@ -498,6 +509,29 @@ export function PlanPage({
           ) : null}
         </Box>
       </Stack>
+
+      {/* تأیید «سفر جدید»: کنش مخرب، بی‌تأیید نه — برنامهٔ فعلی و فرمش کنار می‌روند. */}
+      <Dialog open={confirmNew} onClose={() => setConfirmNew(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>سفر جدید شروع شود؟</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            برنامهٔ فعلی و ورودی‌هایش کنار گذاشته می‌شوند و ویزارد با پیش‌فرض‌ها
+            باز می‌شود. اگر این برنامه را می‌خواهید، اول «ذخیرهٔ برنامه» را بزنید.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setConfirmNew(false)}>ماندن در همین برنامه</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setConfirmNew(false)
+              onNew()
+            }}
+          >
+            شروع سفر جدید
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {addStopOpen ? (
         <Suspense fallback={null}>

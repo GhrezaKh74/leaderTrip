@@ -37,11 +37,17 @@ public sealed class GeneratePlanValidator : AbstractValidator<GeneratePlanQuery>
             .InclusiveBetween(1, 14)
             .WithMessage("سقف رانندگی روزانه باید بین ۱ تا ۱۴ ساعت باشد.");
 
-        RuleFor(q => q.VehicleCount).GreaterThan(0);
+        RuleFor(q => q.VehicleCount)
+            .GreaterThan(0)
+            .WithMessage("تعداد خودرو باید دست‌کم ۱ باشد.");
 
-        RuleFor(q => q.SubsidizedFuelShare).InclusiveBetween(0m, 1m);
+        RuleFor(q => q.SubsidizedFuelShare)
+            .InclusiveBetween(0m, 1m)
+            .WithMessage("سهم سوخت سهمیه‌ای باید بین ۰ و ۱ باشد.");
 
-        RuleFor(q => q.BudgetToman).GreaterThanOrEqualTo(0);
+        RuleFor(q => q.BudgetToman)
+            .GreaterThanOrEqualTo(0)
+            .WithMessage("بودجه نمی‌تواند منفی باشد.");
 
         RuleFor(q => q.DayEndHour)
             .GreaterThan(q => q.DayStartHour)

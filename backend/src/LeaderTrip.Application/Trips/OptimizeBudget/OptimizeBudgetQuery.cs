@@ -157,7 +157,7 @@ internal sealed class OptimizeBudgetHandler : IQueryHandler<OptimizeBudgetQuery,
             yield return new BudgetLever(
                 "radius",
                 $"کاهش شعاع سفر به {next:0} کیلومتر",
-                "مقصدهای نزدیک‌تر یعنی سوخت، عوارض و اهلاک کمتر.",
+                "مقصدهای نزدیک‌تر یعنی سوخت، عوارض و استهلاک کمتر.",
                 0,
                 new LeverPatch { RadiusKm = next });
         }
@@ -187,7 +187,7 @@ internal sealed class OptimizeBudgetHandler : IQueryHandler<OptimizeBudgetQuery,
             yield return new BudgetLever(
                 "vehicles",
                 $"کاهش تعداد خودرو به {trip.VehicleCount - 1}",
-                "سوخت، عوارض و اهلاک به‌نسبت کم می‌شود — اگر ظرفیت سرنشین اجازه بدهد.",
+                "سوخت، عوارض و استهلاک به‌نسبت کم می‌شود — اگر ظرفیت سرنشین اجازه بدهد.",
                 0,
                 new LeverPatch { VehicleCount = trip.VehicleCount - 1 });
         }

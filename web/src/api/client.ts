@@ -50,12 +50,16 @@ async function request<T>(
   path: string,
   schema: z.ZodType<T>,
   init?: RequestInit,
+  timeoutMs = 20_000,
 ): Promise<T> {
   let response: Response
 
   try {
     response = await fetch(`${BASE}${path}`, {
       ...init,
+      // بدون مهلت، درخواستِ گیرکرده اسپینر ابدی می‌سازد؛ مهلت یعنی شکستِ
+      // معلوم به‌جای انتظارِ نامعلوم. صداکننده می‌تواند مهلت بلندتر بدهد.
+      signal: init?.signal ?? AbortSignal.timeout(timeoutMs),
       headers: {
         Accept: 'application/json',
         // برای FormData هدر دستی ممنوع است: مرورگر باید خودش boundary را بنویسد.
@@ -65,7 +69,11 @@ async function request<T>(
         ...init?.headers,
       },
     })
-  } catch {
+  } catch (error) {
+    if ((error as DOMException | undefined)?.name === 'TimeoutError') {
+      throw new ApiError(0, 'network.timeout', 'سرور دیر پاسخ داد. کمی بعد دوباره تلاش کنید.')
+    }
+
     // شکست شبکه با خطای سرور یکی نیست و پیامش هم نباید یکی باشد: یکی «اینترنت
     // نداری» است و دیگری «ما خرابیم».
     throw new ApiError(0, 'network.unreachable', 'اتصال به سرور برقرار نشد. اینترنت را بررسی کنید.')
@@ -94,15 +102,21 @@ export const api = {
   get: <T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal) =>
     request(path, schema, signal ? { signal } : {}),
 
-  post: <T>(path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal) =>
-    request(path, schema, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      ...(signal ? { signal } : {}),
-    }),
+  post: <T>(path: string, body: unknown, schema: z.ZodType<T>, signal?: AbortSignal, timeoutMs?: number) =>
+    request(
+      path,
+      schema,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+        ...(signal ? { signal } : {}),
+      },
+      timeoutMs,
+    ),
 
+  // بارگذاری عکس روی اینترنت جاده‌ای کند است — مهلت بلندتر.
   postForm: <T>(path: string, form: FormData, schema: z.ZodType<T>) =>
-    request(path, schema, { method: 'POST', body: form }),
+    request(path, schema, { method: 'POST', body: form }, 90_000),
 
   // نسخه‌های مدیریتی: همان درخواست، با کلید در سرآیند. کلید هرگز در URL
   // نمی‌رود — URL در تاریخچه و لاگ می‌ماند، سرآیند نه.

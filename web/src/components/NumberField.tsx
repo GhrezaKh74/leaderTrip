@@ -52,7 +52,8 @@ export function NumberField({ value, onChange, min, max, step, slotProps, ...res
       }}
       slotProps={{
         ...slotProps,
-        htmlInput: { min, max, step, ...slotProps?.htmlInput },
+        // کیبورد عددی موبایل — بدون inputMode، آیفون صفحه‌کلید کامل باز می‌کند.
+        htmlInput: { min, max, step, inputMode: 'numeric', ...slotProps?.htmlInput },
       }}
     />
   )

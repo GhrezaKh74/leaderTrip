@@ -49,7 +49,7 @@ export function usePois(cityId?: string) {
  */
 export function useBudgetLevers() {
   return useMutation({
-    mutationFn: (request: TripRequest) => api.post('/trips/optimize', request, budgetLeversSchema),
+    mutationFn: (request: TripRequest) => api.post('/trips/optimize', request, budgetLeversSchema, undefined, 180_000),
   })
 }
 
@@ -79,7 +79,7 @@ export function useSearchPlaces() {
  */
 export function useGeneratePlan(onSuccess?: (plan: TripPlan) => void) {
   return useMutation({
-    mutationFn: (request: TripRequest) => api.post('/trips/plan', request, tripPlanSchema),
+    mutationFn: (request: TripRequest) => api.post('/trips/plan', request, tripPlanSchema, undefined, 120_000),
     ...(onSuccess ? { onSuccess } : {}),
     retry: (failureCount, error) =>
       // خطای اعتبارسنجی با تلاش دوباره درست نمی‌شود؛ فقط خطای گذرای سرور یا

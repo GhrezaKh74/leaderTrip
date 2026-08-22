@@ -43,7 +43,7 @@ public static class CostAttribution
         var amounts = cost.Lines.ToDictionary(l => l.Key, l => l.Amount.Amount, StringComparer.Ordinal);
         var perBlock = new Dictionary<(int Day, int Block), decimal>();
 
-        // ─── مسافت‌محور: سوخت، عوارض، اهلاک روی بلوک‌های رانندگی ───
+        // ─── مسافت‌محور: سوخت، عوارض، استهلاک روی بلوک‌های رانندگی ───
         decimal roadTotal = Sum(amounts, "fuel") + Sum(amounts, "toll") + Sum(amounts, "depreciation");
         Spread(days, perBlock, roadTotal, BlockKind.Drive, block => (decimal)(block.DistanceCovered?.Kilometers ?? 0));
 

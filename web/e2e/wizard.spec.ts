@@ -564,7 +564,8 @@ test('صفحهٔ برنامه: «ذخیرهٔ برنامه» با ورودِ س�
   await expect(page.getByText('تعطیلات شمال')).toBeVisible()
   await page.keyboard.press('Escape')
 
-  // «سفر جدید»: ویزارد از نو با پیش‌فرض‌ها
+  // «سفر جدید»: کنش مخرب است و اول تأیید می‌خواهد؛ بعد ویزارد از نو با پیش‌فرض‌ها
   await page.getByRole('button', { name: 'سفر جدید' }).click()
+  await page.getByRole('button', { name: 'شروع سفر جدید' }).click()
   await expect(page.getByRole('combobox', { name: 'شهر مبدأ' })).toBeVisible()
 })

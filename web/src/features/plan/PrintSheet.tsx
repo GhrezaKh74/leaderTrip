@@ -26,7 +26,7 @@ const EMERGENCY: { label: string; number: string }[] = [
   { label: 'امداد خودرو (ایران‌خودرو)', number: '۰۹۶۴۴۰' },
   { label: 'امداد خودرو (سایپا)', number: '۰۹۶۵۵۰' },
   { label: 'پلیس راه', number: '۱۴۱' },
-  { label: 'هلال احمر', number: '۱۱۲' },
+  { label: 'هلال‌احمر', number: '۱۱۲' },
 ]
 
 export function PrintSheet({
