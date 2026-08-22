@@ -230,6 +230,9 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
                 query.BudgetToman / Math.Max(1, group.Count * query.Days)),
             Weather = outlook,
             LearnedTaste = query.LearnedTaste,
+            CorridorEnd = destination is not null && query.DestinationMode == DestinationMode.Corridor
+                ? destination.Location
+                : null,
         };
 
         foreach (var poi in allPois)
@@ -410,7 +413,8 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             Style = query.Style,
             Lodging = query.Lodging,
             TotalDistance = totalDistance,
-            MountainShare = 0,
+            // از پاهای واقعی زمان‌بند می‌آید — سفر شمال/الموت مصرف واقعی می‌گیرد.
+            MountainShare = schedule.MountainShare,
             VehicleCount = query.VehicleCount,
             SubsidizedFuelShare = query.SubsidizedFuelShare,
             NightCities = nightCities,
@@ -450,7 +454,7 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             .Distinct()
             .ToList();
 
-        var advice = Advisor.Advise(new AdviceContext
+        var baseAdvice = Advisor.Advise(new AdviceContext
         {
             Group = group,
             Vehicle = vehicle,
@@ -464,6 +468,47 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             VehicleCount = query.VehicleCount,
             PeakElevationMetres = peakElevation,
         });
+
+        // ─── هشدارهای مسئول (خارج از Advisor، چون به ورودی خام نیاز دارند) ───
+        var extraAdvice = new List<Domain.Advice.Advice>();
+
+        var overCapDay = attributedDays
+            .Where(d => d.DrivingTime > TimeSpan.FromHours(query.MaxDrivingHoursPerDay) + TimeSpan.FromMinutes(30))
+            .MaxBy(d => d.DrivingTime);
+
+        if (overCapDay is not null)
+        {
+            // زمان‌بند پای انتقال پایانی را برای رسیدن/برگشت می‌پذیرد؛ پنهان‌کردنش
+            // از کاربر بی‌صداقتی است — با عدد و راه چاره گفته می‌شود.
+            extraAdvice.Add(new Domain.Advice.Advice(
+                "driving.overCap",
+                AdviceLevel.Warning,
+                "رانندگی بیش از سقف شما",
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"روز {overCapDay.Index} حدود {overCapDay.DrivingTime.TotalHours:0.#} ساعت رانندگی دارد — بیش از سقف {query.MaxDrivingHoursPerDay:0.#} ساعتی که خواسته‌اید. راهِ رسیدن/برگشت در روزها جا نشده؛ روز بیشتر یا شب‌مانی در شهر میانی در نظر بگیرید.")));
+        }
+
+        var mustSeeMissed = schedule.UnscheduledPoiIds
+            .Where(id => pinned.Contains(id))
+            .Select(id => allPois.FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.Ordinal))?.Name ?? id)
+            .ToList();
+
+        if (mustSeeMissed.Count > 0)
+        {
+            // «حتماً باشد»ی که نبود، شدیدترین شکست قول محصول است — Critical.
+            extraAdvice.Add(new Domain.Advice.Advice(
+                "plan.pinnedUnscheduled",
+                AdviceLevel.Critical,
+                "خواسته‌های حتمی جا نشدند",
+                string.Join("، ", mustSeeMissed)
+                + " با وجود سنجاق/انتخاب شما در برنامه جا نشدند. روزها یا سقف رانندگی را بیشتر کنید، یا یکی از خواسته‌ها را بردارید."));
+        }
+
+        var advice = baseAdvice
+            .Concat(extraAdvice)
+            .OrderByDescending(a => a.Level)
+            .ToList();
 
         var packing = PackingList.Build(new PackingContext
         {

@@ -105,12 +105,17 @@ public sealed class DetourPenaltyRule : IPoiScoringRule
 
     public ScoreContribution Evaluate(PointOfInterest poi, ScoringContext context)
     {
-        var distance = context.Origin.StraightLineTo(poi.Location);
+        // مسیرگردی: دوری از خودِ مسیر مهم است، نه از مبدأ — وگرنه انتهای
+        // راهرو همیشه جریمهٔ کامل می‌خورد و انتخاب به ابتدای راه کج می‌شود.
+        var distance = context.CorridorEnd is { } end
+            ? poi.Location.StraightLineToSegment(context.Origin, end)
+            : context.Origin.StraightLineTo(poi.Location);
         double normalized = Math.Min(1, distance.Kilometers / Math.Max(1, context.SearchRadius.Kilometers));
+        string anchorLabel = context.CorridorEnd is null ? "از مبدأ" : "از مسیر";
 
         return normalized == 0
             ? ScoreContribution.Neutral
-            : ScoreContribution.Add(-20 * normalized, $"{distance.Kilometers:0} کیلومتر از مبدأ");
+            : ScoreContribution.Add(-20 * normalized, $"{distance.Kilometers:0} کیلومتر {anchorLabel}");
     }
 }
 

@@ -61,6 +61,10 @@ public sealed class DayScheduler
         var currentCity = request.OriginCity;
         bool anyRouted = false;
         bool anyEstimated = false;
+        // سهم کیلومترهای کوهستانی — خوراک ضریب مصرف سوخت در FuelCost؛ تا پیش
+        // از این هاردکدِ صفر بود و کل آن زیرساخت، کد مرده.
+        double mountainKilometers = 0;
+        double totalLegKilometers = 0;
 
         for (int dayIndex = 0; dayIndex < request.Days; dayIndex++)
         {
@@ -147,7 +151,7 @@ public sealed class DayScheduler
                 driving += leg.Duration;
                 continuous += leg.Duration;
                 dayDistance += leg.Road;
-                TrackSource(leg, ref anyRouted, ref anyEstimated);
+                TrackSource(leg, ref anyRouted, ref anyEstimated, ref mountainKilometers, ref totalLegKilometers);
 
                 if (checkInCity is { } hotelCity)
                 {
@@ -241,7 +245,11 @@ public sealed class DayScheduler
                 ? request.FinalCity(fallbackNear: visited.Count > 0 ? visited[^1].Location : current)
                 : visited.Count > 0
                     ? request.NearestStayCity(visited[^1].Location)
-                    : currentCity;
+                    // روزِ بی‌بازدید ولی با کارِ مانده: به‌جای درجازدن، تا جایی
+                    // که سقف رانندگی اجازه می‌دهد به سمت نخستین توقفِ مانده
+                    // پیش می‌رویم و شب را در شهرِ میانی می‌مانیم — وگرنه
+                    // روزهای وسط خالی می‌ماندند و روز آخر یک پای غول‌آسا می‌شد.
+                    : ProgressStayCity(request, current, currentCity, pending.First?.Value, request.DailyDrivingCap - driving);
 
             if (!string.Equals(stayCity.Id, currentCity.Id, StringComparison.Ordinal))
             {
@@ -315,7 +323,7 @@ public sealed class DayScheduler
                 clock += leg.Duration + RestStop * restsWithin;
                 driving += leg.Duration;
                 dayDistance += leg.Road;
-                TrackSource(leg, ref anyRouted, ref anyEstimated);
+                TrackSource(leg, ref anyRouted, ref anyEstimated, ref mountainKilometers, ref totalLegKilometers);
                 current = stayCity.Location;
                 currentCity = stayCity;
                 continuous = TimeSpan.Zero;
@@ -440,7 +448,11 @@ public sealed class DayScheduler
         }
 
         var source = anyRouted && !anyEstimated ? DistanceSource.Routed : DistanceSource.Estimated;
-        return new ScheduleResult(days, pending.Select(p => p.Id).ToList(), source);
+        return new ScheduleResult(
+            days,
+            pending.Select(p => p.Id).ToList(),
+            source,
+            totalLegKilometers > 0 ? mountainKilometers / totalLegKilometers : 0);
     }
 
     /// <summary>گزینهٔ گشت شبانه بعد از شام.</summary>
@@ -508,7 +520,12 @@ public sealed class DayScheduler
             ? TimeSpan.FromMinutes(30)
             : TimeSpan.FromMinutes(request.Style == TravelStyle.Budget ? 60 : 75);
 
-    private static void TrackSource(TravelLeg leg, ref bool anyRouted, ref bool anyEstimated)
+    private static void TrackSource(
+        TravelLeg leg,
+        ref bool anyRouted,
+        ref bool anyEstimated,
+        ref double mountainKilometers,
+        ref double totalLegKilometers)
     {
         if (leg.Source == DistanceSource.Routed)
         {
@@ -518,6 +535,71 @@ public sealed class DayScheduler
         {
             anyEstimated = true;
         }
+
+        totalLegKilometers += leg.Road.Kilometers;
+
+        if (leg.Terrain == Terrain.Mountain)
+        {
+            mountainKilometers += leg.Road.Kilometers;
+        }
+    }
+
+    /// <summary>
+    /// شهرِ خواب برای روزِ انتقال: بیشترین پیشروی به سمت هدفِ بعدی، درون سقفِ
+    /// باقی‌ماندهٔ رانندگی.
+    /// </summary>
+    /// <remarks>
+    /// اگر هدفی نمانده یا هیچ شهری پیشرویِ معنادار (بیش از ۲۵ کیلومتر) نمی‌دهد،
+    /// همان شهرِ فعلی می‌ماند — روزِ آرامِ سفرِ حلقه‌ای اشکالی ندارد؛ درجازدنِ
+    /// سفرِ مقصددار اشکال دارد.
+    /// </remarks>
+    private City ProgressStayCity(
+        ScheduleRequest request,
+        Coordinate current,
+        City currentCity,
+        PointOfInterest? nextPending,
+        TimeSpan remainingDrive)
+    {
+        var target = nextPending?.Location ?? request.DestinationCity?.Location;
+
+        if (target is not { } goal || remainingDrive <= TimeSpan.Zero)
+        {
+            return currentCity;
+        }
+
+        var currentGap = current.StraightLineTo(goal);
+        City best = currentCity;
+        var bestGap = currentGap;
+
+        foreach (var city in request.StayCities)
+        {
+            if (string.Equals(city.Id, currentCity.Id, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var gap = city.Location.StraightLineTo(goal);
+
+            // پیشرویِ معنادار، نه جابه‌جایی بین دو شهر هم‌فاصله.
+            if (gap.Kilometers >= bestGap.Kilometers - 25)
+            {
+                continue;
+            }
+
+            var terrain = TravelPlanner.InferTerrain(
+                currentCity.Climate, city.Climate, current.StraightLineTo(city.Location));
+            var leg = _travelPlanner.Plan(current, city.Location, terrain, request.Vehicle, request.Pace);
+
+            if (leg.Duration > remainingDrive)
+            {
+                continue;
+            }
+
+            best = city;
+            bestGap = gap;
+        }
+
+        return best;
     }
 
     private static TimeSpan Max(TimeSpan left, TimeSpan right) => left > right ? left : right;
@@ -706,7 +788,8 @@ public sealed class DayScheduler
 public sealed record ScheduleResult(
     IReadOnlyList<DayPlan> Days,
     IReadOnlyList<string> UnscheduledPoiIds,
-    DistanceSource DistanceSource);
+    DistanceSource DistanceSource,
+    double MountainShare = 0);
 
 /// <summary>پارامترهای زمان‌بندی روزها.</summary>
 public sealed record ScheduleRequest

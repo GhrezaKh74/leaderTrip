@@ -27,6 +27,16 @@ public sealed record ScoringContext
     /// <summary>خلاصهٔ جوّی سفر؛ اگر داده‌ای نباشد <see langword="null"/>.</summary>
     public WeatherOutlook? Weather { get; init; }
 
+    /// <summary>
+    /// انتهای راهرو در سفر مسیرگردی؛ <see langword="null"/> یعنی سفرِ دایره‌ای.
+    /// </summary>
+    /// <remarks>
+    /// با این، «فاصله از مسیر» واقعاً فاصله از پاره‌خطِ مبدأ–مقصد سنجیده می‌شود؛
+    /// وگرنه جاذبهٔ روی مسیر ولی نزدیک مقصد، جریمهٔ کامل دوری از «مبدأ» می‌خورد
+    /// و نیمهٔ دوم راهرو سیستماتیک خالی می‌ماند.
+    /// </remarks>
+    public Coordinate? CorridorEnd { get; init; }
+
     /// <summary>سلیقهٔ آموخته‌شده از امتیازهای سفرهای گذشته، ‎−۱ تا ۱.</summary>
     public IReadOnlyDictionary<PoiCategory, double> LearnedTaste { get; init; }
         = new Dictionary<PoiCategory, double>();
