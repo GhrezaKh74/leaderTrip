@@ -433,9 +433,19 @@ export function WizardPage({
             },
           }}
         >
-          {STEPS.map((step) => (
+          {STEPS.map((step, index) => (
             <Step key={step.label}>
-              <StepLabel slots={{ stepIcon: BrandStepIcon }}>{step.label}</StepLabel>
+              {/* گام‌های انجام‌شده کلیک‌پذیرند — برگشتِ اصلاحی نباید چهار بار
+                  «قبلی» بخواهد. گام‌های آینده فقط از راه «بعدی» (با اعتبارسنجی). */}
+              <StepLabel
+                slots={{ stepIcon: BrandStepIcon }}
+                onClick={() => {
+                  if (index < activeStep) setActiveStep(index)
+                }}
+                sx={index < activeStep ? { cursor: 'pointer' } : undefined}
+              >
+                {step.label}
+              </StepLabel>
             </Step>
           ))}
         </Stepper>

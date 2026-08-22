@@ -503,7 +503,13 @@ internal sealed class GeneratePlanHandler : IQueryHandler<GeneratePlanQuery, Tri
             day.BaseCityId,
             day.Blocks.Select(b => new PlanBlockDto(
                 b.Kind,
-                b.StartsAt.ToString(@"hh\:mm", CultureInfo.InvariantCulture),
+                // hh برای TimeSpan بالای ۲۴ ساعت می‌پیچد و «۲۵:۳۰» را «01:30» نشان
+                // می‌داد — وسط فهرست روز، مثل غلط به نظر می‌رسد. قرارداد
+                // برنامه‌های حمل‌ونقل (ساعت ادامه‌دار: ۲۵:۳۰) در بستر تایم‌لاین
+                // روز، هم مرتب می‌ماند هم بی‌ابهام است.
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{(int)b.StartsAt.TotalHours:00}:{b.StartsAt.Minutes:00}"),
                 b.Duration.TotalMinutes,
                 b.Title,
                 b.Cost.Amount,

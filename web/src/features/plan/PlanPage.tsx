@@ -111,6 +111,8 @@ export function PlanPage({
   const [addStopOpen, setAddStopOpen] = useState(false)
   // «سفر جدید» مخرب است (فرم و برنامهٔ فعلی را کنار می‌گذارد) — بی‌تأیید نه.
   const [confirmNew, setConfirmNew] = useState(false)
+  // حذف توقف باید برگشت‌پذیر باشد: ورودیِ پیش از حذف، تا بستن توست نگه داشته می‌شود.
+  const [undoInput, setUndoInput] = useState<TripForm | null>(null)
   const reference = useReferenceData()
   const pois = usePois()
 
@@ -144,6 +146,17 @@ export function PlanPage({
     return buildStops(ordered, pois.data?.items, input.customStops)
   }, [plan, pois.data, input.customStops])
 
+  // نامِ جاذبه‌هایی که جا نشدند — «۴ جاذبه جا نشد» بدون گفتنِ کدام‌ها، فقط نگرانی است.
+  const unscheduledNames = useMemo(() => {
+    const byId = new Map((pois.data?.items ?? []).map((poi) => [poi.id, poi.name]))
+
+    for (const stop of input.customStops) byId.set(stop.id, stop.name)
+
+    return plan.unscheduledPoiIds
+      .map((id) => byId.get(id))
+      .filter((name): name is string => name !== undefined)
+  }, [plan.unscheduledPoiIds, pois.data, input.customStops])
+
   // کانون نقشهٔ «افزودن توقف»: مقصد اگر هست، وگرنه مبدأ.
   const mapFocus = useMemo(() => {
     const cities = reference.data?.cities ?? []
@@ -169,12 +182,19 @@ export function PlanPage({
     totalDays: plan.days.length,
     onMove: (poiId: string, targetDay: number) =>
       onRebuild({ ...input, dayAssignments: { ...input.dayAssignments, [poiId]: targetDay } }),
-    onRemove: (poiId: string) =>
+    onRemove: (poiId: string) => {
+      // پیش از حذف، ورودی فعلی برای «بازگردانی» نگه داشته می‌شود.
+      setUndoInput(input)
+      setToast('توقف از برنامه حذف شد.')
+
       // توقف دلخواه با حذف از فهرست خودش می‌رود؛ excludedPoiIds برای دیتاست است
       // و شناسهٔ دلخواه آن‌جا فقط زباله می‌ماند.
-      input.customStops.some((stop) => stop.id === poiId)
-        ? onRebuild({ ...input, customStops: input.customStops.filter((s) => s.id !== poiId) })
-        : onRebuild({ ...input, excludedPoiIds: [...input.excludedPoiIds, poiId] }),
+      if (input.customStops.some((stop) => stop.id === poiId)) {
+        onRebuild({ ...input, customStops: input.customStops.filter((s) => s.id !== poiId) })
+      } else {
+        onRebuild({ ...input, excludedPoiIds: [...input.excludedPoiIds, poiId] })
+      }
+    },
   }
 
   const taste = learnedTaste(journal)
@@ -379,8 +399,15 @@ export function PlanPage({
 
         {plan.unscheduledPoiIds.length > 0 ? (
           <Alert severity="warning">
-            {faNum(plan.unscheduledPoiIds.length)} جاذبهٔ انتخابی در برنامه جا نشد —
-            معمولاً یعنی سقف رانندگی روزانه یا طول روز اجازه نداده است.
+            {faNum(plan.unscheduledPoiIds.length)} جاذبهٔ انتخابی در برنامه جا نشد
+            {unscheduledNames.length > 0 ? (
+              <>
+                {' '}
+                ({unscheduledNames.join('، ')})
+              </>
+            ) : null}{' '}
+            — معمولاً یعنی سقف رانندگی روزانه یا طول روز اجازه نداده است. روزها
+            یا سقف رانندگی را بیشتر کنید.
           </Alert>
         ) : null}
 
@@ -550,9 +577,27 @@ export function PlanPage({
 
       <Snackbar
         open={toast !== null}
-        autoHideDuration={4000}
-        onClose={() => setToast(null)}
+        autoHideDuration={undoInput === null ? 4000 : 8000}
+        onClose={() => {
+          setToast(null)
+          setUndoInput(null)
+        }}
         message={toast ?? ''}
+        action={
+          undoInput === null ? undefined : (
+            <Button
+              color="primary"
+              size="small"
+              onClick={() => {
+                onRebuild(undoInput)
+                setUndoInput(null)
+                setToast(null)
+              }}
+            >
+              بازگردانی
+            </Button>
+          )
+        }
       />
     </Box>
   )

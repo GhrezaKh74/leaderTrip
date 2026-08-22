@@ -81,6 +81,32 @@ export function App() {
   // انصرافِ ساخت دوباره: پاسخ دیررس نباید بی‌خبر برنامه را عوض کند.
   const rebuildIgnored = useRef(false)
 
+  // نسخهٔ تازهٔ سرویس‌ورکر فعال شده — صفحهٔ باز هنوز باندل کهنه را اجرا می‌کند.
+  const [updateReady, setUpdateReady] = useState(false)
+
+  useEffect(() => {
+    const onUpdate = () => setUpdateReady(true)
+
+    window.addEventListener('leadertrip:update-ready', onUpdate)
+
+    return () => window.removeEventListener('leadertrip:update-ready', onUpdate)
+  }, [])
+
+  // پیشنهاد نصب PWA — در لحظهٔ اوج ارزش (اولین برنامهٔ ساخته‌شده)، نه بدو ورود.
+  const installPrompt = useRef<{ prompt: () => Promise<unknown> } | null>(null)
+  const [installAsk, setInstallAsk] = useState(false)
+
+  useEffect(() => {
+    const onBeforeInstall = (event: Event) => {
+      event.preventDefault()
+      installPrompt.current = event as unknown as { prompt: () => Promise<unknown> }
+    }
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+
+    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+  }, [])
+
   // گالری کنترل کیفیت آیکون‌ها — «/?icons». سطح کاربری نیست؛ جایی است که هر
   // آیکون تازه باید یک‌بار با چشم دیده شود.
   const showIconGallery =
@@ -95,7 +121,48 @@ export function App() {
     savePlan(plan, input)
     setGenerated({ plan, input })
     setEditing(false)
+
+    // برنامهٔ آماده = لحظه‌ای که «در جادهٔ بی‌اینترنت هم باز شود» معنا دارد.
+    let dismissed = false
+
+    try {
+      dismissed = localStorage.getItem('leadertrip.install.dismissed') === '1'
+    } catch {
+      /* حالت خصوصی */
+    }
+
+    if (installPrompt.current !== null && !dismissed) setInstallAsk(true)
   }
+
+  // دکمهٔ back مرورگر روی صفحهٔ برنامه نباید یک‌ضرب از اپ بیرون بیندازد؛
+  // یک ایستگاه میانی: برگشت به ویزاردِ ویرایش.
+  useEffect(() => {
+    if (generated !== null && !editing && (window.history.state as { lt?: string } | null)?.lt !== 'plan') {
+      window.history.pushState({ lt: 'plan' }, '')
+    }
+  }, [generated, editing])
+
+  const viewRef = useRef({ generated, editing })
+
+  viewRef.current = { generated, editing }
+
+  useEffect(() => {
+    const onPop = () => {
+      const view = viewRef.current
+
+      if (view.generated !== null && !view.editing) {
+        setLoaded((current) => ({
+          trip: view.generated!.input,
+          sequence: (current?.sequence ?? 0) + 1,
+        }))
+        setEditing(true)
+      }
+    }
+
+    window.addEventListener('popstate', onPop)
+
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   // لینک اشتراکی باید مستقیم به خودِ برنامه برسد — ارزش محصول همان است، نه
   // فرمِ نیمه‌پُر. آفلاین که ساختن ممکن نیست، فرم پیش‌پُر با توضیح می‌ماند.
@@ -287,6 +354,44 @@ export function App() {
         autoHideDuration={6000}
         onClose={() => setToast(null)}
         message={toast ?? ''}
+      />
+
+      {/* بدون بستنِ خودکار: به‌روزرسانی تا وقتی کاربر تصمیم نگرفته، معتبر است. */}
+      <Snackbar
+        open={updateReady}
+        message="نسخهٔ تازهٔ لیدرتریپ آماده است."
+        action={
+          <Button color="primary" size="small" onClick={() => window.location.reload()}>
+            بارگذاری دوباره
+          </Button>
+        }
+      />
+
+      <Snackbar
+        open={installAsk}
+        autoHideDuration={12_000}
+        onClose={() => {
+          setInstallAsk(false)
+
+          try {
+            localStorage.setItem('leadertrip.install.dismissed', '1')
+          } catch {
+            /* حالت خصوصی */
+          }
+        }}
+        message="لیدرتریپ را نصب کن تا برنامه‌ات در جادهٔ بی‌اینترنت هم باز شود."
+        action={
+          <Button
+            color="primary"
+            size="small"
+            onClick={() => {
+              setInstallAsk(false)
+              void installPrompt.current?.prompt()
+            }}
+          >
+            نصب اپ
+          </Button>
+        }
       />
     </RtlProvider>
   )

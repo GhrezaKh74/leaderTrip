@@ -49,6 +49,23 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      // هرس دارایی‌های هش‌دارِ نسخه‌های قبلی: نام کش یکی است، پس بدون این،
+      // هر انتشارْ چند مگابایت باندل مرده روی دستگاه کاربر می‌انباشت.
+      .then(() => caches.open(CACHE))
+      .then(async (cache) => {
+        const precached = new Set(SHELL)
+        const stored = await cache.keys()
+
+        await Promise.all(
+          stored
+            .filter((request) => {
+              const path = new URL(request.url).pathname
+
+              return path.startsWith('/assets/') && !precached.has(path)
+            })
+            .map((request) => cache.delete(request)),
+        )
+      })
       .then(() => self.clients.claim()),
   )
 })
